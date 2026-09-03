@@ -82,6 +82,7 @@ E_NOT_AUTHED = "NOT_AUTHENTICATED"
 E_CONSENT = "CONSENT_REQUIRED"
 E_UNKNOWN_OPTION = "UNKNOWN_OPTION"
 E_BAD_CHAIN = "CHAIN_NOT_SUPPORTED"
+E_TOKEN_UNSUPPORTED = "TOKEN_NOT_SUPPORTED"
 E_NO_ROUTE = "NO_ROUTE"
 E_INSUFFICIENT = "INSUFFICIENT_BALANCE"
 E_INSUFFICIENT_FEE = "INSUFFICIENT_SOL_FOR_FEES"
@@ -386,6 +387,12 @@ def classify_error(code: int, out: Any, err: str) -> str:
         return E_NOT_AUTHED
     if "429" in low or "rate limit" in low or "too many requests" in low:
         return E_RATE_LIMITED
+    # "token not found" means MoonPay does not recognise the mint at all —
+    # distinct from NO_ROUTE, where the token is known but no swap path exists
+    # at this size/liquidity. Conflating them is what makes an operator conclude
+    # "MoonPay only supports whitelisted tokens" and reach for another executor.
+    if "token not found" in low or ("unknown token" in low) or ("token is not supported" in low):
+        return E_TOKEN_UNSUPPORTED
     # A chain-identifier mistake reads like an unsupported token, so name it
     # precisely: "Chain definition not found: sol" means WE sent the wrong
     # chain spelling (GMGN's "sol" instead of MoonPay's "solana"), not that the
@@ -709,6 +716,28 @@ def token_retrieve(mint: str, chain: str = "solana", cfg: dict = None) -> Option
     return out if isinstance(out, (dict, list)) else None
 
 
+def token_check(mint: str, chain: str = "solana", cfg: dict = None) -> Dict[str, Any]:
+    """`mp token check` — the pre-trade safety check MoonPay's own pump.fun
+    guide runs before every buy (`mp -f compact token check --token <mint>
+    --chain solana`).
+
+    Used as a DIAGNOSTIC, not as a gate on every candidate: the quote is the
+    authoritative routability test, and at 60 requests/minute an extra call per
+    candidate would burn the budget for no gain. We only spend it when a quote
+    has already failed, which is exactly when the operator needs to know whether
+    MoonPay does not recognise the mint (TOKEN_NOT_SUPPORTED) or simply cannot
+    route this size right now (NO_ROUTE).
+    """
+    chain = moonpay_chain(cfg, chain)
+    args = ["token", "check", "--token", mint, "--chain", chain]
+    args += _explanation("Enzo diagnosis: confirm whether MoonPay recognises this mint")
+    code, out, err = _run_moonpay(args, timeout=30, cfg=cfg)
+    if code != 0:
+        reason = classify_error(code, out, err)
+        return {"ok": False, "reason": reason, "detail": str(err or out)[:200]}
+    return {"ok": True, "reason": "KNOWN", "info": out}
+
+
 def check_tradable(mint: str, amount_usd: float, cfg: dict = None,
                    use_quote: bool = True) -> Dict[str, Any]:
     """Pre-flight gate run BEFORE a position is opened.
@@ -743,8 +772,25 @@ def check_tradable(mint: str, amount_usd: float, cfg: dict = None,
 
     ok, reason, quote = quote_ok(from_token, mint, from_amount, chain, cfg)
     if not ok:
-        remember_not_routable(mint, reason, cfg)
-        return {"tradable": False, "reason": reason, "quote": None}
+        detail = None
+        # Refine a NO_ROUTE with MoonPay's own token check so the log says
+        # whether the mint is unknown or merely unrouteable at this size.
+        if reason == E_NO_ROUTE and (cfg.get("execution") or {}).get(
+                "diagnose_no_route", True):
+            try:
+                chk = token_check(mint, chain, cfg)
+                if not chk.get("ok") and chk.get("reason") == E_TOKEN_UNSUPPORTED:
+                    reason = E_TOKEN_UNSUPPORTED
+                    detail = ("MoonPay does not recognise this mint — it is not a "
+                              "routing/liquidity problem. " + str(chk.get("detail") or "")[:120])
+                else:
+                    detail = ("MoonPay recognises the mint but cannot route this size "
+                              "right now (liquidity/bonding-curve stage).")
+            except Exception:
+                pass
+        if reason in _TOKEN_LEVEL_ERRORS or reason == E_TOKEN_UNSUPPORTED:
+            remember_not_routable(mint, reason, cfg)
+        return {"tradable": False, "reason": reason, "quote": None, "detail": detail}
 
     out_amt = None
     if isinstance(quote, dict):

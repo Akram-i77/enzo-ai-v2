@@ -260,6 +260,14 @@ execution:
   # The wallet name exactly as shown by `mp wallet list`.
   wallet_name: enzo-trading
   # العملة التي نشتري بها. USDC أو SOL.
+  # IMPORTANT: MoonPay's own pump.fun sniper guide funds every buy from native
+  # SOL (So1111...111) and sells back to SOL. Buying a Solana memecoin from USDC
+  # needs an extra USDC->SOL hop inside the route, which is one more place for
+  # the quote to fail. If you see NO_ROUTE on tokens that clearly have liquidity,
+  # switch this to SOL — but ONLY after the wallet actually holds SOL, because
+  # position sizing is now bounded by the base token's own balance
+  # (spendable_usd), not by total wallet wealth.
+  # base_token: USDC = تشتري بـ USDC | SOL = تشتري بـ SOL (ما توثّقه MoonPay)
   base_token: USDC
   slippage_bps: 50
   # أصغر صفقة يُسمح بإرسالها. أي حجم أقل من هذا يُرفض قبل التنفيذ.
@@ -290,11 +298,25 @@ execution:
   sol_fee_reserve: 0.02
 
   # ── قابلية التداول / Tradability ───────────────────────────────────────
-  # MoonPay يوجّه الصفقات عبر swaps.xyz، لذا عملة pump.fun التي ما زالت على
-  # منحنى الربط لا يمكن تداولها حتى تتخرّج إلى DEX. هذه المدة ننتظرها قبل
-  # إعادة فحص نفس العملة، حتى لا نحرق حدّ الطلبات على طريق مسدود.
+  # MoonPay يوجّه الصفقات عبر swaps.xyz (مجمِّع سيولة لامركزي)، ولا توجد قائمة
+  # «50 عملة مسموحة» للتبديل — دليل MoonPay الرسمي لقنص pump.fun ينفّذ
+  # `mp token swap` على عملات مُطلَقة حديثاً بعناوين عشوائية. لكن التوافر يعتمد
+  # على السيولة الفعلية، وMoonPay نفسها تنصّ على أنها «لا تضمن توافر التبديل».
+  # هذه المدة ننتظرها قبل إعادة فحص نفس العملة، حتى لا نحرق حدّ الطلبات على طريق مسدود.
+  # MoonPay routes swaps through swaps.xyz (a decentralised liquidity
+  # aggregator). There is NO 50-token whitelist for swaps — MoonPay's own
+  # pump.fun sniper guide runs `mp token swap` against freshly launched
+  # arbitrary mints. Availability does depend on real liquidity, and MoonPay
+  # states it "does not guarantee the availability of token swaps".
   # Cooldown before re-checking a token that had no route.
   not_routable_cooldown_sec: 3600
+  # عند فشل طلب السعر، نستدعي `mp token check` (فحص MoonPay الموصى به) لنميّز
+  # بين «MoonPay لا يعرف هذه العملة» (TOKEN_NOT_SUPPORTED) و«يعرفها لكن لا مسار
+  # عند هذا الحجم» (NO_ROUTE). يُستهلك طلباً إضافياً عند الفشل فقط، لا لكل عملة.
+  # On a failed quote, run `mp token check` (MoonPay's recommended pre-trade
+  # check) to distinguish "mint not recognised" from "no route at this size".
+  # Costs one extra request only on failure, never per candidate.
+  diagnose_no_route: true
 
   # ── مسار برنامج MoonPay / CLI path ─────────────────────────────────────
   # اتركه فارغاً ليبحث البوت تلقائياً في PATH و nvm و npm global.

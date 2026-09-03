@@ -95,6 +95,10 @@ elif match == ("token","balance","list"):
       {"address":"DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263","symbol":"BONK","balance":{"amount":1000000.0}},
     ]})
 elif match == ("token","quote"):
+    # A mint MoonPay does not recognise cannot be quoted either — realistic, and
+    # it is what exercises the bot's NO_ROUTE -> TOKEN_NOT_SUPPORTED refinement.
+    if STATE.get("unknown_token") or (mint or "").startswith("UNKNOWN"):
+        print(f"Error: token not found: {mint}", file=sys.stderr); sys.exit(1)
     if STATE.get("no_route") or (mint or "").startswith("NOROUTE"):
         print("Error: no route found for this token pair (insufficient liquidity)", file=sys.stderr); sys.exit(1)
     amt = float(opts.get("--from-amount") or 0)
@@ -119,6 +123,16 @@ elif match == ("token","swap"):
     emit({"signature":sig,"message":f"Swapped {amt} {opts['--from-token'][:4]} for {opts['--to-token'][:4]} on {opts['--chain']}"})
 elif match == ("transaction","retrieve"):
     emit({"transactionId":opts["--transactionId"],"status":"confirmed","chain":"solana","slot":314159265})
+elif match == ("token","check"):
+    # MoonPay's own pump.fun guide runs `mp -f compact token check --token <mint>
+    # --chain solana` as the pre-trade safety check. Simulate both outcomes so the
+    # bot's diagnosis path is testable: a mint we do not recognise vs. one we do.
+    _t = str(opts.get("--token") or "")
+    if STATE.get("unknown_token") or _t.startswith("UNKNOWN"):
+        print(f"Error: token not found: {_t}", file=sys.stderr); sys.exit(1)
+    emit({"address": _t, "symbol": STATE.get("symbol", "MOCK"), "name": "Mock Token",
+          "chain": opts.get("--chain"), "tradable": True,
+          "liquidity": STATE.get("liquidity", 2500), "price": 0.000123})
 elif match == ("token","retrieve"):
     emit({"address":opts["--token"],"symbol":"MOCK","name":"Mock Token","price":0.000123,
           "marketCap":45000,"liquidity":2500,"volume24h":9000})

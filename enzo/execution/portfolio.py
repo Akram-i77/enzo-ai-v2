@@ -60,6 +60,29 @@ def _write_capital_file(d: dict) -> None:
         pass
 
 
+def _spendable_usd(cap: dict, cfg: dict) -> float:
+    """USD value of the asset that will ACTUALLY be sent to fund a buy.
+
+    `total_usd` from the wallet snapshot is USDC + deployable SOL. But a swap
+    can only spend the asset configured as execution.base_token: with
+    base_token=SOL, USDC sitting in the wallet cannot fund a buy, and sizing
+    against the combined total produces INSUFFICIENT_BALANCE on every single
+    trade. MoonPay's own pump.fun flow funds buys from SOL, so this distinction
+    is not theoretical — it is the difference between a bot that trades and one
+    that reports a healthy capital figure while failing every order.
+    """
+    try:
+        base = executor.get_base_token(cfg)
+    except Exception:
+        base = "USDC"
+    sol_px = float(cap.get("sol_price") or 0.0)
+    dep_sol = float(cap.get("deployable_sol") or 0.0)
+    usdc = float(cap.get("usdc") or 0.0)
+    if base == "SOL":
+        return max(0.0, dep_sol * sol_px)
+    return max(0.0, usdc)
+
+
 def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = False) -> dict:
     """Refresh deployable capital from the real wallet (live + capital_source=wallet).
 
@@ -85,7 +108,8 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
 
     if paper or source != "wallet":
         out = {"source": "ledger", "usd": round(max(ledger_cash, 0.0), 2), "ok": True,
-               "detail": "paper mode" if paper else f"capital_source={source}"}
+               "detail": "paper mode" if paper else f"capital_source={source}",
+               "spendable_usd": round(max(ledger_cash, 0.0), 2)}
         _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
         return out
 
@@ -111,14 +135,16 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
                             detail, float(snap.get("usd") or 0.0), snap_age, grace)
             out = {"source": "wallet", "usd": float(snap.get("usd") or 0.0), "ok": True,
                    "detail": f"stale-but-in-grace: {detail}", "stale": True,
-                   "age_sec": round(snap_age, 1)}
+                   "age_sec": round(snap_age, 1),
+                   "spendable_usd": float(snap.get("spendable_usd", snap.get("usd") or 0.0)),
+                   "base_token": snap.get("base_token")}
         else:
             _LOGGER.error("Capital sync failed (%s) and no fresh wallet reading is "
                           "available — LIVE position sizing is BLOCKED until the "
                           "wallet can be read. Fix the CLI/auth and it resumes "
                           "automatically.", detail)
             out = {"source": "wallet", "usd": 0.0, "ok": False, "detail": detail,
-                   "blocked": True}
+                   "blocked": True, "spendable_usd": 0.0}
             try:
                 audit.log_event(category="RISK", level="ERROR",
                                 message=f"LIVE capital unreadable — trading blocked: {detail}",
@@ -129,10 +155,21 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
         return out
 
     usd = float(cap.get("total_usd", 0.0) or 0.0)
+    spendable = _spendable_usd(cap, cfg)
+    base = executor.get_base_token(cfg)
     out = {"source": "wallet", "usd": round(usd, 2), "ok": True, "detail": "",
            "wallet": cap.get("wallet"), "usdc": cap.get("usdc"), "sol": cap.get("sol"),
            "sol_price": cap.get("sol_price"), "deployable_sol": cap.get("deployable_sol"),
-           "sol_reserve": cap.get("sol_reserve")}
+           "sol_reserve": cap.get("sol_reserve"),
+           # `usd` is total wallet wealth (equity/drawdown baseline); `spendable_usd`
+           # is what the configured base token can actually fund (position sizing).
+           "spendable_usd": round(spendable, 2), "base_token": base,
+           "total_usd": round(usd, 2)}
+    if spendable + 0.01 < usd:
+        _LOGGER.warning(
+            "Only $%.2f of $%.2f wallet value can fund a buy: base_token=%s. "
+            "The rest is held in the other asset and cannot be swapped directly.",
+            spendable, usd, base)
     _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
 
     if rebase:
@@ -186,7 +223,13 @@ def deployable_capital(cfg: dict = None, state: dict = None, force: bool = False
     """
     res = sync_capital_base(force=force, cfg=cfg)
     try:
-        return max(0.0, float(res.get("usd") or 0.0))
+        # Base-token-aware: the asset that will actually be sent, not total
+        # wallet wealth. Falls back to `usd` for older snapshots that predate
+        # the field so a missing key can never read as "no capital".
+        val = res.get("spendable_usd")
+        if val is None:
+            val = res.get("usd")
+        return max(0.0, float(val or 0.0))
     except Exception:
         cfg = cfg or load_config()
         if not bool(cfg.get("paper_mode", True)):

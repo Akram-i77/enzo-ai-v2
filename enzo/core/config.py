@@ -328,6 +328,9 @@ DEFAULTS = {
         # MoonPay spells Solana "solana"; the shared `chain` key spells it
         # "sol" for GMGN. Empty = translate automatically at the MoonPay boundary.
         "moonpay_chain": "",
+        # On a failed quote, run `mp token check` to tell TOKEN_NOT_SUPPORTED
+        # apart from NO_ROUTE. Costs one request only on failure.
+        "diagnose_no_route": True,
     },
     "dashboard": {
         "port": 8077,
