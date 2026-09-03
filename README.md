@@ -75,7 +75,9 @@ mp verify --email you@example.com --code <CODE>
   2. اكتشف العملات: PumpDev (WebSocket) + GMGN (4 فئات) + قائمة المراقبة
   3. حلّل أعلى 12 مرشحاً بستة محاور (أمان، سيولة، مطوّر، زخم، هيكل سوق، محافظ)
   4. إن كان القرار BUY → تحقّق من قابلية التداول عبر swaps.xyz أولاً
-  5. احسب الحجم من رأس المال المُتحقَّق → نفّذ mp token swap
+  5. احسب الحجم من رأس المال المُتحقَّق
+     (إن كان أصغر من min_trade_usd → يُرفع إليها، ما دامت المحفظة تملكها)
+     → نفّذ mp token swap
   6. سجّل المركز مع tx_hash وأرسل تنبيه تيليجرام
 
 كل ثانيتين:
@@ -90,6 +92,7 @@ mp verify --email you@example.com --code <CODE>
 - تعذّرت قراءة المحفظة → **حجب فتح المراكز** بدل استخدام رقم وهمي.
 - العملة على منحنى الربط (بلا مسار) → **لا يُفتح مركز أصلاً**، مع تنبيه وفترة انتظار ساعة.
 - فشل بيع حقيقي → تنبيه **"عملات يتيمة في المحفظة"** مع الأمر اليدوي الكامل.
+- `min_trade_usd` **أرضية لا عتبة رفض**: برأس مال $2.06 يُحسب حجم $0.16 فيُرفع إلى $1 وتُنفَّذ الصفقة — لكن الأرضية لا تتخطى أبداً ما تملكه المحفظة فعلاً.
 - `max_trade_usd` ينطبق على **الشراء فقط** — لا يمنع البيع أبداً، وإلا حُبس البوت في مركز.
 
 ---
@@ -105,7 +108,7 @@ paper_mode: false              # false = أموال حقيقية · true = مح�
 execution:
   wallet_name: enzo-trading    # كما يظهر في: mp wallet list
   base_token: USDC             # العملة التي نشتري بها
-  min_trade_usd: 1.0           # أصغر صفقة مسموحة
+  min_trade_usd: 1.0           # أرضية: يُرفع إليها الحجم إن كان أصغر
   max_trade_usd: 500.0         # سقف الصفقة (شراء فقط)
   capital_source: wallet       # اقرأ الرصيد الحقيقي كل دورة
   sol_fee_reserve: 0.02        # SOL محجوز للرسوم فقط
@@ -143,7 +146,8 @@ enzo/
 config/      enzo-config.yaml · enzo-control.json · enzo-watchlist.json
 data/        enzo.db (الدفتر) · run/ (pid + health) · logs/ · audit
 docs/        OPENCLAW_DEPLOYMENT.md · ENZO_FULL_DIAGNOSIS.md
-tests/       test_executor.py (47) · test_engine_e2e.py (43)
+tests/       test_executor.py (47) · test_engine_e2e.py (43) ·
+             test_min_trade_floor.py (34)
 ```
 
 ---
@@ -166,8 +170,9 @@ tests/       test_executor.py (47) · test_engine_e2e.py (43)
 ## الاختبارات / Tests
 
 ```bash
-PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py     # 47 assertion
-PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py   # 43 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py        # 47 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py      # 43 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_min_trade_floor.py # 34 assertion
 ```
 
 `tests/test_engine_e2e.py` يعمل في صندوق معزول عبر `ENZO_HOME` — لا يلمس قاعدة

@@ -1219,6 +1219,22 @@ def generate() -> str:
       document.getElementById('kpiAiBias').textContent = (data.learning.confidence_bias >= 0 ? '+' : '') + Number(data.learning.confidence_bias).toFixed(1);
     }}
 
+    // A position whose size was raised to execution.min_trade_usd because the
+    // wallet is small. Without this badge a $1.00 position looks like a config
+    // mistake; with it the operator can see the risk model was overridden and by
+    // how much.
+    function floorBadge(p) {{
+      if (!p || !p.min_floor_applied) return '';
+      var er = Number(p.effective_risk_pct || 0);
+      var tip = 'الحجم رُفع إلى الحد الأدنى للصفقة لأن رأس المال صغير.\n' +
+                'المخاطرة الفعلية: ' + er.toFixed(1) + '% من رأس المال.';
+      return ' <span title="' + tip.replace(/"/g, '&quot;') + '"' +
+             ' style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;' +
+             'font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;' +
+             'background:rgba(255,193,7,.16);color:#ffc107;border:1px solid rgba(255,193,7,.35);">' +
+             'الأرضية · مخاطرة ' + er.toFixed(1) + '%</span>';
+    }}
+
     // Open Positions Table
     var posTable = document.getElementById('positionsTableBody');
     var openMints = Object.keys(data.open_positions || {{}});
@@ -1246,7 +1262,7 @@ def generate() -> str:
           '<td><div class="token-cell"><div class="token-icon">' + sym.substring(0, 3) + '</div>' +
           '<div class="token-info"><span class="token-sym">' + sym + '</span>' +
           '<span class="token-ca" onclick="copyCA(\\'' + m + '\\')">' + m.substring(0, 6) + '...' + m.substring(m.length - 4) + ' 📋</span></div></div></td>' +
-          '<td><strong>$' + size.toLocaleString() + '</strong></td>' +
+          '<td><strong>$' + size.toLocaleString() + '</strong>' + floorBadge(p) + '</td>' +
           '<td>$' + entryMc.toLocaleString() + '</td>' +
           '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString() : '—') + '</strong></td>' +
           '<td class="' + (upnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (upnl >= 0 ? '+$' : '-$') + Math.abs(upnl).toFixed(2) + ' (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(1) + '%)</strong></td>' +

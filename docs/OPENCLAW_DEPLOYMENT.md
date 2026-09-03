@@ -73,6 +73,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 | `CAPITAL_BLOCKED` | تعذّرت قراءة المحفظة → **فتح المراكز محجوب** | `mp login` / `mp consent accept` |
 | `CAPITAL_SYNC_FAILED` | قراءة المحفظة فشلت (ضمن فترة السماح) | يتعافى تلقائياً عند نجاح القراءة |
 | `CAPITAL_BELOW_MIN_TRADE` | الرصيد أقل من `min_trade_usd` | موّل المحفظة |
+| `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | رأس المال المتاح أقل من الحد الأدنى للصفقة، فلا يمكن تنفيذها حتى بعد رفع الحجم إلى الأرضية | موّل المحفظة، أو أغلق مركزاً، أو اخفض `min_trade_usd` |
 | `EXECUTOR_NOT_READY` | CLI مفقود / غير مُصادَق / المحفظة غير موجودة | الرسالة تحمل السبب المحدد |
 | `PUMPDEV_RETRYING` / `PUMPDEV_DOWN` | تغذية الإطلاقات الجديدة ميتة | تحقق من الشبكة وحزمة `websockets` |
 | `PUMPDEV_STALE` | التغذية متصلة لكن بلا رسائل منذ 90+ ثانية | عادةً تُستأنف تلقائياً |
@@ -127,8 +128,11 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
   │        (حتى لا يُحرق حدّ الطلبات على طريق مسدود)
   │
   ├─ 5. تحجيم المركز على رأس المال المُتحقَّق منه
-  │      الحجم < min_trade_usd → يُرفض مع سبب واضح (لا مركز وهمي)
+  │      الحجم = رأس المال × نسبة المخاطرة ÷ نسبة وقف الخسارة
   │      الحجم > max_trade_usd → يُقصّ (ينطبق على الشراء فقط، لا يمنع البيع أبداً)
+  │      الحجم < min_trade_usd → **يُرفع إلى min_trade_usd** (أرضية، لا عتبة رفض)
+  │        ├─ المحفظة تملك الأرضية فعلاً → تُنفَّذ الصفقة
+  │        └─ لا تملكها → INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE (لا مركز وهمي)
   │
   ├─ 6. التنفيذ: mp --json token swap ...  (وحدات بشرية، بلا --yes)
   │      ✓ نجح → يُفتح المركز ويُربط بـ tx_hash
@@ -137,6 +141,34 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
   └─ 7. مراقب الخروج (كل ثانيتين) يراقب المراكز المفتوحة
          ✗ فشل البيع الحقيقي → تنبيه "عملات يتيمة في المحفظة" مع الأمر اليدوي
 ```
+
+### الحد الأدنى للصفقة أرضية لا عتبة رفض / min_trade_usd is a floor
+
+`execution.min_trade_usd` هو **أصغر أمر تقبله المنصة**، لذلك يُعامل كأرضية يُرفع
+إليها الحجم — لا كعتبة تُلغي الصفقة.
+
+| رأس المال | الحجم المحسوب (4% مخاطرة، وقف 50%) | ما يُنفَّذ فعلياً |
+|---|---|---|
+| $2.06 | $0.1648 | **$1.00** (رُفع إلى الأرضية) |
+| $1.00 | $0.08 | **$1.00** (رُفع إلى الأرضية) |
+| $0.50 | $0.04 | **مرفوض** — المحفظة لا تملك $1 |
+| $2.06 مع $1.50 معرَّضة | — | **مرفوض** — المتاح $0.56 فقط |
+| $559.40 | $44.75 | $44.75 (الأرضية لا تتدخل) |
+| $1,000,000 | $80,000 | **$500** (سقف `max_trade_usd`) |
+
+**قيدان لا يُتجاوزان أبداً:**
+1. الأرضية لا يمكن أن تتخطى ما تملكه المحفظة فعلاً وغير المعرَّض حالياً.
+2. حدّ عدد المراكز المفتوحة `max_open_positions` يبقى سارياً.
+
+أما `max_exposure` فيُتجاوز **عمداً** عند تطبيق الأرضية — لأن سقف 30% من
+محفظة $2.06 هو $0.62، أي أقل من الحد الأدنى، فاحترامه يجعل التداول مستحيلاً
+على أي محفظة صغيرة. كل تجاوز من هذا النوع:
+- يُسجَّل بمستوى **WARNING** في السجل،
+- ويُكتب في سجل التدقيق (`./enzoctl logs audit`)،
+- ويُحفَظ على المركز نفسه في الحقلين `min_floor_applied` و`effective_risk_pct`
+  (المخاطرة الفعلية كنسبة من رأس المال، لا النسبة المضبوطة).
+
+لإلغاء هذا السلوك والعودة إلى الرفض: `position_sizing.min_trade_is_floor: false`
 
 ### مبدأ السلامة المعتمد / The safety principle
 
@@ -210,8 +242,9 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 ## 9. الاختبارات / Tests
 
 ```bash
-PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py     # 47 assertion
-PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py   # 43 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py        # 47 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py      # 43 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_min_trade_floor.py # 34 assertion
 ```
 
 الاختبار الثاني يعمل في **صندوق معزول** (`ENZO_HOME` مؤقت) — لا يلمس قاعدة
@@ -232,3 +265,5 @@ tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
 | مركز مفتوح لا يُغلق | `./enzoctl status` | `EXIT_MONITOR_DOWN_WITH_OPEN_POSITIONS` |
 | رفض شراء متكرر | `./enzoctl logs audit -n 100` | `NO_ROUTE` = عملة على منحنى الربط |
 | الحجم أصغر من المتوقع | `./enzoctl wallet` | رأس المال الحقيقي مقابل `risk_per_trade` |
+| الصفقة دائماً $1.00 | `./enzoctl wallet` | رأس المال صغير → الأرضية مطبَّقة (طبيعي) |
+| `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | `./enzoctl wallet` | المتاح أقل من `min_trade_usd` |

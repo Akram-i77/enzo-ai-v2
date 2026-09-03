@@ -201,6 +201,25 @@ market_structure:
   min_sample_interval_sec: 60
   max_samples: 30
 position_sizing:
+  # ── سلوك الحد الأدنى للصفقة / minimum-trade behaviour ──────────────────
+  # true  (الافتراضي) = min_trade_usd أرضية: إذا كان رأس المال صغيراً وجعل
+  #   الحجم المحسوب أقل من الحد الأدنى، يُرفع الحجم إلى الحد الأدنى وتُنفَّذ
+  #   الصفقة. مثال: رأس مال $2.06 ومخاطرة 4% تعطي $0.04 → تُنفَّذ بـ $1.
+  # false = يُرفض التداول وتظهر رسالة SIZE_BELOW_FLOOR.
+  #
+  # قيد أمان واحد لا يُتجاوز أبداً: لا يمكن للأرضية أن تتخطى ما تملكه
+  # المحفظة فعلاً وغير المعرَّض حالياً. فإن كان لديك $0.50 فقط، تُرفض الصفقة
+  # برسالة INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE — لأن إرسال $1 لا تملكها
+  # سيفشل عند التنفيذ.
+  #
+  # true (default) = min_trade_usd is a FLOOR: when capital is small enough
+  #   that the risk-based size falls below it, the size is RAISED to the floor
+  #   and the trade still executes. false = reject instead.
+  # Note this overrides max_exposure on purpose: on a small wallet a 30% cap is
+  # under $1, so enforcing it would make the minimum order unreachable. Every
+  # override is logged at WARNING, written to the audit trail, and stored on the
+  # position as min_floor_applied + effective_risk_pct.
+  min_trade_is_floor: true
   confidence_bands:
   - min: 55
     max: 60

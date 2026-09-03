@@ -753,7 +753,14 @@ def execute_swap(from_token: str, to_token: str, from_amount: float,
     explanation = explanation or "Enzo trading bot position entry on Solana"
 
     def fail(reason: str, detail: str = "", **extra) -> Dict[str, Any]:
-        res = {"ok": False, "reason": reason, "detail": detail, "tx_hash": None,
+        # `reason` holds the machine code and `detail` the human sentence. The
+        # callers in engine.py and exit_monitor.py read `reason_code`, so it is
+        # emitted explicitly as well — without it the Telegram failure alert
+        # arrived with an empty code and notify_buy_failed() could not look up
+        # its "Fix:" hint, which is the same class of silent contract mismatch
+        # that made buy failures invisible in the first place.
+        res = {"ok": False, "reason": reason, "reason_code": reason,
+               "detail": detail, "tx_hash": None,
                "from_token": from_token, "to_token": to_token,
                "from_amount": from_amount, "wallet": wallet}
         res.update(extra)
@@ -923,7 +930,8 @@ def buy_token(mint: str, amount_usd: float, wallet: str = None,
 
     min_trade = float(ex.get("min_trade_usd", 1.0))
     if float(amount_usd) < min_trade:
-        return {"ok": False, "reason": E_BELOW_MIN, "tx_hash": None,
+        return {"ok": False, "reason": E_BELOW_MIN, "reason_code": E_BELOW_MIN,
+                "tx_hash": None,
                 "detail": f"Position size ${float(amount_usd):.2f} below execution.min_trade_usd ${min_trade:.2f}. "
                           f"Equity is too small for the configured risk band.",
                 "amount_usd": amount_usd, "base_token": base}
@@ -975,12 +983,14 @@ def sell_token(mint: str, amount_spl: float = None, wallet: str = None,
     else:
         sell_amount = want
         if sell_amount <= 0:
-            return {"ok": False, "reason": E_INSUFFICIENT, "tx_hash": None,
+            return {"ok": False, "reason": E_INSUFFICIENT,
+                    "reason_code": E_INSUFFICIENT, "tx_hash": None,
                     "detail": f"No on-chain balance for {str(mint)[:8]}… and no ledger amount to fall back on.",
                     "base_token": base, "mint": mint}
 
     if sell_amount <= 0:
-        return {"ok": False, "reason": E_INSUFFICIENT, "tx_hash": None,
+        return {"ok": False, "reason": E_INSUFFICIENT,
+                "reason_code": E_INSUFFICIENT, "tx_hash": None,
                 "detail": "Computed sell amount is zero.", "base_token": base, "mint": mint}
 
     explanation = explanation or f"Enzo SELL {str(mint)[:8]} on Solana"
