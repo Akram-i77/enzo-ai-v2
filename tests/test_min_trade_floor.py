@@ -6,7 +6,7 @@ size falls below min_trade_usd, the size is RAISED to the floor and the trade
 still executes. It is only refused when the wallet genuinely cannot fund the
 floor.
 
-Run:  PATH=/tmp/mockbin:$PATH python3 tests/test_min_trade_floor.py
+Run:  python3 tests/test_min_trade_floor.py
 """
 import json
 import os
@@ -16,6 +16,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 PASS = FAIL = 0
 
@@ -44,9 +45,8 @@ for f in ("enzo-config.yaml", "enzo-control.json", "enzo-watchlist.json", "enzo-
         shutil.copy(src, os.path.join(SANDBOX, "config", f))
 os.environ["ENZO_HOME"] = SANDBOX
 os.environ["MOCK_STATE"] = "{}"
-MOCKBIN = "/tmp/mockbin"
-if os.path.isdir(MOCKBIN) and MOCKBIN not in os.environ["PATH"]:
-    os.environ["PATH"] = MOCKBIN + os.pathsep + os.environ["PATH"]
+from conftest_paths import install_mock_on_path
+MOCKBIN = install_mock_on_path()
 
 import enzo.core.config as C          # noqa: E402
 from enzo.execution import portfolio, executor   # noqa: E402

@@ -7,10 +7,10 @@ ledger position with tx hash -> Telegram notification -> dashboard render ->
 heartbeat for the supervisor.
 
 Providers (GMGN / PumpDev) are stubbed because outbound network is not
-available in the test sandbox; the MoonPay CLI is the mock at /tmp/mockbin,
+available in the test sandbox; the MoonPay CLI is the mock bundled at tests/mockbin/,
 which reproduces the real CLI's flag validation and JSON contract.
 
-Run:  PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py
+Run:  python3 tests/test_engine_e2e.py
 """
 import json
 import os
@@ -21,6 +21,7 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 PASS = FAIL = 0
 NOTICES = []
@@ -63,9 +64,8 @@ os.environ["ENZO_CONFIG_PATH"] = os.path.join(SANDBOX, "config", "enzo-config.ya
 os.environ["MOCK_STATE"] = "{}"
 
 # Make sure the mock MoonPay CLI is reachable even if the caller forgot PATH.
-MOCKBIN = "/tmp/mockbin"
-if os.path.isdir(MOCKBIN) and MOCKBIN not in os.environ["PATH"]:
-    os.environ["PATH"] = MOCKBIN + os.pathsep + os.environ["PATH"]
+from conftest_paths import install_mock_on_path
+MOCKBIN = install_mock_on_path()
 
 import enzo.core.config as C  # noqa: E402
 

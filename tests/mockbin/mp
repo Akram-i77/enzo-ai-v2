@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Mock of @moonpay/cli v1.96.0 with commander's exact option semantics.
+
+Reproduces: global --json (anywhere), per-command options generated from the
+real tool schemas, auto-added optional --explanation, and commander's
+"error: unknown option" + exit 1 behaviour.
+"""
+import json, os, sys, time
+
+argv = sys.argv[1:]
+GLOBAL = {"--json"}
+json_out = False
+rest = []
+for a in argv:
+    if a in GLOBAL: json_out = True
+    else: rest.append(a)
+
+# tool -> {flag: required}
+TOOLS = {
+ ("token","swap"): {"--wallet":1,"--chain":1,"--from-token":1,"--from-amount":0,"--to-token":1,"--to-amount":0,"--explanation":0},
+ ("token","quote"): {"--from-chain":1,"--from-token":1,"--from-amount":0,"--to-chain":1,"--to-token":1,"--to-amount":0,"--explanation":0},
+ ("token","balance","list"): {"--wallet":1,"--chain":1,"--explanation":0},
+ ("token","retrieve"): {"--token":1,"--chain":1,"--explanation":0},
+ ("token","check"): {"--token":1,"--chain":1,"--explanation":0},
+ ("token","search"): {"--query":1,"--chain":0,"--limit":0,"--explanation":0},
+ ("token","trending","list"): {"--chain":1,"--limit":0,"--page":0,"--explanation":0},
+ ("transaction","retrieve"): {"--transactionId":1,"--explanation":0},
+ ("wallet","list"): {"--explanation":0},
+}
+pos = [a for a in rest if not a.startswith("--")]
+opts = {}
+i = 0
+while i < len(rest):
+    a = rest[i]
+    if a.startswith("--"):
+        if i+1 < len(rest) and not rest[i+1].startswith("--"):
+            opts[a] = rest[i+1]; i += 2; continue
+        opts[a] = True; i += 1; continue
+    i += 1
+
+key = tuple(pos)
+# find longest matching tool path
+match = None
+for n in range(len(pos), 0, -1):
+    if tuple(pos[:n]) in TOOLS: match = tuple(pos[:n]); opts_extra = pos[n:]; break
+if match is None:
+    print(f"error: unknown command '{' '.join(pos)}'", file=sys.stderr); sys.exit(1)
+spec = TOOLS[match]
+for o in opts:
+    if o not in spec:
+        print(f"error: unknown option '{o}'", file=sys.stderr); sys.exit(1)
+for o, req in spec.items():
+    if req and o not in opts:
+        print(f"error: required option '{o} <{o[2:]}>' not specified", file=sys.stderr); sys.exit(1)
+
+def emit(obj):
+    if json_out: print(json.dumps(obj, indent=2))
+    else:
+        for k,v in obj.items(): print(f"{k}: {v}")
+
+STATE = json.loads(os.environ.get("MOCK_STATE","{}"))
+mint = opts.get("--to-token") or opts.get("--from-token") or opts.get("--token")
+
+if match == ("wallet","list"):
+    emit({"items":[{"name":STATE.get("wallet","enzo-trading"),"addresses":{"solana":STATE.get("address","7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU")}}]})
+elif match == ("token","balance","list"):
+    emit({"items":[
+      {"address":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","symbol":"USDC","balance":{"amount":STATE.get("usdc",500.0)}},
+      {"address":"So11111111111111111111111111111111111111112","symbol":"SOL","balance":{"amount":STATE.get("sol",0.35)}},
+      {"address":"DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263","symbol":"BONK","balance":{"amount":1000000.0}},
+    ]})
+elif match == ("token","quote"):
+    if STATE.get("no_route") or (mint or "").startswith("NOROUTE"):
+        print("Error: no route found for this token pair (insufficient liquidity)", file=sys.stderr); sys.exit(1)
+    amt = float(opts.get("--from-amount") or 0)
+    emit({"fromChain":opts["--from-chain"],"toChain":opts["--to-chain"],
+          "fromToken":opts["--from-token"],"toToken":opts["--to-token"],
+          "fromAmount":amt,"toAmount":round(amt*93.4,4),"priceImpact":0.31,"route":"swaps.xyz"})
+elif match == ("token","swap"):
+    amt = float(opts.get("--from-amount") or 0)
+    # per-token balances (mock): USDC 500, SOL 0.35, BONK 1,000,000
+    FROM = opts.get("--from-token","")
+    held = {"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": STATE.get("usdc",500.0),
+            "So11111111111111111111111111111111111111112": STATE.get("sol",0.35),
+            "So11111111111111111111111111111111111111111": STATE.get("sol",0.35),
+            "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263": 1000000.0}.get(FROM, 1e12)
+    if amt > held:
+        print(f"Error: insufficient balance — requested {amt} but wallet holds {held}", file=sys.stderr); sys.exit(1)
+    if STATE.get("no_route") or (opts.get("--to-token","")).startswith("NOROUTE"):
+        print("Error: no route found for this token pair", file=sys.stderr); sys.exit(1)
+    if not STATE.get("authed", True):
+        print("Error: not authenticated — run `mp login`", file=sys.stderr); sys.exit(1)
+    sig = "5" + "".join("abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789"[ (i*7+3)%57 ] for i in range(87))
+    emit({"signature":sig,"message":f"Swapped {amt} {opts['--from-token'][:4]} for {opts['--to-token'][:4]} on {opts['--chain']}"})
+elif match == ("transaction","retrieve"):
+    emit({"transactionId":opts["--transactionId"],"status":"confirmed","chain":"solana","slot":314159265})
+elif match == ("token","retrieve"):
+    emit({"address":opts["--token"],"symbol":"MOCK","name":"Mock Token","price":0.000123,
+          "marketCap":45000,"liquidity":2500,"volume24h":9000})
+else:
+    emit({"ok":True,"tool":" ".join(match)})

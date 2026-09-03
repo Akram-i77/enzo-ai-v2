@@ -4,8 +4,17 @@ that reproduces commander's exact option semantics (verified against
 @moonpay/cli@1.96.0's own command builder)."""
 import json, os, sys, time, copy
 
-os.environ["PATH"] = "/tmp/mockbin:" + os.environ["PATH"]
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(_HERE))
+sys.path.insert(0, _HERE)
+
+from conftest_paths import install_mock_on_path, mock_bin_dir
+
+MOCK_DIR = install_mock_on_path()
+if not MOCK_DIR:
+    print("\n  \033[31mABORT\033[0m  no mock MoonPay CLI found. Expected tests/mockbin/mp, "
+          "or set ENZO_MOCK_BIN_DIR.")
+    sys.exit(2)
 
 from enzo.core import config as C
 from enzo.execution import executor as X
@@ -153,21 +162,80 @@ check("report has checks list", isinstance(rep.get("checks"), list) and len(rep[
 check("report ready flag present", isinstance(rep.get("ready"), bool))
 
 print("\n=== 15. REGRESSION: the OLD executor against the same mock ===")
-sys.path.insert(0, "/tmp")
+# The pre-fix executor is recovered from git history at run time, so this
+# regression proof travels with the repo instead of depending on a scratch file
+# in /tmp that only existed on the machine where the bug was found.
 import importlib.util
-spec = importlib.util.spec_from_file_location("old_executor", "/tmp/old_executor_probe.py")
-old = importlib.util.module_from_spec(spec)
-try:
-    spec.loader.exec_module(old)
-    old.MOONPAY_BIN = "/tmp/mockbin/mp"
-    oq = old.get_quote(old.USDC_MAINNET, MINT, 50.0, "solana")
-    check("OLD get_quote returns None (proves the --chain bug)", oq is None, f"got {oq}")
-    orr = old.execute_swap(old.USDC_MAINNET, MINT, 50.0, wallet="enzo-trading")
-    check("OLD execute_swap fails", orr.get("ok") is False, str(orr.get("reason"))[:90])
-    check("OLD _to_smallest_unit inflates $50 -> 50000000", old._to_smallest_unit(old.USDC_MAINNET, 50.0) == 50000000, str(old._to_smallest_unit(old.USDC_MAINNET, 50.0)))
-    check("OLD _parse_tx_hash can never match", old._parse_tx_hash("signature: " + "5"*88) is None)
-except Exception as e:
-    print(f"  (old-executor probe unavailable: {e})")
+import subprocess
+import tempfile
+
+ROOT = os.path.dirname(_HERE)
+REL = "enzo/execution/executor.py"
+
+
+def _oldest_commit_for(path):
+    try:
+        out = subprocess.run(["git", "-C", ROOT, "log", "--format=%H", "--", path],
+                             capture_output=True, text=True, timeout=20)
+        commits = [c for c in out.stdout.split() if c]
+        return commits[-1] if commits else None
+    except Exception:
+        return None
+
+
+_old_src = None
+_commit = _oldest_commit_for(REL)
+if _commit:
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "show", f"{_commit}:{REL}"],
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode == 0 and r.stdout.strip():
+            _old_src = r.stdout
+    except Exception:
+        _old_src = None
+
+old = None
+if _old_src:
+    _tmp = tempfile.NamedTemporaryFile("w", suffix="_old_executor.py", delete=False,
+                                       encoding="utf-8")
+    _tmp.write(_old_src)
+    _tmp.close()
+    spec = importlib.util.spec_from_file_location("old_executor", _tmp.name)
+    old = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(old)
+    except Exception as _e:
+        print(f"  \033[33mSKIP\033[0m  could not import the historical executor: {_e}")
+        old = None
+    else:
+        print(f"  \033[2mrecovered {REL} from commit {_commit[:9]}\033[0m")
+        # point the historical module at the same bundled mock
+        old.MOONPAY_BIN = os.path.join(mock_bin_dir() or "", "mp")
+        for _attr in ("MOONPAY_BIN_PATH", "MOONPAY_CLI"):
+            if hasattr(old, _attr):
+                setattr(old, _attr, old.MOONPAY_BIN)
+else:
+    print("  \033[33mSKIP\033[0m  git history unavailable — cannot recover the pre-fix "
+          "executor for comparison")
+
+if old is not None:
+    try:
+        oq = old.get_quote(old.USDC_MAINNET, MINT, 50.0, "solana")
+        check("OLD get_quote returns None (proves the --chain bug)", oq is None, f"got {oq}")
+        orr = old.execute_swap(old.USDC_MAINNET, MINT, 50.0, wallet="enzo-trading")
+        check("OLD execute_swap fails", orr.get("ok") is False, str(orr.get("reason"))[:90])
+        check("OLD _to_smallest_unit inflates $50 -> 50000000",
+              old._to_smallest_unit(old.USDC_MAINNET, 50.0) == 50000000,
+              str(old._to_smallest_unit(old.USDC_MAINNET, 50.0)))
+        check("OLD _parse_tx_hash can never match",
+              old._parse_tx_hash("signature: " + "5" * 88) is None)
+    except Exception as e:
+        print(f"  \033[33mSKIP\033[0m  old-executor probe raised {type(e).__name__}: {e}")
+    finally:
+        try:
+            os.remove(_tmp.name)
+        except Exception:
+            pass
 
 reset()
 print(f"\n{'='*66}\n  RESULT: {PASS} passed, {FAIL} failed\n{'='*66}")
