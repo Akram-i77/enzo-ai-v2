@@ -1,0 +1,209 @@
+paper_mode: false
+risk_management:
+  risk_per_trade: 2.5
+  max_exposure: 30.0
+  max_daily_loss: 8.0
+  max_drawdown: 25.0
+  enable_risk_halts: true
+  consecutive_losses_limit: 12
+  max_open_positions: 5
+  exit_monitor_interval_seconds: 1
+  circuit_breaker_drop_pct: 15.0
+exit_monitor:
+  enabled: true
+  interval_seconds: 2.0
+  max_stale_age_seconds: 10.0
+  failure_threshold: 3
+  price_sources:
+  - pumpdev
+  - gmgn
+  - bonding_curve
+  never_auto_sell_on_failure: true
+market_analysis:
+  min_liquidity: 150
+  min_volume: 50
+  min_holders: 10
+  min_market_cap: 1000
+  min_confidence_score: 55
+  min_buy_pressure: 40
+  max_scam_score: 15
+  max_holder_percentage: 10.0
+scam_detection:
+  honeypot_risk_threshold: 0.7
+  rug_pull_risk_threshold: 0.7
+  fake_liquidity_threshold: 0.7
+  fake_volume_threshold: 0.7
+  concentrated_holders_threshold: 0.8
+  suspicious_ownership_threshold: 0.7
+  fake_social_engagement_threshold: 0.7
+  bundle_top10_threshold: 60.0
+  bundle_single_threshold: 45.0
+  bundler_flood_penalty: 30
+  sniper_flood_penalty: 15
+  rat_flood_penalty: 10
+  bundlers_in_top20_penalty: 20
+  top10_dumping_penalty: 10
+  dev_team_hold_penalty: 15
+  dev_factory_penalty: 15
+  top70_sniper_hold_penalty: 10
+  deep_dangerous_threshold: 15
+entry_strategy:
+  min_risk_reward_ratio: 2.0
+  trend_confirmation_periods: 5
+exit_strategy:
+  take_profit_percentage: 150.0
+  take_profit_stages:
+  - pct: 30
+    sell: 0.3
+  - pct: 70
+    sell: 0.3
+  - pct: 150
+    sell: 0.4
+  stop_loss_percentage: 50.0
+  trailing_stop_percentage: 30.0
+  max_holding_time_hours: 48
+scoring_weights:
+  price_action: 0.15
+  volume: 0.1
+  liquidity: 0.1
+  social_momentum: 0.15
+  on_chain_activity: 0.2
+  scam_indicators: 0.3
+logging:
+  level: INFO
+  log_api_errors: true
+  log_network_latency: true
+notifications:
+  send_decision_notifications: true
+  min_confidence_for_notification: 60
+  send_scan_summary: true
+data_sources:
+  gmgn:
+    cli: gmgn-cli
+    chain: sol
+    request_gap_ms: 350
+    discovery:
+    - trending
+    - trenches
+    - smartmoney
+    - kol
+    max_candidates_per_scan: 40
+    max_depth_analyses: 12
+    extra_discovery: true
+    top_traders: true
+  pumpdev:
+    enabled: true
+    request_gap_ms: 150
+    batch_size: 30
+    price_refresh_secs: 1.0
+    use_kolscan: true
+    use_recent: true
+    thresholds:
+      max_twitter_reuse: 5
+      max_telegram_reuse: 5
+      max_website_reuse: 5
+      dev_hold_hard_pct: 35
+      dev_hold_soft_pct: 15
+      bundler_hard_pct: 50
+      bundler_soft_pct: 30
+      sniper_hard: 100
+      sniper_soft: 40
+      sniper_owned_hard_pct: 40
+      top10_hard_pct: 90
+      top10_soft_pct: 70
+      min_mcap: 1000
+      min_volume: 50
+      min_holders: 0
+      pre_migration_exempt: true
+    penalties:
+      bundler_penalty_threshold: 0.3
+      bundler_penalty: 25
+      twitter_reuse_penalty_threshold: 3
+      twitter_reuse_penalty: 20
+      telegram_reuse_penalty_threshold: 4
+      telegram_reuse_penalty: 10
+      banned_penalty: 30
+discovery:
+  dedupe_window_minutes: 720
+  max_tokens_per_scan: 40
+  max_depth_tokens_per_cycle: 12
+paper_trading:
+  initial_capital: 10000.0
+  slippage_tolerance: 0.5
+pump_monitor:
+  interval_sec: 30
+  max_candidates: 40
+  min_initial_buy_sol: 1.0
+  min_analysis_interval_sec: 3
+  max_analyses_per_min: 15
+weighted_confidence:
+  security: 30
+  wallet_behavior: 20
+  dev_behavior: 20
+  momentum: 15
+  market_structure: 10
+  liquidity: 5
+wallet_behavior:
+  neutral_score: 50
+  weights:
+    diversity: 0.4
+    concentration: 0.3
+    growth: 0.3
+    identity: 0.35
+dev_behavior:
+  neutral_score: 50
+  track_ttl_sec: 1800
+  sell_threshold_pct: 2.0
+  buy_threshold_pct: 2.0
+  liq_remove_pct: 0.2
+  impact_dev_selling: -30
+  impact_dev_buying: 25
+  impact_dev_holding: 10
+  impact_dev_distributing: 8
+  impact_dev_remove_liq: -40
+  factory_dev_min_created: 10
+  factory_dev_heavy_created: 200
+  factory_dev_penalty: 15
+  factory_dev_heavy_penalty: 45
+  factory_dev_low_open_ratio: 0.1
+  factory_dev_low_open_penalty: 15
+  factory_dev_no_open_ratio_penalty: 8
+  no_big_hits_max_ath_mc: 100000
+  no_big_hits_penalty: 10
+market_structure:
+  neutral_score: 50
+  min_sample_interval_sec: 60
+  max_samples: 30
+position_sizing:
+  confidence_bands:
+  - min: 55
+    max: 60
+    risk_pct: 1.0
+  - min: 61
+    max: 70
+    risk_pct: 2.0
+  - min: 71
+    max: 80
+    risk_pct: 3.0
+  - min: 81
+    max: 90
+    risk_pct: 4.0
+  - min: 91
+    max: 100
+    risk_pct: 5.0
+learning:
+  enabled: true
+  apply_weight_adjustments: false
+  min_samples_for_adjust: 10
+cache:
+  holder_dist_ttl: 600
+chain: sol
+execution:
+  wallet_name: enzo-trading
+  base_token: USDC
+  slippage_bps: 50
+  min_trade_usd: 1.0
+  max_trade_usd: 500.0
+  confirm_blocks: 1
+  retry_attempts: 2
+  rollback_on_failure: true

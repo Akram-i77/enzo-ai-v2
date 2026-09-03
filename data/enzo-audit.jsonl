@@ -1,0 +1,3 @@
+{"ts": "2026-09-02T21:27:05.623938+00:00", "category": "SYSTEM", "level": "INFO", "message": "Trading RESUMED via Web Dashboard", "data": {}}
+{"ts": "2026-09-02T21:28:47.084577+00:00", "category": "DISCOVERY", "level": "INFO", "message": "Manual market scan cycle triggered from Web Dashboard", "data": {}}
+{"ts": "2026-09-02T21:47:07.562717+00:00", "category": "SYSTEM", "level": "INFO", "message": "Trading PAUSED via Web Dashboard", "data": {}}

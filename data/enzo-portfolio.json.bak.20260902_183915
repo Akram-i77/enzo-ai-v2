@@ -1,0 +1,1483 @@
+{
+  "initial_capital": 10000.0,
+  "realized_pnl": -1480.3599539845563,
+  "open_positions": {},
+  "closed_positions": [
+    {
+      "id": 9,
+      "mint": "Gn6N7WdQJPDm6g8q4rKiBqR7KXbsVbFz2WH85tHhpump",
+      "symbol": "ROBIN",
+      "entry_price": 0.006850446057679318,
+      "exit_price": 1.7055820199255496e-06,
+      "entry_market_cap": 6850077.44,
+      "exit_market_cap": 1705.4902437579556,
+      "size_usd": 411.57,
+      "pnl": -411.4675,
+      "pnl_pct": -99.98,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-25T19:32:15.433080+00:00",
+      "closed_at": "2026-08-26T18:57:28.923162+00:00",
+      "signals_json": "[\"Liquidity $213,629 >= min $150\", \"Market cap $6,850,077 >= min $1,000\", \"Volume24h $123,119 >= min $50\", \"Buy pressure 94.2% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"Gn6N7WdQJPDm6g8q4rKiBqR7KXbsVbFz2WH85tHhpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 213629.24819503038, \"price\": 0.006850446057679318, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 213629.24819503038, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 75, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=94.2%\", \"buy_ratio=94%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 94.2, \"smart_degen_count\": 0.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$213,629 (min $150)\"], \"detail\": {\"liquidity\": 213629.24819503038, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $213,629 >= min $150",
+        "Market cap $6,850,077 >= min $1,000",
+        "Volume24h $123,119 >= min $50",
+        "Buy pressure 94.2% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "Gn6N7WdQJPDm6g8q4rKiBqR7KXbsVbFz2WH85tHhpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 213629.24819503038,
+          "price": 0.006850446057679318,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 213629.24819503038,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 75,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=94.2%",
+            "buy_ratio=94%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 94.2,
+            "smart_degen_count": 0.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$213,629 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 213629.24819503038,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 8,
+      "mint": "3ULcsmE2WAAf7CV1rfVjocGNmacy7a4fXN4e3nt7pump",
+      "symbol": "Martians",
+      "entry_price": 0.007842328643000085,
+      "exit_price": 1.791079106574766e-06,
+      "entry_market_cap": 7841684.2,
+      "exit_market_cap": 1790.93192473083,
+      "size_usd": 400.0,
+      "pnl": -399.9086,
+      "pnl_pct": -99.98,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-25T19:25:15.729077+00:00",
+      "closed_at": "2026-08-26T18:57:28.624497+00:00",
+      "signals_json": "[\"Liquidity $229,547 >= min $150\", \"Market cap $7,841,684 >= min $1,000\", \"Volume24h $116,654 >= min $50\", \"Buy pressure 99.0% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"3ULcsmE2WAAf7CV1rfVjocGNmacy7a4fXN4e3nt7pump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 229547.46884041047, \"price\": 0.007842328643000085, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 229547.46884041047, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 75, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=99.0%\", \"buy_ratio=99%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 99.0, \"smart_degen_count\": 0.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$229,547 (min $150)\"], \"detail\": {\"liquidity\": 229547.46884041047, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $229,547 >= min $150",
+        "Market cap $7,841,684 >= min $1,000",
+        "Volume24h $116,654 >= min $50",
+        "Buy pressure 99.0% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "3ULcsmE2WAAf7CV1rfVjocGNmacy7a4fXN4e3nt7pump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 229547.46884041047,
+          "price": 0.007842328643000085,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 229547.46884041047,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 75,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=99.0%",
+            "buy_ratio=99%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 99.0,
+            "smart_degen_count": 0.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$229,547 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 229547.46884041047,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 7,
+      "mint": "B6Nk74d5tyknV2prqNpg2pLCqk4EMf7mtG5QViA1hgTR",
+      "symbol": "POOLCHAN",
+      "entry_price": 9.474836735419511e-05,
+      "exit_price": 0.00024794953307612254,
+      "entry_market_cap": 94748.37,
+      "exit_market_cap": 247949.54,
+      "size_usd": 0.0,
+      "pnl": 605.9384,
+      "pnl_pct": 123.8,
+      "reason": "TP_FINAL_150%",
+      "opened_at": "2026-08-26T00:03:08.285505+00:00",
+      "closed_at": "2026-08-26T00:14:35.456634+00:00",
+      "signals_json": "[\"Liquidity $25,194 >= min $150\", \"Market cap $94,748 >= min $1,000\", \"Volume24h $95,142 >= min $50\", \"Buy pressure 66.2% >= 45%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"B6Nk74d5tyknV2prqNpg2pLCqk4EMf7mtG5QViA1hgTR\", \"token_type\": \"STANDARD\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 25194.44407220384, \"price\": 9.474836735419511e-05, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 25194.44407220384, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 55, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=66.2%\", \"buy_ratio=66%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 66.2, \"smart_degen_count\": 0.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$25,194 (min $150)\"], \"detail\": {\"liquidity\": 25194.44407220384, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $25,194 >= min $150",
+        "Market cap $94,748 >= min $1,000",
+        "Volume24h $95,142 >= min $50",
+        "Buy pressure 66.2% >= 45%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "B6Nk74d5tyknV2prqNpg2pLCqk4EMf7mtG5QViA1hgTR",
+          "token_type": "STANDARD",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 25194.44407220384,
+          "price": 9.474836735419511e-05,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 25194.44407220384,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 55,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=66.2%",
+            "buy_ratio=66%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 66.2,
+            "smart_degen_count": 0.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$25,194 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 25194.44407220384,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 6,
+      "mint": "67BbxXCKN65KEqpPxhoLd6CLF1xtWx4f1qobyfsqpump",
+      "symbol": "claude",
+      "entry_price": 0.00043745793188625,
+      "exit_price": 4.201401520775324e-08,
+      "entry_market_cap": 437457.93,
+      "exit_market_cap": 42.01401502660669,
+      "size_usd": 486.82,
+      "pnl": -486.7732,
+      "pnl_pct": -99.99,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-26T00:10:58.263804+00:00",
+      "closed_at": "2026-08-26T00:11:07.928883+00:00",
+      "signals_json": "[\"Liquidity $51,073 >= min $150\", \"Market cap $437,458 >= min $1,000\", \"Volume24h $27,209 >= min $50\", \"Buy pressure 100.0% >= 45%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"67BbxXCKN65KEqpPxhoLd6CLF1xtWx4f1qobyfsqpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 51072.7901607856, \"price\": 0.00043745793188625, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 51072.7901607856, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 75, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=100.0%\", \"buy_ratio=100%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 100.0, \"smart_degen_count\": null, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$51,073 (min $150)\"], \"detail\": {\"liquidity\": 51072.7901607856, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $51,073 >= min $150",
+        "Market cap $437,458 >= min $1,000",
+        "Volume24h $27,209 >= min $50",
+        "Buy pressure 100.0% >= 45%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "67BbxXCKN65KEqpPxhoLd6CLF1xtWx4f1qobyfsqpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 51072.7901607856,
+          "price": 0.00043745793188625,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 51072.7901607856,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 75,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=100.0%",
+            "buy_ratio=100%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 100.0,
+            "smart_degen_count": null,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$51,073 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 51072.7901607856,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 5,
+      "mint": "i9q8ow33FBKRpvEZtpRzXSW1UvmYtfrj8bqKynUpump",
+      "symbol": "MEEMERS",
+      "entry_price": 5.1457121216935434e-05,
+      "exit_price": 5.689395856345831e-09,
+      "entry_market_cap": 51250.52,
+      "exit_market_cap": 5.666552835212546,
+      "size_usd": 510.84,
+      "pnl": -510.7835,
+      "pnl_pct": -99.99,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-26T00:07:16.945458+00:00",
+      "closed_at": "2026-08-26T00:07:22.162219+00:00",
+      "signals_json": "[\"Liquidity $15,374 >= min $150\", \"Market cap $51,251 >= min $1,000\", \"Volume24h $13,482 >= min $50\", \"Buy pressure 69.6% >= 45%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"i9q8ow33FBKRpvEZtpRzXSW1UvmYtfrj8bqKynUpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 15373.59118579934, \"price\": 5.1457121216935434e-05, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 15373.59118579934, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 58, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=69.6%\", \"buy_ratio=70%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 69.6, \"smart_degen_count\": 1.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$15,374 (min $150)\"], \"detail\": {\"liquidity\": 15373.59118579934, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $15,374 >= min $150",
+        "Market cap $51,251 >= min $1,000",
+        "Volume24h $13,482 >= min $50",
+        "Buy pressure 69.6% >= 45%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "i9q8ow33FBKRpvEZtpRzXSW1UvmYtfrj8bqKynUpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 15373.59118579934,
+          "price": 5.1457121216935434e-05,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 15373.59118579934,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 58,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=69.6%",
+            "buy_ratio=70%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 69.6,
+            "smart_degen_count": 1.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$15,374 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 15373.59118579934,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 4,
+      "mint": "BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump",
+      "symbol": "CATECOIN",
+      "entry_price": 0.0003951042023317421,
+      "exit_price": 0.00010944316393926016,
+      "entry_market_cap": 388965.99,
+      "exit_market_cap": 107742.89,
+      "size_usd": 411.57,
+      "pnl": -297.5658,
+      "pnl_pct": -72.3,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-25T19:32:35.387995+00:00",
+      "closed_at": "2026-08-25T19:36:54.525719+00:00",
+      "signals_json": "[\"Liquidity $50,670 >= min $150\", \"Market cap $388,966 >= min $1,000\", \"Volume24h $645,836 >= min $50\", \"Buy pressure 60.9% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 50670.34983355386, \"price\": 0.0003951042023317421, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 11.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 27.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(11_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(11_created)\", \"dev_factory_penalty=23 (created=11)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 50670.34983355386, \"creator_status\": \"\", \"creator_created_count\": 11.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 56, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=60.9%\", \"smart_degen=6\", \"buy_ratio=61%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 60.9, \"smart_degen_count\": 6.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 83.0, \"available\": true, \"flags\": [\"mc_growth=291.3%/window\", \"liq_growth=117.4%\", \"buyers_increase=n/a%\", \"1h_momentum=+0.00%\"], \"detail\": {\"mc_growth_pct\": 291.25317782694077, \"liq_growth_pct\": 117.44467237349853, \"buyer_increase_pct\": null, \"volume_acceleration\": null, \"imbalance_score\": 50.0, \"green_candle_ratio\": null, \"kline_vol_trend_pct\": null, \"last_candle_up\": null, \"price_change_5m\": null, \"samples\": 2, \"window_min\": 3.9}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$50,670 (min $150)\"], \"detail\": {\"liquidity\": 50670.34983355386, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": true, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $50,670 >= min $150",
+        "Market cap $388,966 >= min $1,000",
+        "Volume24h $645,836 >= min $50",
+        "Buy pressure 60.9% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 50670.34983355386,
+          "price": 0.0003951042023317421,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 11.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 27.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(11_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(11_created)",
+            "dev_factory_penalty=23 (created=11)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 50670.34983355386,
+            "creator_status": "",
+            "creator_created_count": 11.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 56,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=60.9%",
+            "smart_degen=6",
+            "buy_ratio=61%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 60.9,
+            "smart_degen_count": 6.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 83.0,
+          "available": true,
+          "flags": [
+            "mc_growth=291.3%/window",
+            "liq_growth=117.4%",
+            "buyers_increase=n/a%",
+            "1h_momentum=+0.00%"
+          ],
+          "detail": {
+            "mc_growth_pct": 291.25317782694077,
+            "liq_growth_pct": 117.44467237349853,
+            "buyer_increase_pct": null,
+            "volume_acceleration": null,
+            "imbalance_score": 50.0,
+            "green_candle_ratio": null,
+            "kline_vol_trend_pct": null,
+            "last_candle_up": null,
+            "price_change_5m": null,
+            "samples": 2,
+            "window_min": 3.9
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$50,670 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 50670.34983355386,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": true,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 3,
+      "mint": "6xbZRQ1New1bHvVjk9GwY2JFNCZwd4HuVGWGgwjEpump",
+      "symbol": "GOON",
+      "entry_price": 9.7898331e-05,
+      "exit_price": 4.7954692490378715e-05,
+      "entry_market_cap": 95803.18,
+      "exit_market_cap": 46928.4,
+      "size_usd": 400.0,
+      "pnl": -204.0633,
+      "pnl_pct": -51.02,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-25T19:25:29.504700+00:00",
+      "closed_at": "2026-08-25T19:36:54.200208+00:00",
+      "signals_json": "[\"Liquidity $23,795 >= min $150\", \"Market cap $95,803 >= min $1,000\", \"Volume24h $86,131 >= min $50\", \"Buy pressure 50.0% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"6xbZRQ1New1bHvVjk9GwY2JFNCZwd4HuVGWGgwjEpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 23795.2811697536, \"price\": 9.7898331e-05, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 2.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(2_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(2_created)\", \"dev_factory_penalty=8 (created=2)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 23795.2811697536, \"creator_status\": \"\", \"creator_created_count\": 2.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 48, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=50.0%\", \"smart_degen=13\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 50.0, \"smart_degen_count\": 13.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$23,795 (min $150)\"], \"detail\": {\"liquidity\": 23795.2811697536, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $23,795 >= min $150",
+        "Market cap $95,803 >= min $1,000",
+        "Volume24h $86,131 >= min $50",
+        "Buy pressure 50.0% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "6xbZRQ1New1bHvVjk9GwY2JFNCZwd4HuVGWGgwjEpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 23795.2811697536,
+          "price": 9.7898331e-05,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 2.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(2_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(2_created)",
+            "dev_factory_penalty=8 (created=2)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 23795.2811697536,
+            "creator_status": "",
+            "creator_created_count": 2.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 48,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=50.0%",
+            "smart_degen=13"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 50.0,
+            "smart_degen_count": 13.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$23,795 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 23795.2811697536,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 2,
+      "mint": "BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump",
+      "symbol": "CATECOIN",
+      "entry_price": 0.00010025626693423751,
+      "exit_price": 0.00039225583035086466,
+      "entry_market_cap": 99415.42,
+      "exit_market_cap": 388965.99,
+      "size_usd": 0.0,
+      "pnl": 588.011,
+      "pnl_pct": 291.25,
+      "reason": "TP_FINAL_150%",
+      "opened_at": "2026-08-25T19:28:38.146652+00:00",
+      "closed_at": "2026-08-25T19:32:04.873484+00:00",
+      "signals_json": "[\"Liquidity $23,303 >= min $150\", \"Market cap $99,415 >= min $1,000\", \"Volume24h $354,732 >= min $50\", \"Buy pressure 57.9% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump\", \"token_type\": \"PUMP\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 23302.64029027064, \"price\": 0.00010025626693423751, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 11.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 27.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(11_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(11_created)\", \"dev_factory_penalty=23 (created=11)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 23302.64029027064, \"creator_status\": \"\", \"creator_created_count\": 11.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 49, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=57.9%\", \"smart_degen=6\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 57.9, \"smart_degen_count\": 6.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$23,303 (min $150)\"], \"detail\": {\"liquidity\": 23302.64029027064, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $23,303 >= min $150",
+        "Market cap $99,415 >= min $1,000",
+        "Volume24h $354,732 >= min $50",
+        "Buy pressure 57.9% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "BNPi6iiBYSm8K7iqyzk35Cad4yZoxehkeV1oyByhpump",
+          "token_type": "PUMP",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 23302.64029027064,
+          "price": 0.00010025626693423751,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 11.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 27.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(11_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(11_created)",
+            "dev_factory_penalty=23 (created=11)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 23302.64029027064,
+            "creator_status": "",
+            "creator_created_count": 11.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 49,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=57.9%",
+            "smart_degen=6"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 57.9,
+            "smart_degen_count": 6.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$23,303 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 23302.64029027064,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    },
+    {
+      "id": 1,
+      "mint": "AzNMTkjrs1amcaqtGtYH3xm83S5M3UpNS6QqYypNVpdc",
+      "symbol": "Pistacio",
+      "entry_price": 5.918360056254962e-05,
+      "exit_price": 5.867750055773907e-06,
+      "entry_market_cap": 59183.6,
+      "exit_market_cap": 5867.75,
+      "size_usd": 403.78,
+      "pnl": -363.7473,
+      "pnl_pct": -90.09,
+      "reason": "STOP_LOSS",
+      "opened_at": "2026-08-25T19:28:24.288218+00:00",
+      "closed_at": "2026-08-25T19:32:04.268024+00:00",
+      "signals_json": "[\"Liquidity $20,292 >= min $150\", \"Market cap $59,184 >= min $1,000\", \"Volume24h $171,831 >= min $50\", \"Buy pressure 58.1% >= 40%\", \"1h momentum +0.00%\"]",
+      "axis_scores_json": "{\"security\": {\"mint_address\": \"AzNMTkjrs1amcaqtGtYH3xm83S5M3UpNS6QqYypNVpdc\", \"token_type\": \"STANDARD\", \"security_status\": \"SAFE\", \"safety_score\": 95, \"hard_reject\": [], \"security_flags\": [], \"mint_authority\": \"ACTIVE\", \"freeze_authority\": \"ACTIVE\", \"top10_holder_pct\": null, \"holder_count\": null, \"liquidity\": 20291.74978402832, \"price\": 5.918360056254962e-05, \"quality\": {\"top1_pct\": null, \"creator_hold_pct\": null, \"creator_created_count\": 1.0, \"dev_events\": []}, \"score\": 95, \"flags\": [], \"available\": true}, \"wallet_behavior\": {\"score\": 50.0, \"available\": true, \"wallet_diversity_score\": null, \"concentration_score\": null, \"experienced_wallet_ratio\": null, \"fresh_wallet_ratio\": null, \"sniper_wallet_ratio\": null, \"buyer_growth_5m_pct\": null, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"classification\": \"\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\", \"flags\": [\"holder_distribution=UNAVAILABLE\", \"identity=50\", \"classification=\\u063a\\u064a\\u0631 \\u0645\\u0639\\u0631\\u0648\\u0641\\u0629 (Unknown)\"], \"detail\": {\"deep_ok\": true, \"smart_count\": 0, \"whale_count\": 0, \"kol_count\": 0, \"bundler_count\": 0, \"sniper_count\": 0, \"rat_count\": 0, \"top10_dumping\": 0, \"top10_accumulating\": 0, \"top10_avg_profit_ratio\": null, \"avg_wallet_age_days\": null, \"identity_score\": 50.0}}, \"dev_behavior\": {\"score\": 42.0, \"available\": true, \"dev_address\": \"ACTIVE\", \"dev_share\": null, \"events\": [\"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\"], \"flags\": [\"dev=ACTIVE\", \"dev_share=None%\", \"DEV_UNKNOWN\", \"DEV_FACTORY(1_created)\", \"dev_factory_penalty=8 (created=1)\"], \"detail\": {\"dev_share_pct\": null, \"holder_count\": null, \"liquidity\": 20291.74978402832, \"creator_status\": \"\", \"creator_created_count\": 1.0, \"open_ratio\": null}}, \"momentum\": {\"score\": 44, \"flags\": [\"1h=+0.00% 24h=+0.00% buy_pressure=58.1%\"], \"detail\": {\"pc1h\": 0.0, \"pc24\": 0.0, \"pc5m\": null, \"buy_pressure\": 58.1, \"smart_degen_count\": 0.0, \"hot_level\": null}}, \"market_structure\": {\"score\": 35, \"available\": false, \"flags\": [\"insufficient_samples -> conservative\"], \"detail\": {\"samples\": 1, \"imbalance_score\": 35.0}}, \"liquidity\": {\"score\": 100, \"flags\": [\"liquidity=$20,292 (min $150)\"], \"detail\": {\"liquidity\": 20291.74978402832, \"min_liquidity\": 150.0}}}",
+      "features_json": "{\"security_ok\": true, \"bundle_risk\": false, \"dev_holding\": false, \"dev_selling\": false, \"dev_buying\": false, \"dev_factory\": true, \"wallet_diversity_high\": false, \"smart_money_in\": false, \"whale_in\": false, \"market_structure_growing\": false, \"momentum_positive\": true, \"liquidity_ok\": true}",
+      "signals": [
+        "Liquidity $20,292 >= min $150",
+        "Market cap $59,184 >= min $1,000",
+        "Volume24h $171,831 >= min $50",
+        "Buy pressure 58.1% >= 40%",
+        "1h momentum +0.00%"
+      ],
+      "axis_scores": {
+        "security": {
+          "mint_address": "AzNMTkjrs1amcaqtGtYH3xm83S5M3UpNS6QqYypNVpdc",
+          "token_type": "STANDARD",
+          "security_status": "SAFE",
+          "safety_score": 95,
+          "hard_reject": [],
+          "security_flags": [],
+          "mint_authority": "ACTIVE",
+          "freeze_authority": "ACTIVE",
+          "top10_holder_pct": null,
+          "holder_count": null,
+          "liquidity": 20291.74978402832,
+          "price": 5.918360056254962e-05,
+          "quality": {
+            "top1_pct": null,
+            "creator_hold_pct": null,
+            "creator_created_count": 1.0,
+            "dev_events": []
+          },
+          "score": 95,
+          "flags": [],
+          "available": true
+        },
+        "wallet_behavior": {
+          "score": 50.0,
+          "available": true,
+          "wallet_diversity_score": null,
+          "concentration_score": null,
+          "experienced_wallet_ratio": null,
+          "fresh_wallet_ratio": null,
+          "sniper_wallet_ratio": null,
+          "buyer_growth_5m_pct": null,
+          "smart_count": 0,
+          "whale_count": 0,
+          "kol_count": 0,
+          "bundler_count": 0,
+          "sniper_count": 0,
+          "rat_count": 0,
+          "top10_dumping": 0,
+          "classification": "غير معروفة (Unknown)",
+          "flags": [
+            "holder_distribution=UNAVAILABLE",
+            "identity=50",
+            "classification=غير معروفة (Unknown)"
+          ],
+          "detail": {
+            "deep_ok": true,
+            "smart_count": 0,
+            "whale_count": 0,
+            "kol_count": 0,
+            "bundler_count": 0,
+            "sniper_count": 0,
+            "rat_count": 0,
+            "top10_dumping": 0,
+            "top10_accumulating": 0,
+            "top10_avg_profit_ratio": null,
+            "avg_wallet_age_days": null,
+            "identity_score": 50.0
+          }
+        },
+        "dev_behavior": {
+          "score": 42.0,
+          "available": true,
+          "dev_address": "ACTIVE",
+          "dev_share": null,
+          "events": [
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)"
+          ],
+          "flags": [
+            "dev=ACTIVE",
+            "dev_share=None%",
+            "DEV_UNKNOWN",
+            "DEV_FACTORY(1_created)",
+            "dev_factory_penalty=8 (created=1)"
+          ],
+          "detail": {
+            "dev_share_pct": null,
+            "holder_count": null,
+            "liquidity": 20291.74978402832,
+            "creator_status": "",
+            "creator_created_count": 1.0,
+            "open_ratio": null
+          }
+        },
+        "momentum": {
+          "score": 44,
+          "flags": [
+            "1h=+0.00% 24h=+0.00% buy_pressure=58.1%"
+          ],
+          "detail": {
+            "pc1h": 0.0,
+            "pc24": 0.0,
+            "pc5m": null,
+            "buy_pressure": 58.1,
+            "smart_degen_count": 0.0,
+            "hot_level": null
+          }
+        },
+        "market_structure": {
+          "score": 35,
+          "available": false,
+          "flags": [
+            "insufficient_samples -> conservative"
+          ],
+          "detail": {
+            "samples": 1,
+            "imbalance_score": 35.0
+          }
+        },
+        "liquidity": {
+          "score": 100,
+          "flags": [
+            "liquidity=$20,292 (min $150)"
+          ],
+          "detail": {
+            "liquidity": 20291.74978402832,
+            "min_liquidity": 150.0
+          }
+        }
+      },
+      "features": {
+        "security_ok": true,
+        "bundle_risk": false,
+        "dev_holding": false,
+        "dev_selling": false,
+        "dev_buying": false,
+        "dev_factory": true,
+        "wallet_diversity_high": false,
+        "smart_money_in": false,
+        "whale_in": false,
+        "market_structure_growing": false,
+        "momentum_positive": true,
+        "liquidity_ok": true
+      }
+    }
+  ],
+  "daily_loss": -1808.9329391490592,
+  "consecutive_losses": 2,
+  "peak_equity": 10434.936640114642,
+  "last_day": "2026-08-26",
+  "last_updated": "2026-08-26T18:57:28.923193+00:00",
+  "halted": null
+}

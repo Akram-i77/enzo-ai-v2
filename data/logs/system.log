@@ -1,0 +1,127 @@
+=================================================================
+         ⚡ ENZO QUANT PROTOCOL — SYSTEM SUPERVISOR ⚡
+=================================================================
+  • Live Dashboard: http://0.0.0.0:8077/enzo-dashboard.html
+  • Telegram Bot:   Interactive Control Listener Active
+  • Trading Engine: Autonomous Scan Loop (60.0s interval)
+=================================================================
+2026-08-25 03:11:39 [INFO] [enzo.botctl] Telegram Interactive Bot Listener started.
+2026-08-25 03:11:39 [INFO] [enzo.engine] Starting ENZO Engine loop (interval: 60.0s)...
+2026-08-25 03:11:39 [INFO] [enzo.exit_monitor] Exit monitor background service started.
+[ENZO] High-Performance Live Dashboard Server running at http://0.0.0.0:8077/enzo-dashboard.html
+2026-08-25 03:11:39 [WARNING] [enzo.pump] Python 'websockets' package not installed. PumpDev real-time streaming inactive.
+2026-08-25 03:11:39 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-08-25 03:11:43 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+127.0.0.1 - - [25/Aug/2026 03:11:45] "GET /api/state HTTP/1.1" 200 -
+2026-08-25 03:11:51 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:12:07 [WARNING] [enzo.botctl] Telegram network retry (1/3) on sendMessage: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:12:20 [WARNING] [enzo.botctl] Telegram network retry (1/3) on sendMessage: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:12:46 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:13:18 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:13:55 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:14:48 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:14:55 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:15:07 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:15:23 [WARNING] [enzo.botctl] Telegram network retry (3/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:15:38 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:15:50 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:16:43 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:16:51 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:17:06 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:17:30 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:17:50 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:18:16 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:18:29 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:18:54 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:19:57 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:19:59 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:20:54 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:21:06 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:22:01 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:22:55 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:23:12 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:23:29 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:24:11 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:24:27 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:25:06 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-08-25 03:25:22 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:25:35 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:25:54 [WARNING] [enzo.botctl] Telegram network retry (1/3) on answerCallbackQuery: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:26:06 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:26:49 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:27:02 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:27:06 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:27:26 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:28:07 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:28:34 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:28:47 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:29:11 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:30:12 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:31:14 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:31:29 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:31:43 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:32:18 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:32:40 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:32:53 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:33:18 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:34:20 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:34:45 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:35:22 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:35:30 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:36:25 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:36:27 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:36:52 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:37:14 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:37:29 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:38:31 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:38:44 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:39:28 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:39:33 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:40:03 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:40:36 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:41:08 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:41:32 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:41:36 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:41:45 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:42:36 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:43:02 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:43:36 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:43:37 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:44:00 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:44:25 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:44:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:45:39 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:45:52 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:46:39 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:47:00 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:47:23 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:47:41 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:48:10 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:48:44 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:49:45 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:50:20 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:50:45 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:50:49 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:51:10 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:51:53 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:52:53 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:52:58 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+127.0.0.1 - - [25/Aug/2026 03:53:04] "GET /api/state HTTP/1.1" 200 -
+2026-08-25 03:53:11 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:53:47 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:53:54 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:54:55 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:55:04 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:55:29 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:55:59 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:57:03 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:57:40 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 03:58:04 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 03:59:06 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 04:00:06 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 04:00:13 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 04:00:26 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 04:01:09 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-08-25 04:01:11 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 04:01:46 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-08-25 04:02:11 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.

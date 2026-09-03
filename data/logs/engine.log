@@ -1,0 +1,178 @@
+[*] Starting ENZO continuous autonomous engine (interval: 60.0s)...
+2026-08-23 03:41:34 [INFO] [enzo.gmgn] Starting ENZO Engine loop (interval: 60.0s)...
+2026-08-23 03:41:34 [INFO] [enzo.gmgn] Exit monitor background service started.
+2026-08-23 03:41:36 [INFO] [enzo.gmgn] Discovered 145 total candidate tokens for deep analysis.
+2026-08-23 03:41:43 [INFO] [enzo.gmgn] Scanned UNKNOWN (4AJ6b14C...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:41:51 [INFO] [enzo.gmgn] Scanned UNKNOWN (H6rFU4dz...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:41:58 [INFO] [enzo.gmgn] Scanned UNKNOWN (GXotHzaF...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:06 [INFO] [enzo.gmgn] Scanned UNKNOWN (6CqeDbUD...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:14 [INFO] [enzo.gmgn] Scanned UNKNOWN (9sNQ2LJY...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:22 [INFO] [enzo.gmgn] Scanned UNKNOWN (J7Gufnav...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:29 [INFO] [enzo.gmgn] Scanned UNKNOWN (EYyuKmCH...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:37 [INFO] [enzo.gmgn] Scanned UNKNOWN (F7tZ7Tqv...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:46 [INFO] [enzo.gmgn] Scanned UNKNOWN (7n1fincm...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:42:53 [INFO] [enzo.gmgn] Scanned UNKNOWN (A1MMJzpx...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:01 [INFO] [enzo.gmgn] Scanned UNKNOWN (E9zbMrtZ...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:08 [INFO] [enzo.gmgn] Scanned UNKNOWN (9YoWjmeC...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:16 [INFO] [enzo.gmgn] Scanned UNKNOWN (4hPvRhpF...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:25 [INFO] [enzo.gmgn] Scanned UNKNOWN (BWzg9oHe...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:32 [INFO] [enzo.gmgn] Scanned UNKNOWN (AJW7Pg84...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:40 [INFO] [enzo.gmgn] Scanned UNKNOWN (BQqFHQ2b...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:47 [INFO] [enzo.gmgn] Scanned UNKNOWN (A1wM7wcv...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:43:56 [INFO] [enzo.gmgn] Scanned UNKNOWN (GTZU9Czj...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:04 [INFO] [enzo.gmgn] Scanned UNKNOWN (37i8CSDB...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:11 [INFO] [enzo.gmgn] Scanned UNKNOWN (DMnZeJVs...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:19 [INFO] [enzo.gmgn] Scanned UNKNOWN (APVw5P4Z...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:27 [INFO] [enzo.gmgn] Scanned UNKNOWN (Eyg9MeD5...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:35 [INFO] [enzo.gmgn] Scanned UNKNOWN (DX6ieJ8T...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:43 [INFO] [enzo.gmgn] Scanned UNKNOWN (C3Kkiewf...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:44:55 [WARNING] [enzo.gmgn] Telegram notification error: <urlopen error [Errno 101] Network is unreachable>
+2026-08-23 03:45:02 [INFO] [enzo.gmgn] Scanned UNKNOWN (7BUWPkrC...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:10 [INFO] [enzo.gmgn] Scanned UNKNOWN (8CVD9gY2...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:17 [INFO] [enzo.gmgn] Scanned UNKNOWN (2nXj9rDe...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:25 [INFO] [enzo.gmgn] Scanned UNKNOWN (FwKd9YS1...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:33 [INFO] [enzo.gmgn] Scanned UNKNOWN (33PZvBgV...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:40 [INFO] [enzo.gmgn] Scanned UNKNOWN (GVoHhKF2...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:49 [INFO] [enzo.gmgn] Scanned UNKNOWN (GDSZxotF...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:45:56 [INFO] [enzo.gmgn] Scanned UNKNOWN (Bi1B5yQK...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:04 [INFO] [enzo.gmgn] Scanned UNKNOWN (7eY4GD8K...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:12 [INFO] [enzo.gmgn] Scanned UNKNOWN (4Hw6vW5Q...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:20 [INFO] [enzo.gmgn] Scanned UNKNOWN (F3x44LTi...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:28 [INFO] [enzo.gmgn] Scanned UNKNOWN (AZVvHAzf...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:35 [INFO] [enzo.gmgn] Scanned UNKNOWN (BVjU7Dxd...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:43 [INFO] [enzo.gmgn] Scanned UNKNOWN (6a3Qjicf...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:52 [INFO] [enzo.gmgn] Scanned UNKNOWN (63VgqZ64...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:46:59 [INFO] [enzo.gmgn] Scanned UNKNOWN (DjDap2mw...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:07 [INFO] [enzo.gmgn] Scanned UNKNOWN (GC4o3nJm...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:14 [INFO] [enzo.gmgn] Scanned UNKNOWN (51Z36WoL...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:22 [INFO] [enzo.gmgn] Scanned UNKNOWN (4FLq3mdc...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:30 [INFO] [enzo.gmgn] Scanned UNKNOWN (6EMZ4DeW...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:38 [INFO] [enzo.gmgn] Scanned UNKNOWN (62iKetPf...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:45 [INFO] [enzo.gmgn] Scanned UNKNOWN (GVMocW4z...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:47:59 [WARNING] [enzo.gmgn] Telegram notification error: <urlopen error [Errno 101] Network is unreachable>
+2026-08-23 03:48:06 [INFO] [enzo.gmgn] Scanned UNKNOWN (7iavyEUw...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:48:14 [INFO] [enzo.gmgn] Scanned UNKNOWN (8oghDbzZ...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:48:21 [INFO] [enzo.gmgn] Scanned UNKNOWN (3ZPGw1iM...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:48:29 [INFO] [enzo.gmgn] Scanned UNKNOWN (DoqTZhaB...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:48:37 [INFO] [enzo.gmgn] Scanned UNKNOWN (fztaa4pK...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-23 03:48:47 [INFO] [enzo.gmgn] Scanned UNKNOWN (C75njk3b...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:48:56 [INFO] [enzo.gmgn] Scanned UNKNOWN (AoZ121BX...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:49:06 [INFO] [enzo.gmgn] Scanned UNKNOWN (FsUpLwFo...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:49:15 [INFO] [enzo.gmgn] Scanned UNKNOWN (7z9VHRPh...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:49:24 [INFO] [enzo.gmgn] Scanned UNKNOWN (HbtG62y9...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:49:32 [INFO] [enzo.gmgn] Scanned UNKNOWN (DyjFDbAm...) -> IGNORE (conf=61.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=61.0)
+2026-08-23 03:49:35 [INFO] [enzo.gmgn] ENZO is paused via botctl — skipping scan.

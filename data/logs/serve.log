@@ -1,0 +1,205 @@
+[ENZO] High-Performance Live Dashboard Server running at http://0.0.0.0:8077/enzo-dashboard.html
+127.0.0.1 - - [25/Aug/2026 02:07:33] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:08:33] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:17] "GET /enzo-dashboard.html HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:18] "GET /api/state HTTP/1.1" 200 -
+2026-08-25 02:20:18 [INFO] [enzo.gmgn] PumpDev WebSocket Streaming Client initialized.
+2026-08-25 02:20:18 [WARNING] [enzo.gmgn] Python 'websockets' package not installed. PumpDev real-time streaming inactive.
+127.0.0.1 - - [25/Aug/2026 02:20:18] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:19] code 404, message File not found
+127.0.0.1 - - [25/Aug/2026 02:20:19] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [25/Aug/2026 02:20:20] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:20] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:22] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:22] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:23] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:23] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:25] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:25] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:26] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:26] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:28] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:28] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:29] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:29] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:30] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:30] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:32] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:32] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:33] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:33] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:34] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:35] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:36] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:36] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:37] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:37] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:39] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:39] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:40] "POST /api/control/toggle HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:40] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:40] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:40] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:40] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:41] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:42] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:43] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:43] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:44] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:44] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:46] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:46] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:47] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:47] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:50] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:50] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:51] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:51] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:53] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:53] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:54] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:54] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:55] "POST /api/scan HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:55] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:56] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:57] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:57] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:58] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:20:58] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:00] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:00] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:00 [INFO] [enzo.gmgn] Discovered 21 pre-screened candidate tokens.
+2026-08-25 02:21:00 [INFO] [enzo.gmgn] Proceeding to deep 6-axis analysis on top 12 / 21 candidates (depth cap: 12).
+127.0.0.1 - - [25/Aug/2026 02:21:02] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:02] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:03] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:03] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:04] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:05] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:05] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:05] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:07 [INFO] [enzo.gmgn] Scanned UNKNOWN (BisapmJT...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+127.0.0.1 - - [25/Aug/2026 02:21:07] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:07] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:08] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:08] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:10] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:10] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:11] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:11] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:13] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:13] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:14] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:14] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:15] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:16] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:17] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:17] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:18] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:19] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:19 [WARNING] [enzo.gmgn] Telegram notification error: <urlopen error [Errno 101] Network is unreachable>
+127.0.0.1 - - [25/Aug/2026 02:21:20] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:20] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:21] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:22] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:23] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:23] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:24] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:25] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:26] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:26] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:26 [INFO] [enzo.gmgn] Scanned UNKNOWN (EEtDU9ui...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+127.0.0.1 - - [25/Aug/2026 02:21:27] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:28] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:29] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:29] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:30] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:31] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:32] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:32] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:33] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:34] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:34 [INFO] [enzo.gmgn] Scanned UNKNOWN (3FGxFFZ6...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+127.0.0.1 - - [25/Aug/2026 02:21:35] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:35] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:37] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:37] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:38] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:38] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:40] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:40] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:41] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:41] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:42 [INFO] [enzo.gmgn] Scanned UNKNOWN (8Vixp8Uu...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+127.0.0.1 - - [25/Aug/2026 02:21:43] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:43] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:44] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:44] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:46] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:46] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:47] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:47] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:49] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:49] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:21:49 [INFO] [enzo.gmgn] Scanned UNKNOWN (HMTvBsyb...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+127.0.0.1 - - [25/Aug/2026 02:21:50] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:50] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:52] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:52] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:53] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:53] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:55] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:55] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:56] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:56] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:58] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:58] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:59] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:21:59] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:01] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:01] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:22:01 [WARNING] [enzo.gmgn] Telegram notification error: <urlopen error [Errno 101] Network is unreachable>
+127.0.0.1 - - [25/Aug/2026 02:22:02] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:02] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:04] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:04] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:22:09 [INFO] [enzo.gmgn] Scanned UNKNOWN (8W6RtWy4...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:22:16 [INFO] [enzo.gmgn] Scanned UNKNOWN (DNmCT7NG...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:22:24 [INFO] [enzo.gmgn] Scanned UNKNOWN (By8SZgtt...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:22:36 [WARNING] [enzo.gmgn] Telegram notification error: <urlopen error [Errno 101] Network is unreachable>
+127.0.0.1 - - [25/Aug/2026 02:22:36] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:36] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:36] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:36] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:38] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:38] "GET /api/activity HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:39] "GET /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [25/Aug/2026 02:22:39] "GET /api/activity HTTP/1.1" 200 -
+2026-08-25 02:22:45 [INFO] [enzo.gmgn] Scanned UNKNOWN (CE2EocQ4...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:22:52 [INFO] [enzo.gmgn] Scanned UNKNOWN (BNnFVNHD...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:23:00 [INFO] [enzo.gmgn] Scanned UNKNOWN (GYnWoJNU...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)
+2026-08-25 02:23:07 [INFO] [enzo.gmgn] Scanned UNKNOWN (5Hz5GRex...) -> IGNORE (conf=60.0)
+
+[ENZO][DECISION] UNKNOWN -> IGNORE (Conf=60.0)

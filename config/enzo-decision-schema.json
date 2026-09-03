@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ENZO Trading Decision",
+  "description": "Schema for ENZO's trading decisions, including scores, parameters, and rationale.",
+  "type": "object",
+  "properties": {
+    "token_symbol": {
+      "description": "The ticker symbol of the token being considered (e.g., "WIF", "BOME").",
+      "type": "string"
+    },
+    "decision": {
+      "description": "The action ENZO decides to take.",
+      "enum": ["BUY", "WAIT", "IGNORE", "SELL", "HOLD"]
+    },
+    "confidence_score": {
+      "description": "A score from 0-100 indicating ENZO's confidence in the overall decision (especially for BUY/SELL).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "opportunity_score": {
+      "description": "A score from 0-100 indicating the perceived potential for profit in this trade.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "scam_score": {
+      "description": "A score from 0-100 indicating the likelihood of the token being a scam or rug pull.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_score": {
+      "description": "A score from 0-100 indicating the assessed risk level of this specific trade.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "expected_roi": {
+      "description": "The projected Return on Investment for this trade, expressed as a percentage or value. Null if not applicable (e.g., for WAIT/IGNORE).",
+      "type": ["string", "number", "null"],
+      "pattern": "^\\d+(\\.\\d+)?%?$"
+    },
+    "expected_loss": {
+      "description": "The projected maximum loss for this trade, expressed as a percentage or value. Null if not applicable.",
+      "type": ["string", "number", "null"],
+      "pattern": "^\\d+(\\.\\d+)?%?$"
+    },
+    "risk_reward_ratio": {
+      "description": "The ratio of expected profit to expected loss. Null if not applicable.",
+      "type": ["string", "number", "null"],
+      "pattern": "^\\d+(\\.\\d+)?(:1)?$"
+    },
+    "entry_price": {
+      "description": "The target price for entering a BUY trade. Null if not applicable.",
+      "type": ["string", "number", "null"]
+    },
+    "stop_loss": {
+      "description": "The price level at which to exit a losing trade. Null if not applicable.",
+      "type": ["string", "number", "null"]
+    },
+    "take_profit": {
+      "description": "The price level at which to exit a profitable trade. Null if not applicable.",
+      "type": ["string", "number", "null"]
+    },
+    "estimated_holding_time": {
+      "description": "An estimate of how long the trade is expected to be held (e.g., '1h', '24h', 'short-term'). Null if not applicable.",
+      "type": ["string", "null"]
+    },
+    "decision_reason": {
+      "description": "A detailed explanation of why this decision was made, referencing supporting signals and rejected signals.",
+      "type": "string"
+    },
+    "supporting_signals": {
+      "description": "A list of signals or data points that support the current decision.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "rejected_signals": {
+      "description": "A list of signals or data points that were considered but rejected or did not meet criteria.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "data_sources_used": {
+      "description": "A list of data sources queried to make this decision.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "transaction_details": {
+      "description": "Details of the trade execution, relevant for BUY/SELL decisions.",
+      "type": "object",
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "execution_price": {"type": ["number", "null"]},
+        "amount_token": {"type": ["number", "null"]},
+        "amount_quote": {"type": ["number", "null"]},
+        "fees": {"type": ["number", "null"]},
+        "slippage": {"type": ["number", "null"]}
+      },
+      "required": []
+    }
+  },
+  "required": [
+    "token_symbol",
+    "decision",
+    "confidence_score",
+    "opportunity_score",
+    "scam_score",
+    "risk_score",
+    "decision_reason",
+    "supporting_signals",
+    "rejected_signals",
+    "data_sources_used"
+  ]
+}
