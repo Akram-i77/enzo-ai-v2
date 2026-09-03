@@ -1,3 +1,20 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  ENZO — ملف الإعدادات / configuration
+#
+#  هذا الملف هو المصدر الوحيد للحقيقة. يُقرأ بالكامل عند كل دورة.
+#  This file is the single source of truth and is re-read every cycle.
+#
+#  ⚠  المسافة البادئة (الـ indentation) مهمة في YAML. لا تستخدم Tab.
+#     Indentation matters in YAML — use spaces, never tabs.
+#
+#  بعد أي تعديل:   ./enzoctl doctor     للتحقق
+#                  ./enzoctl restart    لتطبيقه
+#  After editing:  ./enzoctl doctor  then  ./enzoctl restart
+# ═══════════════════════════════════════════════════════════════════════════
+
+# false = تداول حقيقي بأموال حقيقية.  true = محاكاة بلا أموال.
+# false = LIVE real-money trading.  true = paper simulation.
+# للتبديل بسرعة:  ./enzoctl mode live   |   ./enzoctl mode paper
 paper_mode: false
 risk_management:
   risk_per_trade: 2.5
@@ -19,6 +36,11 @@ exit_monitor:
   - gmgn
   - bonding_curve
   never_auto_sell_on_failure: true
+  # كم دورة ننتظر قبل تكرار تسجيل نفس تحذير "سعر قديم".
+  # Was 1 line per 2s cycle -> 12,110 rows flooding the audit log and making
+  # the dashboard re-parse a 4.7 MB file every 10 seconds.
+  # How many cycles to wait before repeating the same stale-price warning.
+  stale_event_log_every_n_cycles: 30
 market_analysis:
   min_liquidity: 150
   min_volume: 50
@@ -79,6 +101,10 @@ notifications:
   send_scan_summary: true
 data_sources:
   gmgn:
+    # المصدر الوحيد لبيانات السوق. اسم البرنامج أو مساره الكامل.
+    # اتركه "gmgn-cli" إن كان مثبّتاً في PATH، أو ضع المسار الكامل مثل:
+    #   cli: /home/you/.npm-global/bin/gmgn-cli
+    # The sole market-data source. A bare name (found on PATH) or a full path.
     cli: gmgn-cli
     chain: sol
     request_gap_ms: 350
@@ -199,11 +225,56 @@ cache:
   holder_dist_ttl: 600
 chain: sol
 execution:
+  # اسم المحفظة كما يظهر في:  mp wallet list
+  # The wallet name exactly as shown by `mp wallet list`.
   wallet_name: enzo-trading
+  # العملة التي نشتري بها. USDC أو SOL.
   base_token: USDC
   slippage_bps: 50
+  # أصغر صفقة يُسمح بإرسالها. أي حجم أقل من هذا يُرفض قبل التنفيذ.
+  # Smallest order allowed; anything below is rejected before it is sent.
   min_trade_usd: 1.0
+  # سقف الصفقة الواحدة. ينطبق على الشراء فقط — لا يمنع البيع أبداً،
+  # وإلا حُبس البوت في مركز لا يستطيع الخروج منه.
+  # Per-trade ceiling. Applies to BUYS only — it must never block an exit.
   max_trade_usd: 500.0
   confirm_blocks: 1
   retry_attempts: 2
   rollback_on_failure: true
+
+  # ── رأس المال / Capital ────────────────────────────────────────────────
+  # wallet = اقرأ الرصيد الحقيقي من محفظة MoonPay كل دورة (الموصى به).
+  # ledger = استخدم رقم الدفتر المحلي فقط.
+  capital_source: wallet
+  # ثواني بين قراءتين للرصيد (لتجنّب استهلاك حدّ الطلبات).
+  capital_sync_ttl_sec: 60
+  # إذا فشلت قراءة المحفظة، كم ثانية نبقى نستخدم آخر قراءة صحيحة.
+  # بعدها يُمنع فتح أي مركز حتى تعود القراءة — حماية لأموالك:
+  # البوت يرفض التخمين بدلاً من التداول برقم وهمي.
+  # Grace window for a stale-but-valid wallet reading. After it expires, LIVE
+  # position sizing is BLOCKED rather than guessed.
+  capital_sync_grace_sec: 300
+  # رصيد SOL المحجوز لرسوم الشبكة فقط (لا يُستخدم في الشراء).
+  # SOL kept aside for network fees; never spent on entries.
+  sol_fee_reserve: 0.02
+
+  # ── قابلية التداول / Tradability ───────────────────────────────────────
+  # MoonPay يوجّه الصفقات عبر swaps.xyz، لذا عملة pump.fun التي ما زالت على
+  # منحنى الربط لا يمكن تداولها حتى تتخرّج إلى DEX. هذه المدة ننتظرها قبل
+  # إعادة فحص نفس العملة، حتى لا نحرق حدّ الطلبات على طريق مسدود.
+  # Cooldown before re-checking a token that had no route.
+  not_routable_cooldown_sec: 3600
+
+  # ── مسار برنامج MoonPay / CLI path ─────────────────────────────────────
+  # اتركه فارغاً ليبحث البوت تلقائياً في PATH و nvm و npm global.
+  # ضع المسار الكامل هنا إن كان التثبيت في مكان غير معتاد، مثال:
+  #   moonpay_bin: /home/you/.npm-global/bin/mp
+  # Leave empty to auto-detect; set a full path if installed somewhere unusual.
+  moonpay_bin: ""
+
+  # ── النقل المحلي (اختياري، مغلق افتراضياً) / local API (optional) ──────
+  # تشغيل `mp serve` يعطي واجهة HTTP محلية. البوت يستخدم CLI مباشرة بشكل
+  # افتراضي لأنه أبسط وأسهل تشخيصاً داخل workspace.
+  use_local_api: false
+  local_api_url: http://127.0.0.1:8787
+  local_api_timeout_sec: 45

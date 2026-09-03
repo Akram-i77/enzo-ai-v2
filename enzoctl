@@ -1,0 +1,1056 @@
+#!/usr/bin/env python3
+"""
+enzoctl — the ENZO control plane.
+
+One command to start, stop, inspect and diagnose the bot, designed to be run
+by a human OR by a supervisor (OpenClaw). Everything that matters is available
+non-interactively and machine-readable:
+
+    ./enzoctl start            start engine + dashboard + telegram (detached)
+    ./enzoctl stop              stop it (SIGTERM, then SIGKILL)
+    ./enzoctl restart
+    ./enzoctl status            one-screen truth: alive? paused? mode? capital?
+    ./enzoctl doctor            full preflight with actionable fixes (exit 0/1)
+    ./enzoctl logs [-n 80] [-f]
+    ./enzoctl scan [MINT]       one cycle now (or a single mint)
+    ./enzoctl pause|resume
+    ./enzoctl mode live|paper   flip paper_mode and reload
+    ./enzoctl positions|trades
+    ./enzoctl wallet            real balances + deployable capital
+    ./enzoctl config [SECTION]  effective config (YAML merged over defaults)
+    ./enzoctl health            the health snapshot (/health payload)
+    ./enzoctl dashboard         regenerate the HTML now
+
+Add --json to any command for machine-readable output.
+
+Why this exists: before it, "is my bot running?" required reading a stale HTML
+page, `ps aux`, a 4.7 MB audit log and a SQLite file by hand — and a failed
+live buy was invisible because the notification function did not exist. This
+file is the single place that answers those questions from the same data the
+bot itself uses.
+"""
+import argparse
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+# ── Colours (disabled when not a TTY or when NO_COLOR is set) ────────────────
+_TTY = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+
+
+def _c(code, s):
+    return f"\033[{code}m{s}\033[0m" if _TTY else str(s)
+
+
+def red(s):    return _c("31", s)
+def green(s):  return _c("32", s)
+def yellow(s): return _c("33", s)
+def blue(s):   return _c("36", s)
+def bold(s):   return _c("1", s)
+def dim(s):    return _c("2", s)
+
+
+def _out(args):
+    """Emit either JSON (if requested) or human lines."""
+    if getattr(args, "json", False):
+        print(json.dumps(args._payload, indent=2, default=str))
+    else:
+        for line in args._lines:
+            print(line)
+    return args._exit or 0
+
+
+def _set(args, payload=None, lines=None, exit_code=0):
+    args._payload = payload if payload is not None else {}
+    args._lines = lines if lines is not None else []
+    args._exit = exit_code
+    return args
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lazy imports: every command must work even when a dependency is missing, so
+# that `enzoctl doctor` can TELL you the dependency is missing.
+# ─────────────────────────────────────────────────────────────────────────────
+def _cfg():
+    from enzo.core.config import load_config
+    return load_config()
+
+
+def _paths():
+    import enzo.core.config as C
+    return C
+
+
+def _pid():
+    """Return (pid, alive, cmdline) for the running supervisor, or (None,...)."""
+    C = _paths()
+    try:
+        if not os.path.exists(C.PID_PATH):
+            return None, False, ""
+        with open(C.PID_PATH, "r", encoding="utf-8") as f:
+            raw = f.read().strip()
+        if not raw:
+            return None, False, ""
+        pid = int(raw)
+    except Exception:
+        return None, False, ""
+
+    alive = False
+    cmd = ""
+    try:
+        os.kill(pid, 0)
+        alive = True
+    except OSError:
+        alive = False
+    if alive:
+        try:
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                cmd = f.read().replace(b"\0", b" ").decode("utf-8", "replace").strip()
+        except Exception:
+            pass
+    return pid, alive, cmd
+
+
+def _health():
+    """Health snapshot — from the live process if we are it, else from disk."""
+    C = _paths()
+    try:
+        from enzo.ui import serve
+        return serve.health_snapshot(), "live"
+    except Exception:
+        pass
+    try:
+        if os.path.exists(C.HEALTH_PATH):
+            age = time.time() - os.path.getmtime(C.HEALTH_PATH)
+            with open(C.HEALTH_PATH, "r", encoding="utf-8") as f:
+                return json.load(f), f"file ({age:.0f}s old)"
+    except Exception:
+        pass
+    return None, "unavailable"
+
+
+def _state():
+    from enzo.execution import portfolio
+    return portfolio.load_state()
+
+
+def _human_age(sec):
+    if sec is None:
+        return "never"
+    sec = float(sec)
+    if sec < 60:
+        return f"{sec:.0f}s ago"
+    if sec < 3600:
+        return f"{sec/60:.1f}m ago"
+    if sec < 86400:
+        return f"{sec/3600:.1f}h ago"
+    return f"{sec/86400:.1f}d ago"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# start / stop / restart
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_start(args):
+    C = _paths()
+    pid, alive, cmd = _pid()
+    if alive:
+        return _set(args, {"started": False, "reason": "already_running", "pid": pid},
+                    [yellow(f"⏵  ENZO is already running (PID {pid})."),
+                     dim(f"   {cmd}"),
+                     dim("   Use ./enzoctl restart to bounce it, or ./enzoctl status to inspect.")], 0)
+
+    os.makedirs(C.RUN_DIR, exist_ok=True)
+    os.makedirs(C.LOGS_DIR, exist_ok=True)
+
+    py = sys.executable or "python3"
+    child = [py, os.path.join(ROOT, "enzoctl"), "_supervise"]
+    if getattr(args, "no_dashboard", False):
+        child.append("--no-dashboard")
+    if getattr(args, "no_telegram", False):
+        child.append("--no-telegram")
+    if getattr(args, "interval", None):
+        child += ["--interval", str(args.interval)]
+
+    logf = open(C.SUPERVISOR_LOG_PATH, "ab", buffering=0)
+    kwargs = {"cwd": ROOT, "stdout": logf, "stderr": logf, "stdin": subprocess.DEVNULL}
+    if hasattr(os, "setsid"):
+        kwargs["start_new_session"] = True
+    proc = subprocess.Popen(child, **kwargs)
+
+    # Wait for the PID file so `start` returns only once the engine is really up.
+    deadline = time.time() + float(args.wait or 20)
+    ready = False
+    while time.time() < deadline:
+        time.sleep(0.4)
+        p2, a2, _ = _pid()
+        if a2 and p2:
+            ready = True
+            break
+        if proc.poll() is not None:
+            break
+
+    if not ready:
+        tail = ""
+        try:
+            with open(C.SUPERVISOR_LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
+                tail = "".join(f.readlines()[-25:])
+        except Exception:
+            pass
+        return _set(args, {"started": False, "reason": "supervisor_died",
+                           "exit_code": proc.poll(), "log": C.SUPERVISOR_LOG_PATH},
+                    [red("✖  ENZO failed to start."),
+                     dim(f"   supervisor log: {C.SUPERVISOR_LOG_PATH}"),
+                     dim("   last lines:"), tail or "   (empty)",
+                     "", yellow("   Run: ./enzoctl doctor")], 1)
+
+    cfg = {}
+    try:
+        cfg = _cfg()
+    except Exception as e:
+        return _set(args, {"started": True, "pid": p2, "config_error": str(e)},
+                    [green(f"✔  ENZO started (PID {p2})"),
+                     red(f"   but the config could not be read: {e}")], 1)
+
+    dash = cfg.get("dashboard", {}) or {}
+    mode = "PAPER" if cfg.get("paper_mode", True) else "LIVE"
+    lines = [
+        green(f"✔  ENZO started — PID {p2}"),
+        f"   mode        : {bold(mode)}",
+        f"   dashboard   : http://{dash.get('host','0.0.0.0')}:{dash.get('port',8077)}/enzo-dashboard.html",
+        f"   health      : http://{dash.get('host','0.0.0.0')}:{dash.get('port',8077)}/health",
+        f"   log         : {C.SUPERVISOR_LOG_PATH}",
+        "",
+        dim("   ./enzoctl status   ·   ./enzoctl logs -f   ·   ./enzoctl stop"),
+    ]
+    if mode == "LIVE":
+        lines.insert(1, yellow("   ⚠  LIVE MODE — real money will be traded."))
+    return _set(args, {"started": True, "pid": p2, "mode": mode,
+                       "dashboard_port": dash.get("port", 8077)}, lines, 0)
+
+
+def cmd__supervise(args):
+    """Internal: the supervised process (engine + dashboard + telegram)."""
+    C = _paths()
+    import threading
+    from enzo.core import db
+    from enzo.core import engine
+    from enzo.ui import serve, botctl, dashboard
+
+    os.makedirs(C.RUN_DIR, exist_ok=True)
+    with open(C.PID_PATH, "w", encoding="utf-8") as f:
+        f.write(str(os.getpid()))
+
+    cfg = _cfg()
+    interval = float(args.interval or (cfg.get("engine", {}) or {}).get("scan_interval_sec") or 60.0)
+
+    print(f"[supervisor] ENZO starting pid={os.getpid()} mode="
+          f"{'PAPER' if cfg.get('paper_mode', True) else 'LIVE'} interval={interval}s", flush=True)
+    db.init_db()
+
+    # Render once immediately so the dashboard is never blank/stale at boot.
+    try:
+        res = dashboard.generate_safe()
+        if not res.get("ok"):
+            print(f"[supervisor] initial dashboard render failed: {res.get('error')}", flush=True)
+    except Exception as e:
+        print(f"[supervisor] initial dashboard render raised: {e}", flush=True)
+
+    threads = []
+    if not args.no_dashboard:
+        def _serve():
+            try:
+                serve.run_server()
+            except Exception as e:
+                print(f"[supervisor] dashboard server died: {type(e).__name__}: {e}", flush=True)
+        t = threading.Thread(target=_serve, daemon=True, name="enzo-serve")
+        t.start()
+        threads.append(t)
+
+    listener = None
+    if not args.no_telegram:
+        try:
+            listener = botctl.get_telegram_listener()
+            listener.start()
+        except Exception as e:
+            print(f"[supervisor] telegram listener failed to start: {e}", flush=True)
+            listener = None
+
+    exit_code = 0
+    try:
+        engine.run_loop(interval_sec=interval)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        import traceback
+        print(f"[supervisor] engine loop crashed: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
+        exit_code = 1
+    finally:
+        if listener is not None:
+            try:
+                listener.stop()
+            except Exception:
+                pass
+        try:
+            if os.path.exists(C.PID_PATH):
+                with open(C.PID_PATH, "r", encoding="utf-8") as f:
+                    if f.read().strip() == str(os.getpid()):
+                        os.remove(C.PID_PATH)
+        except Exception:
+            pass
+        print(f"[supervisor] ENZO stopped pid={os.getpid()}", flush=True)
+    return exit_code
+
+
+def cmd_stop(args):
+    C = _paths()
+    pid, alive, _ = _pid()
+    if not alive or not pid:
+        # Clean up a stale PID file so `start` is not blocked by it.
+        try:
+            if os.path.exists(C.PID_PATH):
+                os.remove(C.PID_PATH)
+        except Exception:
+            pass
+        return _set(args, {"stopped": False, "reason": "not_running"},
+                    [yellow("⏹  ENZO is not running.")], 0)
+
+    grace = float(args.grace or 15)
+    try:
+        os.killpg(os.getpgid(pid), signal.SIGTERM)
+    except Exception:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception as e:
+            return _set(args, {"stopped": False, "reason": str(e)},
+                        [red(f"✖  could not signal PID {pid}: {e}")], 1)
+
+    deadline = time.time() + grace
+    while time.time() < deadline:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return _set(args, {"stopped": True, "pid": pid, "signal": "SIGTERM"},
+                        [green(f"✔  ENZO stopped (PID {pid}) — clean SIGTERM shutdown.")], 0)
+        time.sleep(0.3)
+
+    try:
+        os.killpg(os.getpgid(pid), signal.SIGKILL)
+    except Exception:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+    time.sleep(0.5)
+    try:
+        os.remove(C.PID_PATH)
+    except Exception:
+        pass
+    return _set(args, {"stopped": True, "pid": pid, "signal": "SIGKILL",
+                       "note": "did not exit within the grace period"},
+                [yellow(f"⚠  ENZO did not exit within {grace:.0f}s — sent SIGKILL to PID {pid}."),
+                 dim("   Open positions remain in the ledger; the exit monitor will pick them up on restart.")], 0)
+
+
+def cmd_restart(args):
+    stop_args = argparse.Namespace(json=False, grace=getattr(args, "grace", 15),
+                                   _payload={}, _lines=[], _exit=0)
+    cmd_stop(stop_args)
+    time.sleep(1.0)
+    for line in stop_args._lines:
+        print(line)
+    args.interval = getattr(args, "interval", None)
+    return cmd_start(args)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# status / health
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_status(args):
+    C = _paths()
+    pid, alive, cmd = _pid()
+    snap, src = _health()
+
+    lines = []
+    payload = {"pid": pid, "alive": alive, "health_source": src}
+
+    if not alive:
+        lines += [red("●  ENZO is NOT running"), dim("   ./enzoctl start")]
+    else:
+        lines += [green(f"●  ENZO is running (PID {pid})")]
+
+    try:
+        cfg = _cfg()
+        mode = "PAPER" if cfg.get("paper_mode", True) else "LIVE"
+    except Exception as e:
+        return _set(args, {"error": str(e)},
+                    lines + [red(f"✖  config unreadable: {e}"),
+                             yellow("   Fix: bash bootstrap.sh   (installs PyYAML)")], 1,
+                    )
+
+    try:
+        from enzo.ui import botctl
+        paused = botctl.is_paused()
+    except Exception:
+        paused = None
+
+    if mode == "LIVE":
+        lines.append(f"   mode      : {bold(red('LIVE'))} — real money")
+    else:
+        lines.append(f"   mode      : {bold('PAPER')} — simulated")
+    if paused is None:
+        lines.append("   paused    : unknown")
+    elif paused:
+        lines.append(f"   paused    : {yellow('YES')} — scans are being skipped (./enzoctl resume)")
+    else:
+        lines.append(f"   paused    : {green('no')}")
+
+    if snap:
+        payload["health"] = snap
+        eng = snap.get("engine") or {}
+        last_ts = eng.get("last_scan_ts")
+        age = (time.time() - float(last_ts)) if last_ts else None
+        stale = age is not None and age > max(180.0, float(eng.get("interval_sec") or 60.0) * 4)
+        mark = red("STALE") if stale else (green("live") if age is not None else dim("never"))
+        lines.append(f"   engine    : {snap.get('status','?')} · cycles={eng.get('cycles',0)} · "
+                     f"last scan {_human_age(age)} [{mark}]")
+        if eng.get("last_scan_status"):
+            lines.append(f"               last: {eng.get('last_scan_status')}")
+
+        from enzo.execution import portfolio
+        cap = portfolio.capital_info()
+        if cap:
+            payload["capital"] = cap
+            okc = cap.get("ok")
+            lines.append(f"   capital   : ${float(cap.get('usd') or 0):,.2f} "
+                         f"({cap.get('source','?')}"
+                         f"{'' if okc else red(', FAILED — ' + str(cap.get('detail'))[:60])})"
+                         f" · {_human_age(cap.get('age_sec'))}")
+
+        lines.append(f"   positions : {snap.get('open_positions',0)} open · "
+                     f"{snap.get('closed_trades',0)} closed · "
+                     f"equity ${float(snap.get('equity') or 0):,.2f} · "
+                     f"PnL ${float(snap.get('realized_pnl') or 0):+,.2f}")
+
+        problems = snap.get("problems") or []
+        if problems:
+            lines.append("")
+            lines.append(yellow("   ⚠ problems:"))
+            for p in problems[:8]:
+                lines.append(yellow(f"     • {p}"))
+            payload["problems"] = problems
+    else:
+        lines.append(dim("   health    : unavailable (engine has not published a snapshot yet)"))
+
+    try:
+        from enzo.core import engine as _eng
+        faults = _eng.discovery_faults()
+    except Exception:
+        faults = {}
+    if faults:
+        lines.append("")
+        lines.append(red("   discovery faults (in this process):"))
+        for k, v in faults.items():
+            lines.append(red(f"     • {k}: {v[:110]}"))
+        payload["discovery_faults"] = faults
+
+    lines.append("")
+    lines.append(dim(f"   config {C.CONFIG_PATH}"))
+    lines.append(dim(f"   data   {C.DATA_DIR}"))
+
+    exit_code = 0 if alive else 1
+    payload.update({"mode": mode, "paused": paused, "running": alive})
+    return _set(args, payload, lines, exit_code)
+
+
+def cmd_health(args):
+    snap, src = _health()
+    if snap is None:
+        return _set(args, {"status": "unavailable"},
+                    [red("health snapshot unavailable")], 1)
+    if args.json:
+        return _set(args, snap, [], 0)
+    return _set(args, snap, [json.dumps(snap, indent=2, default=str), dim(f"(source: {src})")], 0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# doctor — the preflight that answers "why is nothing happening?"
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_doctor(args):
+    C = _paths()
+    checks = []
+
+    def add(name, ok, detail, fix=None, critical=True):
+        checks.append({"name": name, "ok": bool(ok), "detail": str(detail),
+                       "fix": fix, "critical": bool(critical)})
+
+    # 1. Python + deps
+    add("python_version", sys.version_info >= (3, 9), f"Python {sys.version.split()[0]}",
+        "ENZO needs Python 3.9+")
+    try:
+        import yaml  # noqa: F401
+        add("pyyaml", True, f"PyYAML {getattr(yaml, '__version__', '?')}")
+    except ImportError:
+        add("pyyaml", False, "PyYAML is NOT installed — 17 of 23 config sections would be "
+                             "silently dropped and paper_mode would be forced on",
+            "bash bootstrap.sh   (or: python3 -m pip install PyYAML)")
+    try:
+        import websockets  # noqa: F401
+        add("websockets", True, f"websockets {getattr(websockets, '__version__', '?')}")
+    except ImportError:
+        add("websockets", False, "websockets missing — the PumpDev launch feed cannot connect, "
+                                 "so discovery returns 0 candidates",
+            "python3 -m pip install websockets", critical=False)
+
+    # 2. Config
+    cfg = None
+    try:
+        cfg = _cfg()
+        add("config_file", os.path.exists(C.CONFIG_PATH), C.CONFIG_PATH)
+        add("config_sections", len(cfg) >= 20, f"{len(cfg)} sections loaded",
+            "expected >= 20; a low count means the YAML is not being parsed")
+        try:
+            problems = C.validate_config(cfg)
+            add("config_valid", not problems, "; ".join(problems) if problems else "no problems",
+                "fix the listed keys in config/enzo-config.yaml", critical=False)
+        except Exception as e:
+            add("config_valid", False, f"validate_config raised {e}", critical=False)
+    except Exception as e:
+        add("config_file", False, f"{type(e).__name__}: {e}", "bash bootstrap.sh")
+
+    # 3. Control state
+    try:
+        from enzo.ui import botctl
+        paused = botctl.is_paused()
+        add("not_paused", not paused,
+            "paused — every scan cycle is skipped" if paused else "running",
+            "./enzoctl resume")
+    except Exception as e:
+        add("not_paused", False, f"botctl error: {e}")
+
+    if cfg:
+        paper = bool(cfg.get("paper_mode", True))
+        add("mode", True, "PAPER (simulated)" if paper else "LIVE (real money)",
+            "./enzoctl mode live", critical=False)
+
+    # 4. Watchlist
+    try:
+        from enzo.core import engine
+        wl = engine.load_watchlist()
+        add("watchlist", True, f"{len(wl)} mint(s)" + (" — empty (discovery only)" if not wl else ""),
+            "add mints to config/enzo-watchlist.json under the \"watchlist\" key",
+            critical=False)
+    except Exception as e:
+        add("watchlist", False, f"{e}")
+
+    # 5. Secrets
+    try:
+        sec = {}
+        if os.path.exists(C.SECRETS_PATH):
+            with open(C.SECRETS_PATH, "r", encoding="utf-8") as f:
+                sec = json.load(f)
+        tg = bool((sec.get("telegram") or {}).get("bot_token") or sec.get("telegram_bot_token"))
+        add("telegram_token", tg, "present" if tg else "missing — Telegram alerts will not send",
+            "add the token to config/enzo-secrets.json", critical=False)
+        add("secrets_not_in_git", not _tracked_by_git(C.SECRETS_PATH),
+            "secrets are committed to git — treat the token as compromised",
+            "@BotFather -> /revoke, then git rm --cached config/enzo-secrets.json",
+            critical=False)
+    except Exception as e:
+        add("telegram_token", False, f"{e}", critical=False)
+
+    # 5b. GMGN CLI — the sole market-data source. Without it every token
+    #     arrives with no market cap / liquidity / volume.
+    try:
+        from enzo.providers import gmgn as _gmgn
+        gbin = _gmgn.resolve_gmgn_bin()
+        add("gmgn_cli", bool(gbin), gbin or "not found — every discovery and market-data "
+                                    "call will fail with FileNotFoundError",
+            "install gmgn-cli on PATH, or set data_sources.gmgn.cli to its full path "
+            "in config/enzo-config.yaml")
+        if cfg:
+            gst = _gmgn.discovery_status()
+            failed = [c for c, v in (gst.get("categories_ok") or {}).items() if not v.get("ok")]
+            add("gmgn_discovery", not failed,
+                (f"categories failed: {failed} — {str(gst.get('last_error'))[:80]}" if failed
+                 else f"last sweep returned {gst.get('last_count')} token(s)"),
+                "./enzoctl scan --force   then ./enzoctl logs", critical=False)
+    except Exception as e:
+        add("gmgn_cli", False, f"{type(e).__name__}: {e}", critical=False)
+
+    # 6. MoonPay CLI + wallet + capital
+    if cfg:
+        try:
+            from enzo.execution import executor
+            add("moonpay_cli", bool(executor.resolve_bin(cfg)),
+                executor.resolve_bin(cfg) or "not found on PATH",
+                "npm i -g @moonpay/cli   (or set execution.moonpay_bin)")
+
+            rep = executor.preflight_report(cfg)
+            for c in rep.get("checks", []):
+                add(f"exec.{c.get('name')}", c.get("ok"), c.get("detail", ""),
+                    c.get("fix"), critical=c.get("name") in ("mode", "wallet_exists",
+                                                             "balances_readable"))
+        except Exception as e:
+            add("moonpay_cli", False, f"executor preflight raised {type(e).__name__}: {e}")
+
+        try:
+            from enzo.execution import portfolio
+            cap = portfolio.sync_capital_base(force=True, cfg=cfg)
+            usd = float(cap.get("usd") or 0)
+            min_trade = float((cfg.get("execution") or {}).get("min_trade_usd", 1.0))
+            ok = cap.get("ok") and (usd > 0 if cfg.get("paper_mode") else usd >= min_trade)
+            add("capital", ok,
+                f"${usd:,.2f} deployable ({cap.get('source')})"
+                + ("" if cap.get("ok") else f" — {cap.get('detail')}"),
+                "fund the MoonPay wallet, or check auth: mp login / mp consent accept")
+        except Exception as e:
+            add("capital", False, f"{type(e).__name__}: {e}")
+
+    # 7. Storage
+    try:
+        import sqlite3
+        con = sqlite3.connect(C.PORTFOLIO_DB_PATH)
+        n = con.execute("SELECT COUNT(*) FROM open_positions").fetchone()[0]
+        con.close()
+        add("database", True, f"{C.PORTFOLIO_DB_PATH} · {n} open position(s)")
+    except Exception as e:
+        add("database", False, f"{e}")
+
+    audit_size = 0
+    try:
+        audit_size = os.path.getsize(C.AUDIT_JSONL_PATH) if os.path.exists(C.AUDIT_JSONL_PATH) else 0
+        add("audit_log", audit_size < 50 * 1024 * 1024,
+            f"{audit_size/1024/1024:.1f} MB",
+            "./enzoctl logs --rotate-audit", critical=False)
+    except Exception:
+        pass
+
+    # 8. Liveness
+    pid, alive, _ = _pid()
+    add("process", True, f"PID {pid} alive" if alive else "not running (start it with ./enzoctl start)",
+        "./enzoctl start", critical=False)
+
+    # ── render ──
+    lines = [bold("ENZO doctor"), dim(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}"), ""]
+    bad = [c for c in checks if not c["ok"]]
+    for c in checks:
+        mark = green("✔") if c["ok"] else (red("✖") if c["critical"] else yellow("⚠"))
+        lines.append(f"  {mark} {c['name']:<26s} {c['detail'][:96]}")
+        if not c["ok"] and c.get("fix"):
+            lines.append(f"      {dim('fix:')} {c['fix']}")
+    lines.append("")
+    crit = [c for c in bad if c["critical"]]
+    if not bad:
+        lines.append(green("All checks passed."))
+    elif not crit:
+        lines.append(yellow(f"{len(bad)} non-critical warning(s). The bot can run."))
+    else:
+        lines.append(red(f"{len(crit)} critical problem(s) — the bot cannot trade correctly."))
+        for c in crit:
+            lines.append(red(f"   • {c['name']}: {c['detail'][:110]}"))
+            if c.get("fix"):
+                lines.append(dim(f"       fix: {c['fix']}"))
+
+    return _set(args, {"checks": checks, "ok": not crit,
+                       "critical": [c["name"] for c in crit],
+                       "warnings": [c["name"] for c in bad if not c["critical"]]},
+                lines, 0 if not crit else 1)
+
+
+def _tracked_by_git(path):
+    try:
+        rel = os.path.relpath(path, ROOT)
+        r = subprocess.run(["git", "-C", ROOT, "ls-files", "--error-unmatch", rel],
+                           capture_output=True, text=True, timeout=10)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# logs
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_logs(args):
+    C = _paths()
+    which = args.which or "enzo"
+    mapping = {"enzo": os.path.join(C.LOGS_DIR, "enzo.log"),
+               "supervisor": C.SUPERVISOR_LOG_PATH,
+               "audit": C.AUDIT_JSONL_PATH,
+               "error": os.path.join(C.LOGS_DIR, "enzo-error.log")}
+    path = mapping.get(which)
+    if not path:
+        return _set(args, {"error": f"unknown log '{which}'"},
+                    [red(f"unknown log '{which}' — choose from {sorted(mapping)}")], 2)
+    if not os.path.exists(path):
+        return _set(args, {"error": "not_found", "path": path},
+                    [yellow(f"no log at {path}")], 1)
+
+    n = int(args.n or 80)
+    if args.follow:
+        # execvp replaces this process, so it must not be evaluated inside _set.
+        if getattr(args, "json", False):
+            print(json.dumps({"path": path, "follow": True}))
+            return 0
+        print(dim(f"following {path} (Ctrl-C to stop)"))
+        os.execvp("tail", ["tail", "-n", str(n), "-f", path])
+        return 0
+
+    try:
+        from enzo.core.audit import _tail_lines
+        lines = _tail_lines(path, n)
+    except Exception:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()[-n:]
+
+    if which == "audit" and not args.json:
+        pretty = []
+        for raw in lines:
+            try:
+                d = json.loads(raw)
+                lvl = str(d.get("level", ""))
+                colour = {"ERROR": red, "WARNING": yellow}.get(lvl, lambda x: x)
+                ts = dim(str(d.get("ts", ""))[:19])
+                lv = colour(f"{lvl:<7s}")
+                cat = blue(f"{str(d.get('category', ''))[:11]:<11s}")
+                pretty.append(f"{ts} {lv} {cat} {str(d.get('message', ''))[:120]}")
+            except Exception:
+                pretty.append(raw.rstrip())
+        lines = pretty
+    else:
+        lines = [l.rstrip("\n") for l in lines]
+
+    return _set(args, {"path": path, "lines": lines}, lines, 0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# scan / pause / resume / mode
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_scan(args):
+    from enzo.core import engine
+    from enzo.ui import botctl
+    if botctl.is_paused():
+        return _set(args, {"scanned": False, "reason": "paused"},
+                    [yellow("ENZO is paused — ./enzoctl resume first.")], 1)
+
+    pid, alive, _ = _pid()
+    if alive and not args.force:
+        return _set(args, {"scanned": False, "reason": "engine_running"},
+                    [yellow("The engine is already running and scanning on its own interval."),
+                     dim("   Use --force to run an extra cycle now (it will take the scan lock),"),
+                     dim("   or ./enzoctl logs -f to watch the running cycle.")], 0)
+
+    t0 = time.time()
+    mints = [args.mint] if args.mint else None
+    results = engine.scan_once(mints)
+    dt = time.time() - t0
+
+    lines = [bold(f"Scan complete in {dt:.1f}s — {len(results)} decision(s)"), ""]
+    buys = 0
+    for r in results:
+        dec = r.get("decision")
+        sym = r.get("token_symbol", "?")
+        conf = r.get("confidence_score", 0)
+        colour = green if dec == "BUY" else (yellow if dec in ("WAIT", "NOT_TRADABLE") else dim)
+        lines.append(f"  {colour(f'{dec:<14s}')} {sym:<12s} conf={conf}")
+        if dec == "BUY":
+            buys += 1
+        fr = r.get("failure_reason") or r.get("reason")
+        if fr:
+            lines.append(dim(f"                 {str(fr)[:110]}"))
+    if not results:
+        lines.append(yellow("  no candidates were discovered this cycle."))
+        try:
+            faults = engine.discovery_faults()
+            for k, v in faults.items():
+                lines.append(red(f"  discovery fault {k}: {v[:120]}"))
+        except Exception:
+            pass
+        lines.append(dim("  ./enzoctl doctor   shows the data-source status."))
+
+    return _set(args, {"scanned": True, "decisions": results, "seconds": round(dt, 2),
+                       "buys": buys}, lines, 0)
+
+
+def cmd_pause(args):
+    from enzo.ui import botctl
+    botctl.set_paused(True)
+    return _set(args, {"paused": True},
+                [yellow("⏸  ENZO paused — scan cycles will be skipped."),
+                 dim("   Open positions are STILL monitored by the exit monitor."),
+                 dim("   ./enzoctl resume to continue.")], 0)
+
+
+def cmd_resume(args):
+    from enzo.ui import botctl
+    botctl.set_paused(False)
+    pid, alive, _ = _pid()
+    lines = [green("▶  ENZO resumed — scanning will continue on the next cycle.")]
+    if not alive:
+        lines.append(yellow("   Note: the engine process is not running — ./enzoctl start"))
+    return _set(args, {"paused": False, "engine_running": alive}, lines, 0)
+
+
+def cmd_mode(args):
+    import re
+    C = _paths()
+    target = (args.target or "").lower()
+    if target not in ("live", "paper"):
+        return _set(args, {"error": "target must be live or paper"},
+                    [red("usage: ./enzoctl mode live|paper")], 2)
+
+    with open(C.CONFIG_PATH, "r", encoding="utf-8") as f:
+        text = f.read()
+    new_val = "false" if target == "live" else "true"
+    pat = re.compile(r"^(\s*paper_mode\s*:\s*)(true|false)(.*)$", re.MULTILINE)
+    if not pat.search(text):
+        return _set(args, {"error": "paper_mode key not found"},
+                    [red("could not find a top-level 'paper_mode:' key in the YAML")], 1)
+    updated, n = pat.subn(lambda m: f"{m.group(1)}{new_val}{m.group(3)}", text, count=1)
+
+    backup = C.CONFIG_PATH + ".bak"
+    with open(backup, "w", encoding="utf-8") as f:
+        f.write(text)
+    with open(C.CONFIG_PATH, "w", encoding="utf-8") as f:
+        f.write(updated)
+
+    # Invalidate the mtime cache so the running process picks it up.
+    try:
+        from enzo.core import config as _C
+        _C._CFG_CACHE.update({"mtime": None, "size": None, "cfg": None})
+    except Exception:
+        pass
+
+    lines = [green(f"✔  paper_mode = {new_val} ({target.upper()})"),
+             dim(f"   backup: {backup}")]
+    if target == "live":
+        lines += ["", red("   ⚠  LIVE MODE — the bot will trade REAL money."),
+                  yellow("   Run ./enzoctl doctor and confirm every check passes first.")]
+    pid, alive, _ = _pid()
+    if alive:
+        lines.append(dim("   The running engine re-reads the config on its next cycle."))
+    return _set(args, {"paper_mode": new_val == "true", "mode": target}, lines, 0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# positions / trades / wallet / config / dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+def cmd_positions(args):
+    st = _state()
+    opens = st.get("open_positions") or {}
+    closed = st.get("closed_positions") or []
+    lines = [bold("Open positions"), ""]
+    if not opens:
+        lines.append(dim("  none"))
+    for mint, p in opens.items():
+        entry = float(p.get("entry_price") or 0)
+        cur_mc = float(p.get("current_market_cap") or 0)
+        upnl = float(p.get("unrealized_pnl") or 0)
+        lines.append(f"  {bold(str(p.get('symbol','?'))):<10s} ${float(p.get('size_usd') or 0):>9,.2f}"
+                     f"  uPnL {green(f'${upnl:+,.2f}') if upnl >= 0 else red(f'${upnl:+,.2f}')}"
+                     f"  mcap ${cur_mc:,.0f}"
+                     f"  opened {_human_age(_age_of(p.get('opened_at')))}")
+        lines.append(dim(f"            mint {mint[:20]}…  tx {str(p.get('tx_hash') or '—')[:20]}"))
+    lines += ["", bold(f"Closed trades: {len(closed)}"), ""]
+    for t in closed[: int(args.limit or 10)]:
+        pnl = float(t.get("pnl") or 0)
+        lines.append(f"  {str(t.get('symbol','?')):<10s} {t.get('reason',''):<22s} "
+                     f"{green(f'${pnl:+,.2f}') if pnl >= 0 else red(f'${pnl:+,.2f}')}")
+    if not closed:
+        lines.append(dim("  none"))
+    return _set(args, {"open": opens, "closed": closed[: int(args.limit or 10)]}, lines, 0)
+
+
+def _age_of(iso):
+    if not iso:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - dt).total_seconds()
+    except Exception:
+        return None
+
+
+def cmd_wallet(args):
+    from enzo.execution import executor, portfolio
+    cfg = _cfg()
+    snap = executor.get_balance_snapshot(cfg=cfg)
+    lines = [bold(f"Wallet: {executor.get_wallet_name(cfg)}"), ""]
+    items = (snap or {}).get("items") or []
+    if not items:
+        lines.append(red(f"  could not read balances — {(snap or {}).get('error') or 'no data'}"))
+        lines.append(yellow("  check: mp login · mp consent accept · mp wallet list"))
+        return _set(args, {"ok": False, "snapshot": snap}, lines, 1)
+    for it in items:
+        bal = it.get("balance") or {}
+        amt = bal.get("amount") if isinstance(bal, dict) else bal
+        lines.append(f"  {str(it.get('symbol','?')):<8s} {float(amt or 0):>18,.6f}   "
+                     f"{dim(str(it.get('address',''))[:20])}")
+    cap = portfolio.sync_capital_base(force=True, cfg=cfg)
+    lines += ["", bold("Deployable capital"),
+              f"  ${float(cap.get('usd') or 0):,.2f}   (source: {cap.get('source')}"
+              f"{'' if cap.get('ok') else ', ' + red('FAILED')})"]
+    if cap.get("detail"):
+        lines.append(dim(f"  {cap['detail']}"))
+    ex = cfg.get("execution") or {}
+    lines.append(dim(f"  SOL fee reserve {ex.get('sol_fee_reserve')} · min trade "
+                     f"${ex.get('min_trade_usd')} · max trade ${ex.get('max_trade_usd')}"))
+    return _set(args, {"balances": items, "capital": cap}, lines, 0 if cap.get("ok") else 1)
+
+
+def cmd_config(args):
+    cfg = _cfg()
+    section = args.section
+    if section:
+        if section not in cfg:
+            return _set(args, {"error": "unknown_section", "available": sorted(cfg)},
+                        [red(f"no config section '{section}'"),
+                         dim(f"  available: {', '.join(sorted(cfg))}")], 2)
+        body = json.dumps(cfg[section], indent=2, default=str)
+        return _set(args, {section: cfg[section]}, [bold(f"{section}:"), body], 0)
+    if args.json:
+        return _set(args, cfg, [], 0)
+    lines = [bold("Effective config (YAML deep-merged over built-in defaults)"),
+             dim(f"source: {_paths().CONFIG_PATH}"), ""]
+    for k in sorted(cfg):
+        v = cfg[k]
+        if isinstance(v, dict):
+            lines.append(f"  {bold(k)}")
+            for kk, vv in v.items():
+                lines.append(f"      {kk:<34s} {str(vv)[:70]}")
+        else:
+            lines.append(f"  {bold(k):<36s} {str(v)[:70]}")
+    return _set(args, cfg, lines, 0)
+
+
+def cmd_dashboard(args):
+    from enzo.ui import dashboard
+    res = dashboard.generate_safe()
+    if res.get("ok"):
+        path = res.get("path")
+        size = os.path.getsize(path) if path and os.path.exists(path) else 0
+        return _set(args, {"ok": True, "path": path, "bytes": size},
+                    [green(f"✔  dashboard regenerated ({size:,} bytes)"), dim(f"   {path}")], 0)
+    return _set(args, {"ok": False, "error": res.get("error")},
+                [red(f"✖  dashboard render failed: {res.get('error')}"),
+                 dim("   the last good copy is still being served")], 1)
+
+
+def cmd_trades(args):
+    return cmd_positions(args)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+def build_parser():
+    p = argparse.ArgumentParser(
+        prog="enzoctl",
+        description="ENZO control plane — start, stop, inspect and diagnose the bot.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Add --json to any command for machine-readable output.\n"
+               "Run ./enzoctl doctor first if anything looks wrong.",
+    )
+    p.add_argument("--json", action="store_true", help="machine-readable output")
+    sub = p.add_subparsers(dest="cmd")
+
+    def add(name, fn, help_text, **kw):
+        sp = sub.add_parser(name, help=help_text, **kw)
+        sp.set_defaults(func=fn)
+        return sp
+
+    sp = add("start", cmd_start, "start engine + dashboard + telegram (detached)")
+    sp.add_argument("--interval", type=float, help="scan interval seconds")
+    sp.add_argument("--no-dashboard", action="store_true")
+    sp.add_argument("--no-telegram", action="store_true")
+    sp.add_argument("--wait", type=float, default=20, help="seconds to wait for startup")
+
+    sp = add("stop", cmd_stop, "stop the bot")
+    sp.add_argument("--grace", type=float, default=15)
+
+    sp = add("restart", cmd_restart, "stop then start")
+    sp.add_argument("--interval", type=float)
+    sp.add_argument("--grace", type=float, default=15)
+    sp.add_argument("--no-dashboard", action="store_true")
+    sp.add_argument("--no-telegram", action="store_true")
+    sp.add_argument("--wait", type=float, default=20)
+
+    add("status", cmd_status, "is it running? paused? what mode? what capital?")
+    add("doctor", cmd_doctor, "full preflight with actionable fixes")
+    add("health", cmd_health, "the health snapshot")
+
+    sp = add("logs", cmd_logs, "tail a log file")
+    sp.add_argument("which", nargs="?", default="enzo",
+                    choices=["enzo", "supervisor", "audit", "error"])
+    sp.add_argument("-n", type=int, default=80)
+    sp.add_argument("-f", "--follow", action="store_true")
+
+    sp = add("scan", cmd_scan, "run one scan cycle now")
+    sp.add_argument("mint", nargs="?")
+    sp.add_argument("--force", action="store_true",
+                    help="scan even while the engine is running")
+
+    add("pause", cmd_pause, "pause trading (exits still monitored)")
+    add("resume", cmd_resume, "resume trading")
+
+    sp = add("mode", cmd_mode, "switch paper_mode")
+    sp.add_argument("target", choices=["live", "paper"])
+
+    sp = add("positions", cmd_positions, "open positions and recent closed trades")
+    sp.add_argument("--limit", type=int, default=10)
+    sp = add("trades", cmd_trades, "alias for positions")
+    sp.add_argument("--limit", type=int, default=10)
+
+    add("wallet", cmd_wallet, "real balances + deployable capital")
+
+    sp = add("config", cmd_config, "show the effective config")
+    sp.add_argument("section", nargs="?")
+
+    add("dashboard", cmd_dashboard, "regenerate the dashboard HTML")
+
+    sp = sub.add_parser("_supervise", help=argparse.SUPPRESS)
+    sp.set_defaults(func=cmd__supervise)
+    sp.add_argument("--interval", type=float)
+    sp.add_argument("--no-dashboard", action="store_true")
+    sp.add_argument("--no-telegram", action="store_true")
+
+    return p
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if not getattr(args, "cmd", None):
+        parser.print_help()
+        return 0
+    try:
+        return _out(args.func(args))
+    except KeyboardInterrupt:
+        print()
+        return 130
+    except Exception as e:
+        import traceback
+        if getattr(args, "json", False):
+            print(json.dumps({"error": f"{type(e).__name__}: {e}",
+                              "traceback": traceback.format_exc()}, indent=2))
+        else:
+            print(red(f"✖  {type(e).__name__}: {e}"))
+            tb = traceback.format_exc().strip().splitlines()
+            for line in tb[-4:]:
+                print(dim("   " + line))
+            if "PyYAML" in str(e) or "Dependency" in type(e).__name__:
+                print()
+                print(yellow("   Fix: bash bootstrap.sh"))
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -309,3 +309,79 @@ def notify_risk(title: str, details: str):
         return
     msg = format_risk_alert(title, details)
     _send_tg(msg)
+
+
+def notify_buy_failed(decision: dict, reason: str = "", paper: bool = False,
+                      console: bool = True, reason_code: str = "") -> bool:
+    """Alert the operator that a BUY signal could NOT be executed.
+
+    This function did not exist before 2026-09-03. engine.py called it behind a
+    `hasattr(notify, "notify_buy_failed")` guard, so the guard evaluated False
+    and the call became a silent no-op: every failed live buy — executor not
+    ready, no route, insufficient fees, below minimum size — was rolled back
+    without a single message reaching Telegram. That is why live execution
+    looked like it "never did anything" rather than "kept failing".
+    """
+    mint = decision.get("mint_address") or decision.get("mint") or ""
+    sym = decision.get("token_symbol") or (mint[:8] if mint else "UNKNOWN")
+    if not _cooldown_ok("buy_failed", mint or sym):
+        return False
+
+    conf = float(decision.get("confidence_score") or decision.get("weighted_confidence") or 0.0)
+    mcap = float(decision.get("entry_market_cap") or decision.get("market_cap_usd") or 0.0)
+    code = reason_code or ""
+
+    # Translate the executor's reason codes into something actionable.
+    hints = {
+        "NO_ROUTE": "MoonPay/swaps.xyz has no route for this pair. Fresh pump.fun tokens still on the bonding curve cannot be swapped until they graduate to a DEX.",
+        "INSUFFICIENT_SOL_FOR_FEES": "Top up SOL in the trading wallet — a small SOL balance is required for transaction fees.",
+        "INSUFFICIENT_BALANCE": "The wallet does not hold enough of the base token for this position size.",
+        "BELOW_MINIMUM_TRADE": "Position size fell below execution.min_trade_usd. Deployable capital is too small for the configured risk band.",
+        "ABOVE_MAXIMUM_TRADE": "Position size exceeded execution.max_trade_usd.",
+        "NOT_AUTHENTICATED": "Run: mp login --email you@example.com  then  mp verify --email you@example.com --code <code>",
+        "CONSENT_REQUIRED": "Run once: mp consent accept",
+        "CLI_NOT_FOUND": "Install the MoonPay CLI: npm i -g @moonpay/cli",
+        "WALLET_NOT_FOUND": "The configured execution.wallet_name does not exist. Run: mp wallet list",
+        "PAPER_MODE_ENABLED": "paper_mode is true in config/enzo-config.yaml — live execution is blocked by design.",
+        "EXEC_NOT_READY": "The executor pre-flight failed. Run: python3 enzo.py doctor",
+        "RATE_LIMITED": "MoonPay rate limit hit (60 req/min authenticated). The bot will retry next cycle.",
+        "TIMEOUT": "The swap command timed out.",
+        "UNKNOWN_OPTION": "The MoonPay CLI rejected a flag — the CLI may have been upgraded. Run: python3 enzo.py doctor",
+    }
+    hint = hints.get(code, "")
+
+    lines = [
+        "🚫 <b>ENZO — BUY EXECUTION FAILED</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"💎 <b>Token:</b> <code>{_esc_html(sym)}</code>",
+        f"🎯 <b>Confidence:</b> <code>{conf:.1f}</code>   💰 <b>MC:</b> <code>${mcap:,.0f}</code>",
+        f"🧾 <b>Mode:</b> {'PAPER' if paper else '<b>LIVE</b>'}",
+    ]
+    if code:
+        lines.append(f"⛔ <b>Reason code:</b> <code>{_esc_html(code)}</code>")
+    if reason:
+        lines.append(f"📄 <b>Detail:</b> <code>{_esc_html(str(reason)[:400])}</code>")
+    if hint:
+        lines.append(f"🔧 <b>Fix:</b> {_esc_html(hint)}")
+    if mint:
+        lines.append(f"🔗 <a href=\"https://gmgn.ai/sol/token/{_esc_html(mint)}\">GMGN</a> · "
+                     f"<a href=\"https://dexscreener.com/solana/{_esc_html(mint)}\">DexScreener</a>")
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("<i>المركز أُعيد التراجع عنه — لم يُفتح أي مركز وهمي.</i>")
+
+    msg = "\n".join(lines)
+    if console:
+        print(f"[ENZO][BUY-FAILED] {sym} ({code or 'n/a'}): {str(reason)[:160]}")
+    return _send_tg(msg)
+
+
+def notify_system(title: str, details: str, level: str = "INFO") -> bool:
+    """Generic operator alert (startup, shutdown, config problems, dependency
+    failures). Distinct from notify_risk so it uses its own cooldown bucket."""
+    icon = {"INFO": "ℹ️", "WARN": "⚠️", "ERROR": "🛑"}.get(str(level).upper(), "ℹ️")
+    if not _cooldown_ok(f"system_{level}", title):
+        return False
+    msg = (f"{icon} <b>ENZO — {_esc_html(title)}</b>\n"
+           f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+           f"<code>{_esc_html(str(details)[:1200])}</code>")
+    return _send_tg(msg)

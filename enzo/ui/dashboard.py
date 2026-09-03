@@ -7,28 +7,104 @@ multi-tab workflows, 6-axis AI matrices, live bot activity stream, and responsiv
 import html
 import os
 import json
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
-from enzo.core.config import load_config, DASHBOARD_HTML_PATH
+from enzo.core.config import (
+    load_config,
+    DASHBOARD_HTML_PATH,
+    HEALTH_PATH,
+)
 from enzo.execution import portfolio as pf
 from enzo.core import learn, audit
 from enzo.ui import botctl
 from enzo.providers import gmgn, pump
+
+# Written next to the HTML whenever generate() fails, so the server can show a
+# real error banner instead of silently serving a stale page.
+LAST_ERROR_PATH = DASHBOARD_HTML_PATH + ".error"
+LAST_GOOD_PATH = DASHBOARD_HTML_PATH + ".last-good"
+# In-memory copy of the last successful render + its timestamp. Lets the HTTP
+# server answer instantly and lets the client show a "data is N seconds old"
+# warning when regeneration has started failing.
+_LAST_RENDER = {"html": None, "ts": 0.0, "error": None}
 
 
 def _esc(x) -> str:
     return html.escape(str(x if x is not None else ""))
 
 
+def runtime_health() -> dict:
+    """Read the supervisor/runtime heartbeat (written by enzoctl + the engine).
+
+    Returns {} when the bot has never been started through the supervisor.
+    """
+    try:
+        if os.path.exists(HEALTH_PATH):
+            with open(HEALTH_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def runtime_scan_interval() -> int:
+    return int(runtime_health().get("scan_interval_sec") or 0)
+
+
+def last_render() -> dict:
+    """{'html': str|None, 'ts': float, 'age_sec': float, 'error': str|None}"""
+    ts = _LAST_RENDER.get("ts") or 0.0
+    return {
+        "html": _LAST_RENDER.get("html"),
+        "ts": ts,
+        "age_sec": round(time.time() - ts, 1) if ts else None,
+        "error": _LAST_RENDER.get("error"),
+    }
+
+
+def generate_safe() -> dict:
+    """generate() that never raises — used by background loops.
+
+    Returns {"ok": bool, "path": str|None, "error": str|None}. On failure the
+    previously rendered HTML stays on disk AND the error is recorded so the UI
+    can display it, instead of the old behaviour where the exception vanished
+    into `except: pass` and the browser silently got a stale page.
+    """
+    try:
+        path = generate()
+        return {"ok": True, "path": path, "error": None}
+    except Exception as e:
+        import traceback
+        err = f"{type(e).__name__}: {e}"
+        tb = traceback.format_exc(limit=6)
+        _LAST_RENDER["error"] = err
+        try:
+            with open(LAST_ERROR_PATH, "w", encoding="utf-8") as f:
+                f.write(json.dumps({"error": err, "traceback": tb,
+                                    "ts": datetime.now(timezone.utc).isoformat()}, indent=2))
+        except Exception:
+            pass
+        return {"ok": False, "path": None, "error": err}
+
+
 def generate() -> str:
-    """Generate and write the comprehensive dashboard HTML file."""
+    """Generate and write the comprehensive dashboard HTML file.
+
+    Raises on failure — callers must NOT swallow this silently. Before
+    2026-09-03 an undefined `wallet_name` made every call raise NameError, the
+    `except: pass` in serve.py hid it, and the HTTP server then served the
+    stale `data/enzo-dashboard.html` left over from an older code revision.
+    That is why the dashboard looked "never updated".
+    """
     state = pf.get_state()
     cfg = load_config()
     learning = learn.get_state()
     paused = botctl.is_paused()
     halted = state.get("halted")
-    
+
     init_cap = float(state.get("initial_capital", 10000.0))
     eq = float(state.get("equity", init_cap))
     rp = float(state.get("realized_pnl", 0.0))
@@ -37,6 +113,60 @@ def generate() -> str:
     losses = [c for c in closed if float(c.get("pnl", 0)) <= 0]
     total_trades = len(closed)
     win_rate = (len(wins) / total_trades * 100) if total_trades else 0.0
+
+    # ── Values the template interpolates. Every one of these must exist or the
+    #    whole f-string raises NameError and no dashboard is produced at all. ──
+    paper = bool(cfg.get("paper_mode", True))
+    ex_cfg = cfg.get("execution", {}) or {}
+    rm_cfg = cfg.get("risk_management", {}) or {}
+    wallet_name = str(ex_cfg.get("wallet_name") or "not-set")
+    base_token = str(ex_cfg.get("base_token") or "USDC").upper()
+    mode_label = "PAPER MODE • " if paper else "REAL TRADING ✅ • "
+    executor_label = "MOONPAY CLI" if paper else f"MOONPAY CLI ({base_token} base)"
+    max_open = int(rm_cfg.get("max_open_positions", 5))
+    max_exposure = float(rm_cfg.get("max_exposure", 30.0))
+    risk_per_trade = float(rm_cfg.get("risk_per_trade", 2.5))
+    max_daily_loss = float(rm_cfg.get("max_daily_loss", 8.0))
+    max_drawdown = float(rm_cfg.get("max_drawdown", 25.0))
+    cons_limit = int(rm_cfg.get("consecutive_losses_limit", 12))
+    capital_source = str(ex_cfg.get("capital_source", "wallet"))
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    scan_interval = 0
+    try:
+        scan_interval = int(runtime_scan_interval())
+    except Exception:
+        scan_interval = 0
+    open_count = len(state.get("open_positions", {}) or {})
+    exposure_used = sum(float(p.get("size_usd", 0.0) or 0.0)
+                        for p in (state.get("open_positions") or {}).values())
+    exposure_pct = (exposure_used / eq * 100.0) if eq > 0 else 0.0
+    try:
+        _gap_ms = float((((cfg.get("data_sources", {}) or {}).get("gmgn", {}) or {})
+                         .get("request_gap_ms", 350)))
+        gmgn_rate_label = f"{1000.0 / max(_gap_ms, 1.0):.1f} req/s · {_gap_ms:.0f} ms gap"
+    except Exception:
+        gmgn_rate_label = "default pacing"
+
+    # Server-side fault banner. Rendered only when the previous regeneration
+    # failed (so a recovered bot shows a clean page again on the next render).
+    _prev_err = None
+    try:
+        if os.path.exists(LAST_ERROR_PATH):
+            with open(LAST_ERROR_PATH, "r", encoding="utf-8") as _ef:
+                _prev_err = (json.load(_ef) or {}).get("error")
+    except Exception:
+        _prev_err = None
+    if _prev_err:
+        banner_html = (
+            '<div id="serverFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            f'<span>The previous dashboard render failed: {_esc(_prev_err)}. '
+            'This page was regenerated successfully.</span>'
+            '<span class="fault-hint">See data/enzo-dashboard.html.error for the traceback.</span>'
+            '</div>'
+        )
+    else:
+        banner_html = ""
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -381,11 +511,38 @@ def generate() -> str:
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
       display: none; z-index: 1000; font-size: 13px; font-weight: 600;
     }}
+
+    /* Fault banner — makes a broken/stale dashboard impossible to miss */
+    .fault-banner {{
+      display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: rgba(244, 63, 94, 0.10);
+      border: 1px solid rgba(244, 63, 94, 0.45);
+      border-left: 4px solid var(--accent-rose);
+      border-radius: 12px; padding: 12px 16px;
+      font-size: 13px; color: #fecdd3;
+    }}
+    .fault-banner.shown {{ display: flex; }}
+    .fault-banner.warn {{
+      background: rgba(245, 158, 11, 0.10);
+      border-color: rgba(245, 158, 11, 0.45);
+      border-left-color: var(--accent-amber); color: #fde68a;
+    }}
+    .fault-icon {{ font-size: 18px; }}
+    .fault-hint {{ color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }}
   </style>
 </head>
 <body>
 
 <div class="dashboard-container">
+
+  <!-- Persistent fault banner: shows when the page could not be regenerated or
+       when the browser has lost contact with the API. Hidden by default. -->
+  <div id="faultBanner" class="fault-banner" style="display:none;">
+    <span class="fault-icon">⚠</span>
+    <span id="faultBannerText"></span>
+    <span class="fault-hint" id="faultBannerHint"></span>
+  </div>
+  {banner_html}
 
   <!-- Top Header Navigation -->
   <header class="top-header">
@@ -393,7 +550,10 @@ def generate() -> str:
       <div class="brand-logo">⚡</div>
       <div class="brand-text">
         <h1>ENZO QUANT TERMINAL <span style="font-size: 12px; font-weight: 600; color: var(--accent-cyan); background: rgba(6,182,212,0.12); padding: 2px 8px; border-radius: 12px;">v2.5 PRO</span></h1>
-        <p>AUTONOMOUS SOLANA MEMECOIN • {{"PAPER MODE • " if paper else "REAL TRADING ✅ • "}}JUPITER + MOONPAY • WALLET: {wallet_name}</p>
+        <p>AUTONOMOUS SOLANA MEMECOIN • {mode_label}{executor_label} • WALLET: {_esc(wallet_name)}</p>
+        <p style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">
+          RENDERED {generated_at} • CAPITAL SOURCE: {capital_source.upper()} • POLL <span id="hdrPollAge">—</span>
+        </p>
       </div>
     </div>
 
@@ -463,7 +623,7 @@ def generate() -> str:
       </div>
       <div class="kpi-value" id="kpiOpenCount">{len(state.get('open_positions', {}))}</div>
       <div class="kpi-subtext">
-        <span>Max Slots: 5</span> • <span id="kpiExposure">Risk Cap: 30%</span>
+        <span>Max Slots: {max_open}</span> • <span id="kpiExposure">Risk Cap: {max_exposure:.0f}%</span>
       </div>
     </div>
 
@@ -783,7 +943,7 @@ def generate() -> str:
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">⚡ GMGN Rate Limiter</span>
-            <span class="axis-score color-pos" id="gmgnBanStatus">NORMAL (0.8 req/s)</span>
+            <span class="axis-score color-pos" id="gmgnBanStatus">NORMAL ({gmgn_rate_label})</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Token bucket rate controller active with automatic backoff and unban coordination.</p>
         </div>
@@ -793,7 +953,7 @@ def generate() -> str:
             <span class="axis-name">🛡️ Circuit Breakers</span>
             <span class="axis-score color-pos">ARMED</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-secondary);">Auto-halts on 8% daily loss, 25% max drawdown, or 12 consecutive paper losses.</p>
+          <p style="font-size: 12px; color: var(--text-secondary);">Auto-halts on {max_daily_loss:.0f}% daily loss, {max_drawdown:.0f}% max drawdown, or {cons_limit} consecutive losses. Risk/trade: {risk_per_trade:.1f}%.</p>
         </div>
 
         <div class="axis-card">
@@ -872,25 +1032,81 @@ def generate() -> str:
       }}).catch(function(e) {{ showToast('Scan error'); }});
   }}
 
+  // ── Liveness tracking ────────────────────────────────────────────────
+  // Previously every fetch failure was swallowed by `.catch(function(e) {{}})`,
+  // so a dead/stalled backend looked identical to a healthy one: the page just
+  // sat there showing the numbers from the last successful poll. Now failures
+  // are counted and surfaced in the fault banner.
+  var lastGoodPoll = Date.now();
+  var pollFailures = 0;
+  var POLL_STALE_MS = 35000;   // 3.5 missed 10s polls
+
+  function setFault(kind, text, hint) {{
+    var b = document.getElementById('faultBanner');
+    var t = document.getElementById('faultBannerText');
+    var h = document.getElementById('faultBannerHint');
+    if (!b) return;
+    if (!kind) {{ b.className = 'fault-banner'; b.style.display = 'none'; return; }}
+    b.className = 'fault-banner shown' + (kind === 'warn' ? ' warn' : '');
+    b.style.display = 'flex';
+    t.textContent = text;
+    h.textContent = hint || '';
+  }}
+
+  function notePollOk() {{
+    pollFailures = 0;
+    lastGoodPoll = Date.now();
+    // only clear a client-side fault; a server-rendered banner keeps its own id
+    if (!document.getElementById('serverFault')) setFault(null);
+  }}
+
+  function notePollFail(what, err) {{
+    pollFailures++;
+    setFault('error',
+      'Lost contact with the ENZO API (' + what + ') — ' + pollFailures +
+      ' consecutive failed poll(s). The numbers on this page are frozen at the last successful update.',
+      'Check that the bot process is alive: python3 enzo.py status  ·  error: ' + (err || 'n/a'));
+  }}
+
+  function tickPollAge() {{
+    var el = document.getElementById('hdrPollAge');
+    if (!el) return;
+    var age = Math.round((Date.now() - lastGoodPoll) / 1000);
+    el.textContent = age + 's ago';
+    el.style.color = age > POLL_STALE_MS / 1000 ? 'var(--accent-rose)' : 'var(--text-muted)';
+    if (age > POLL_STALE_MS / 1000 && pollFailures === 0) {{
+      setFault('warn',
+        'Data is ' + age + 's old — the API has not answered a poll recently.',
+        'The engine may be busy in a long scan cycle, or the server thread may have died.');
+    }}
+  }}
+
   function refreshData(force) {{
     // 1. Fetch State
     fetch('/api/state', {{ cache: 'no-store' }})
-      .then(function(r) {{ return r.json(); }})
+      .then(function(r) {{
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }})
       .then(function(res) {{
-        if (!res || res.status !== 'success') return;
+        if (!res || res.status !== 'success') throw new Error((res && res.message) || 'bad payload');
         stateCache = res;
         updateUI(res);
-      }}).catch(function(e) {{}});
+        notePollOk();
+      }}).catch(function(e) {{ notePollFail('/api/state', e.message || e); }});
 
     // 2. Fetch Activity Stream
     fetch('/api/activity', {{ cache: 'no-store' }})
-      .then(function(r) {{ return r.json(); }})
+      .then(function(r) {{
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }})
       .then(function(res) {{
-        if (!res || res.status !== 'success') return;
+        if (!res || res.status !== 'success') throw new Error((res && res.message) || 'bad payload');
         allActivities = res.activities || [];
         renderActivities();
         updateSubsystems(res.subsystems);
-      }}).catch(function(e) {{}});
+      }}).catch(function(e) {{ /* state poll owns the banner */ }});
   }}
 
   function updateSubsystems(sub) {{
@@ -1214,6 +1430,12 @@ def generate() -> str:
   // Auto-Refresh Poll Engine (every 10 seconds — light on the DB & rate limiter)
   refreshData(false);
   setInterval(function() {{ refreshData(false); }}, 10000);
+  setInterval(tickPollAge, 1000);
+  // Re-poll immediately when the tab regains focus or connectivity returns.
+  document.addEventListener('visibilitychange', function() {{
+    if (!document.hidden) refreshData(true);
+  }});
+  window.addEventListener('online', function() {{ refreshData(true); }});
 </script>
 </body>
 </html>
@@ -1225,6 +1447,20 @@ def generate() -> str:
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(html_content)
     os.replace(tmp, DASHBOARD_HTML_PATH)
+
+    # A render succeeded: clear any recorded failure, keep a last-good copy for
+    # the HTTP server to fall back on, and remember it in-process so the server
+    # can answer instantly without re-reading from disk.
+    _LAST_RENDER["html"] = html_content
+    _LAST_RENDER["ts"] = time.time()
+    _LAST_RENDER["error"] = None
+    try:
+        if os.path.exists(LAST_ERROR_PATH):
+            os.remove(LAST_ERROR_PATH)
+        with open(LAST_GOOD_PATH, "w", encoding="utf-8") as f:
+            f.write(html_content)
+    except Exception:
+        pass
 
     return DASHBOARD_HTML_PATH
 

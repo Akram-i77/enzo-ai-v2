@@ -6,11 +6,12 @@ Handles GMGN endpoints, rate pacing, ban recovery, and standard normalization sh
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
 from enzo.core.config import load_config, GMGN_BAN_FILE_PATH
@@ -112,13 +113,99 @@ def _ban_wait_seconds(msg):
         return 30.0
 
 
+_GMGN_BIN_CACHE = {"bin": None, "resolved": False}
+
+
+def resolve_gmgn_bin(cfg: dict = None) -> Optional[str]:
+    """Locate the gmgn-cli binary.
+
+    Resolution order:
+      1. data_sources.gmgn.cli  (absolute path OR a bare name)
+      2. ENZO_GMGN_BIN environment variable
+      3. a bare `gmgn-cli` lookup on PATH
+      4. common install locations (npm global, ~/.local/bin, nvm)
+
+    The command used to be hardcoded as ["gmgn-cli", ...], which ignored the
+    `cli:` key the config file already documented — so an operator who installed
+    it somewhere off PATH had no way to point the bot at it, and every discovery
+    call failed with FileNotFoundError.
+    """
+    if _GMGN_BIN_CACHE["resolved"]:
+        return _GMGN_BIN_CACHE["bin"]
+
+    try:
+        cfg = cfg or load_config()
+    except Exception:
+        cfg = {}
+    gmgn_cfg = (cfg.get("data_sources") or {}).get("gmgn") or {}
+    configured = str(gmgn_cfg.get("cli") or "").strip()
+
+    candidates = []
+    for cand in (configured, str(os.environ.get("ENZO_GMGN_BIN") or "").strip(),
+                 "gmgn-cli", "gmgn"):
+        if cand and cand not in candidates:
+            candidates.append(cand)
+
+    found = None
+    for cand in candidates:
+        if os.path.isabs(cand) or os.path.sep in cand:
+            if os.path.exists(cand) and os.access(cand, os.X_OK):
+                found = cand
+                break
+            continue
+        which = shutil.which(cand)
+        if which:
+            found = which
+            break
+
+    if not found:
+        extra_dirs = [
+            os.path.expanduser("~/.npm-global/bin"),
+            os.path.expanduser("~/.local/bin"),
+            "/usr/local/bin",
+        ]
+        home = os.path.expanduser("~")
+        nvm_root = os.path.join(home, ".nvm", "versions", "node")
+        if os.path.isdir(nvm_root):
+            try:
+                for ver in sorted(os.listdir(nvm_root), reverse=True):
+                    extra_dirs.append(os.path.join(nvm_root, ver, "bin"))
+            except Exception:
+                pass
+        for d in extra_dirs:
+            for name in ("gmgn-cli", "gmgn"):
+                pth = os.path.join(d, name)
+                if os.path.exists(pth) and os.access(pth, os.X_OK):
+                    found = pth
+                    break
+            if found:
+                break
+
+    _GMGN_BIN_CACHE.update({"bin": found, "resolved": True})
+    if found:
+        _LOGGER.info("GMGN CLI resolved: %s", found)
+    else:
+        _LOGGER.error(
+            "gmgn-cli not found (looked for %s). GMGN discovery and market data "
+            "will fail for EVERY token. Install it, or set data_sources.gmgn.cli "
+            "in config/enzo-config.yaml to its full path.",
+            ", ".join(candidates[:4]),
+        )
+    return found
+
+
 def _run(args, endpoint, timeout=40):
     """Run one gmgn-cli command; measure latency; handle bans with sleep+retry."""
     acquired = db.rl_acquire("gmgn", tokens_needed=1.0, rate_per_sec=0.8, min_gap_sec=_rl_min_gap(), max_wait_sec=45.0)
     if not acquired:
         raise RateLimited(f"{endpoint}: rate limited or banned")
 
-    cmd = ["gmgn-cli"] + args
+    bin_path = resolve_gmgn_bin()
+    if not bin_path:
+        raise GMGNError(
+            f"{endpoint}: gmgn-cli not found — set data_sources.gmgn.cli in "
+            f"config/enzo-config.yaml or install it on PATH")
+    cmd = [bin_path] + args
     t0 = time.time()
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env={**os.environ})
@@ -320,6 +407,21 @@ def list_screen(candidate: dict, config: dict = None) -> dict:
     }
 
 
+_DISCOVERY_STATUS = {"last_ok_ts": 0.0, "last_error": None, "categories_ok": {},
+                     "consecutive_empty": 0, "last_count": None}
+
+
+def discovery_status() -> dict:
+    """Observed discovery health, for /health, /api/activity and enzoctl.
+
+    Previously a failing GMGN sweep was indistinguishable from "GMGN answered
+    and there was genuinely nothing to buy" — both looked like an empty list.
+    """
+    out = dict(_DISCOVERY_STATUS)
+    out["age_sec"] = round(time.time() - out["last_ok_ts"], 1) if out["last_ok_ts"] else None
+    return out
+
+
 def discover(chain=None) -> list:
     """Discovery sweep from GMGN list endpoints across trenches, trending, and smartmoney.
 
@@ -355,13 +457,42 @@ def discover(chain=None) -> list:
                     if mint not in seen_mints:
                         seen_mints.add(mint)
                         items.append(normed)
+            _DISCOVERY_STATUS["categories_ok"][cat] = {
+                "ok": True, "count": len(cat_items_map.get(cat) or []), "error": None}
         except Exception as e:
-            _LOGGER.debug(f"GMGN category {cat} discovery error: {e}")
+            # Was _LOGGER.debug(): a GMGN sweep that failed for every category
+            # returned [] and was then CACHED as a legitimate empty result for
+            # 25s, so "Discovered 0 candidates" looked like a quiet market
+            # rather than a dead data source. That is the exact ambiguity the
+            # diagnosis called out as root cause A6.
+            msg = f"{type(e).__name__}: {e}"
+            _LOGGER.warning("GMGN category '%s' discovery failed — %s", cat, msg[:200])
+            _DISCOVERY_STATUS["categories_ok"][cat] = {"ok": False, "count": 0, "error": msg[:300]}
+            _DISCOVERY_STATUS["last_error"] = f"{cat}: {msg[:200]}"
 
     for cat, cat_items in cat_items_map.items():
         if cat_items:
             _cache_set(f"discovery:{cat}", cat_items, ttl=25)
-    _cache_set(ckey, items, ttl=25)
+
+    cats = _DISCOVERY_STATUS["categories_ok"]
+    all_failed = bool(cats) and not any(c.get("ok") for c in cats.values())
+    if items:
+        _DISCOVERY_STATUS["last_ok_ts"] = time.time()
+        _DISCOVERY_STATUS["consecutive_empty"] = 0
+        _DISCOVERY_STATUS["last_count"] = len(items)
+        _cache_set(ckey, items, ttl=25)
+    elif all_failed:
+        # Do NOT cache a failure as if it were an answer: the next cycle should
+        # retry immediately rather than wait out a 25s TTL on a dead result.
+        _DISCOVERY_STATUS["consecutive_empty"] += 1
+        _DISCOVERY_STATUS["last_count"] = 0
+        _LOGGER.error("GMGN discovery failed for every category (%s) — result NOT cached, "
+                      "will retry next cycle", ", ".join(sorted(cats)))
+    else:
+        _DISCOVERY_STATUS["last_ok_ts"] = time.time()
+        _DISCOVERY_STATUS["consecutive_empty"] += 1
+        _DISCOVERY_STATUS["last_count"] = 0
+        _cache_set(ckey, items, ttl=25)
     return items
 
 
@@ -690,7 +821,7 @@ def get_market_data(mint: str) -> dict:
     cand = _candidate_from_discovery(mint)
     merged = _merge_info_candidate(info, cand)
 
-    sym = merged.get("symbol") or "UNKNOWN"
+    sym = merged.get("symbol") or None
     # Handle GMGN token info response: price is nested at info['price']['price']
     price_info = merged.get("price", {})
     price = fnum(_get(price_info, "price")) or _price_of(merged) or 0.0
@@ -702,15 +833,38 @@ def get_market_data(mint: str) -> dict:
         supply = fnum(supply_str)
         if supply:
             mcap = price * supply
-    mcap = mcap or 0.0
-    vol = _volume_24h(merged) or 0.0
-    liq = fnum(merged.get("liquidity")) or fnum(_get(merged, "usd_liquidity")) or 0.0
+    vol = _volume_24h(merged)
+    liq = fnum(merged.get("liquidity"))
+    if liq is None:
+        liq = fnum(_get(merged, "usd_liquidity"))
     prog = _info_progress(merged)
 
+    # ── Data quality: MISSING must stay distinguishable from ZERO ────────────
+    # These three used to be coerced with `or 0.0`. The analyzer then saw a
+    # token with "$0 market cap / $0 liquidity / $0 volume" and rejected it for
+    # being worthless, when the truth was that GMGN had returned nothing at all
+    # (rate-limited, blocked, or an unknown mint). That single coercion is why
+    # the audit log holds 1,649 "Market cap $0 < min" rejects and why the bot
+    # appeared to "never analyse any coin". None is now preserved so the caller
+    # can report NO_MARKET_DATA instead of a misleading quality rejection.
+    missing = [name for name, val in (("market_cap_usd", mcap), ("liquidity_usd", liq),
+                                      ("volume_24h_usd", vol), ("price_usd", price or None),
+                                      ("symbol", sym)) if val is None]
+    banned = ban_status()
+    data_quality = {
+        "complete": not missing,
+        "missing": missing,
+        "provider": "gmgn",
+        "rate_limited": bool(banned > 0),
+        "ban_remaining_sec": round(float(banned), 1),
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
     data = {
-        "token_symbol": sym,
+        "token_symbol": sym or "UNKNOWN",
         "price_usd": price,
         "phase": _phase_from_progress(prog),
+        "data_quality": data_quality,
         "signals": {
             "market_cap_usd": mcap,
             "liquidity_usd": liq,

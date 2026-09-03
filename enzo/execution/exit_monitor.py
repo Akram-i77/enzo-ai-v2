@@ -42,6 +42,13 @@ class ExitMonitor:
         self._thread: Optional[threading.Thread] = None
         self._consecutive_failures: Dict[str, int] = {}
         self._warned_mints: Set[str] = set()
+        # Observable liveness — /api/activity, /health and `enzoctl status` read
+        # these. Without them the monitor reported a hardcoded "ARMED" even when
+        # its thread had died with open positions still on the books.
+        self.cycle_count = 0
+        self.last_cycle_ts: Optional[float] = None
+        self.last_cycle_error: Optional[str] = None
+        self.exits_triggered = 0
         self._initialized = True
 
     def start(self):
@@ -98,6 +105,11 @@ class ExitMonitor:
         return None
 
     def _run_loop(self):
+        # Bound before the try: `time.sleep(max(0.5, interval))` sits OUTSIDE it,
+        # so if load_config() raised (a missing dependency, a corrupt YAML) the
+        # name was unbound and the very first cycle died with NameError — taking
+        # the exit monitor down silently while positions stayed open.
+        interval = float(self.poll_interval)
         while not self._stop_event.is_set():
             try:
                 cfg = load_config()
@@ -122,15 +134,32 @@ class ExitMonitor:
                             fail_count = self._consecutive_failures[mint]
                             sym = open_pos[mint].get('symbol', mint[:8])
                             if fail_count >= failure_threshold:
-                                _LOGGER.warning(
-                                    f"Price unavailable/stale for {sym} ({mint[:8]}...) "
-                                    f"({fail_count} consecutive failures). Holding position safely."
-                                )
-                                audit.log_event(
-                                    category="PRICE", level="WARNING",
-                                    message=f"Stale/unavailable price for {sym} ({fail_count}x) — holding, no auto-sell",
-                                    data={"mint": mint, "failures": fail_count}
-                                )
+                                # Log the crossing, then every Nth cycle.
+                                # Previously this wrote one WARNING row to
+                                # enzo-audit.jsonl on EVERY 2-second cycle for
+                                # EVERY stuck position — 12,110 of the 14,528
+                                # rows in the audit log (83 %) were this one
+                                # message, which is what made /api/activity
+                                # (and therefore the whole dashboard) crawl.
+                                every_n = max(1, int(em_cfg.get("stale_event_log_every_n_cycles", 30)))
+                                is_crossing = (fail_count == failure_threshold)
+                                should_log = is_crossing or ((fail_count - failure_threshold) % every_n == 0)
+
+                                if should_log:
+                                    _LOGGER.warning(
+                                        f"Price unavailable/stale for {sym} ({mint[:8]}...) "
+                                        f"({fail_count} consecutive failures). Holding position safely."
+                                    )
+                                    audit.log_event(
+                                        category="PRICE", level="WARNING",
+                                        message=(
+                                            f"Stale/unavailable price for {sym} ({fail_count}x) — "
+                                            f"holding, no auto-sell"
+                                            + ("" if is_crossing else f" [repeat, logging every {every_n} cycles]")
+                                        ),
+                                        data={"mint": mint, "failures": fail_count},
+                                    )
+
                                 if mint not in self._warned_mints:
                                     self._warned_mints.add(mint)
                                     try:
@@ -148,6 +177,7 @@ class ExitMonitor:
                         pos_amounts = {mint: float(open_pos[mint].get("amount", 0)) for mint in list(open_pos.keys())}
 
                         closed, partials = portfolio.check_exits(valid_mcaps)
+                        self.exits_triggered += len(closed or []) + len(partials or [])
 
                         # ── LIVE TRADING: execute real sells on-chain via MoonPay CLI ──
                         paper = bool(cfg.get("paper_mode", True))
@@ -170,18 +200,46 @@ class ExitMonitor:
                                             data={"mint": mint, "tx": sell_res.get("tx_hash"), "reason": c.get("reason")},
                                         )
                                     else:
-                                        _LOGGER.error(f"✗ REAL SELL FAILED: {c.get('symbol')} — {sell_res.get('reason')}")
+                                        reason = sell_res.get("reason", "unknown")
+                                        code = sell_res.get("reason_code", "")
+                                        _LOGGER.error(f"✗ REAL SELL FAILED: {c.get('symbol')} — {reason}")
                                         audit.log_event(
                                             category="TRADE", level="ERROR",
-                                            message=f"REAL SELL FAILED: {c.get('symbol')} — {sell_res.get('reason')}",
-                                            data={"mint": mint, "sell_result": sell_res, "pnl": c.get("pnl")},
+                                            message=f"REAL SELL FAILED: {c.get('symbol')} — {reason}",
+                                            data={"mint": mint, "amount_spl": amount_spl,
+                                                  "reason_code": code,
+                                                  "detail": str(sell_res.get("detail"))[:300],
+                                                  "pnl": c.get("pnl")},
                                         )
+                                        # CRITICAL: the ledger has already closed this position,
+                                        # but the tokens are still sitting in the wallet. Nobody
+                                        # is monitoring them any more. This must be loud — it is
+                                        # an orphaned bag, not a routine failure.
+                                        try:
+                                            notify.notify_risk(
+                                                "SELL FAILED — orphaned tokens in wallet",
+                                                f"{c.get('symbol')} ({mint[:8]}…): the ledger closed the "
+                                                f"position but the on-chain sell did NOT execute.\n"
+                                                f"Reason: {code or reason}\n"
+                                                f"Amount still held: {amount_spl:,.6f}\n"
+                                                f"Action: sell manually with\n"
+                                                f"  mp --json token swap --wallet <name> --chain solana "
+                                                f"--from-token {mint} --from-amount {amount_spl:.6f} "
+                                                f"--to-token EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+                                            )
+                                        except Exception as ne:
+                                            _LOGGER.error("could not send orphaned-bag alert: %s", ne)
 
                         for c in closed:
                             _LOGGER.info(f"Position closed: {c.get('symbol')} ({c.get('mint')[:8]}) | PnL: ${c.get('pnl', 0):+,.2f} ({c.get('pnl_pct', 0):+,.1f}%) | Reason: {c.get('reason')}")
                         for p in partials:
                             _LOGGER.info(f"Partial exit: {p.get('symbol')} | PnL: ${p.get('pnl', 0):+,.2f} | Reason: {p.get('reason')}")
+                self.cycle_count += 1
+                self.last_cycle_ts = time.time()
+                self.last_cycle_error = None
             except Exception as e:
+                self.last_cycle_error = f"{type(e).__name__}: {e}"
+                self.last_cycle_ts = time.time()
                 _LOGGER.error(f"Error in exit monitor cycle: {e}")
 
             time.sleep(max(0.5, interval))

@@ -421,6 +421,23 @@ def atomic_open_position(pos: dict):
     now_iso = _now_iso()
     mint = pos["mint"]
 
+    # Any position field with no dedicated column is preserved in extra_json
+    # (read back by _pos_row_to_dict). Previously such fields — capital_base_usd,
+    # risk_pct_used, security_status, scam_score, weighted_confidence — were
+    # silently dropped on insert, so the dashboard and the learning engine could
+    # never see how a position had been sized.
+    _KNOWN_POS_COLS = {
+        "mint", "symbol", "entry_price", "entry_market_cap", "current_market_cap",
+        "size_usd", "initial_size_usd", "amount", "initial_amount", "stop_loss_mc",
+        "take_profit_mc", "trailing_active", "trailing_stop_mc", "peak_price",
+        "peak_market_cap", "realized_pnl_total", "unrealized_pnl", "opened_at",
+        "max_holding_hours", "stages_hit", "signals", "axis_scores", "features",
+    }
+    extra_json = json.dumps(
+        {k: v for k, v in pos.items() if k not in _KNOWN_POS_COLS and not k.endswith("_json")},
+        default=str,
+    )
+
     with db_cursor(commit=True) as cur:
         cur.execute("""
             INSERT OR REPLACE INTO open_positions (
@@ -429,8 +446,8 @@ def atomic_open_position(pos: dict):
                 take_profit_mc, trailing_active, trailing_stop_mc, peak_price,
                 peak_market_cap, realized_pnl_total, unrealized_pnl, opened_at,
                 max_holding_hours, stages_hit_json, signals_json, axis_scores_json,
-                features_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                features_json, extra_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             mint,
             pos.get("symbol", "UNKNOWN"),
@@ -454,7 +471,8 @@ def atomic_open_position(pos: dict):
             json.dumps(pos.get("stages_hit", [])),
             json.dumps(pos.get("signals", [])),
             json.dumps(pos.get("axis_scores", {})),
-            json.dumps(pos.get("features", {}))
+            json.dumps(pos.get("features", {})),
+            extra_json
         ))
 
         cur.execute("UPDATE portfolio_state SET last_updated = ? WHERE id = 1", (now_iso,))
@@ -566,6 +584,39 @@ def atomic_update_open_positions(pos_updates: List[dict]):
     _sync_json_cache()
 
 
+def atomic_update_position_extra(mint: str, updates: dict) -> bool:
+    """Merge keys into an open position's extra_json without touching columns.
+
+    Used to attach post-execution data (tx_hash, capital base, gate verdicts)
+    that has no dedicated column. Returns False if the position does not exist.
+    """
+    if not mint or not updates:
+        return False
+    init_db()
+    try:
+        with db_cursor(commit=True) as cur:
+            row = cur.execute(
+                "SELECT extra_json FROM open_positions WHERE mint = ?", (mint,)
+            ).fetchone()
+            if not row:
+                return False
+            try:
+                extra = json.loads(row["extra_json"] or "{}")
+                if not isinstance(extra, dict):
+                    extra = {}
+            except Exception:
+                extra = {}
+            extra.update(updates)
+            cur.execute(
+                "UPDATE open_positions SET extra_json = ? WHERE mint = ?",
+                (json.dumps(extra, default=str), mint),
+            )
+        _sync_json_cache()
+        return True
+    except Exception:
+        return False
+
+
 def atomic_add_realized(pnl_delta: float):
     """Add realized PnL (e.g. from a partial take-profit) to the portfolio balance.
 
@@ -606,6 +657,51 @@ def atomic_update_peak_equity(equity_value: float):
             """, (float(equity_value), _now_iso()))
     except Exception:
         pass
+
+
+def atomic_update_initial_capital(value: float) -> bool:
+    """Rebase portfolio_state.initial_capital onto real deployable capital.
+
+    Only ever called when there is no closed-trade history to distort (see
+    portfolio.sync_capital_base) — otherwise ROI/win-rate maths would silently
+    change meaning under an existing ledger.
+
+    This exists because initial_capital sat at $2.06 while the trading wallet
+    held real funds: every position sized to $0.04, below min_trade_usd, so no
+    trade could ever execute even on a perfect BUY signal.
+    """
+    init_db()
+    value = float(value)
+    if value <= 0:
+        return False
+    try:
+        with db_cursor(commit=True) as cur:
+            row = cur.execute(
+                "SELECT initial_capital FROM portfolio_state WHERE id = 1"
+            ).fetchone()
+            if not row:
+                return False
+            old = float(row["initial_capital"])
+            if abs(old - value) < 1e-9:
+                return False
+            # The peak is RESET to the new baseline rather than max()'d. This is
+            # only ever called with no closed-trade history, so there is no real
+            # peak to preserve — and keeping a stale one (e.g. the $10,000
+            # fallback default) would make the drawdown circuit breaker read a
+            # 94% drawdown and halt trading permanently on the very first sync.
+            cur.execute("""
+                UPDATE portfolio_state SET
+                    initial_capital = ?,
+                    peak_equity = ?,
+                    daily_loss = 0.0,
+                    halted = NULL,
+                    last_updated = ?
+                WHERE id = 1
+            """, (value, value, _now_iso()))
+        _sync_json_cache()
+        return True
+    except Exception:
+        return False
 
 
 def save_full_state(state: dict):

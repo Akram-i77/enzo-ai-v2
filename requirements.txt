@@ -1,0 +1,15 @@
+# ENZO — Python runtime dependencies
+#
+# Both of these are HARD requirements. Before 2026-09-03 the bot ran without
+# them and failed silently:
+#   • missing PyYAML     -> config/enzo-config.yaml was ignored entirely and 17
+#                           of its 23 sections were replaced by hidden defaults
+#                           (including paper_mode, which flipped to True).
+#   • missing websockets -> the PumpDev launch stream never connected, so
+#                           discovery returned 0 candidates every cycle.
+#
+# Install with:   python3 -m pip install -r requirements.txt
+# Or just run:    bash bootstrap.sh   (installs + verifies + reports)
+
+PyYAML>=6.0,<7.0
+websockets>=12.0

@@ -101,11 +101,48 @@ class PumpDevStreamClient:
         self._lock = threading.Lock()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._ws = None
+        # ── Observable connection state ─────────────────────────────────────
+        # Without these the UI could only guess: /api/activity reported
+        # "CONNECTING" forever, whether the socket was live, retrying, or dead
+        # because the `websockets` package was never installed. That is how the
+        # bot spent its whole life discovering 0 candidates with no visible cause.
+        self._state = "IDLE"            # IDLE|CONNECTING|STREAMING|RETRYING|DOWN
+        self._last_error: Optional[str] = None
+        self._last_message_ts: float = 0.0
+        self._connect_count = 0
+        self._message_count = 0
+        self._token_count = 0
+        self._started_at: float = 0.0
+
+    def status(self) -> dict:
+        """True connection state for /api/activity, /health and enzoctl doctor."""
+        now = time.time()
+        alive = bool(self._thread and self._thread.is_alive())
+        state = self._state if alive else ("DOWN" if self._state != "IDLE" else "NOT_STARTED")
+        age = round(now - self._last_message_ts, 1) if self._last_message_ts else None
+        stale = bool(age is not None and age > 90.0)
+        return {
+            "state": state,
+            "thread_alive": alive,
+            "ws_open": self._ws is not None,
+            "buffered_tokens": len(self._recent_tokens),
+            "tokens_seen": self._token_count,
+            "messages": self._message_count,
+            "connects": self._connect_count,
+            "last_message_age_sec": age,
+            "stale": stale,
+            "last_error": self._last_error,
+            "uptime_sec": round(now - self._started_at, 1) if self._started_at else None,
+            "subscribed_trades": len(self._subscribed_trades),
+        }
 
     def start(self):
         if self._thread and self._thread.is_alive():
             return
         self._stop_event.clear()
+        self._started_at = time.time()
+        self._state = "CONNECTING"
+        self._last_error = None
         self._thread = threading.Thread(target=self._run_loop, daemon=True, name="enzo-pumpdev-ws")
         self._thread.start()
         _LOGGER.info("PumpDev WebSocket Streaming Client initialized.")
@@ -166,19 +203,29 @@ class PumpDevStreamClient:
         try:
             import websockets
         except ImportError:
-            _LOGGER.warning("Python 'websockets' package not installed. PumpDev real-time streaming inactive.")
+            self._state = "DOWN"
+            self._last_error = ("Python 'websockets' package not installed — the launch feed "
+                                "cannot connect, so discovery yields 0 candidates")
+            _LOGGER.error(self._last_error)
+            _LOGGER.error("Fix: python3 -m pip install websockets   (or: bash bootstrap.sh)")
             return
 
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
 
         async def _connect_and_listen():
+            backoff = 3.0
             while not self._stop_event.is_set():
                 url = self._get_ws_url()
                 try:
                     _LOGGER.info(f"Connecting to PumpDev WebSocket stream...")
+                    self._state = "CONNECTING"
                     async with websockets.connect(url, ping_interval=20, ping_timeout=15) as ws:
                         self._ws = ws
+                        self._state = "STREAMING"
+                        self._connect_count += 1
+                        self._last_error = None
+                        backoff = 3.0
                         # 1. Subscribe to new token creations
                         await ws.send(json.dumps({"method": "subscribeNewToken"}))
                         _LOGGER.info("[✓] Subscribed to PumpDev 'subscribeNewToken' stream.")
@@ -199,15 +246,30 @@ class PumpDevStreamClient:
                             except asyncio.TimeoutError:
                                 await ws.ping()
                 except Exception as e:
-                    _LOGGER.warning(f"PumpDev WebSocket disconnected ({e}). Reconnecting in 3s...")
+                    self._state = "RETRYING"
+                    self._last_error = f"{type(e).__name__}: {e}"
+                    # Exponential backoff, capped at 60s. A fixed 3s retry wrote
+                    # ~28,800 identical log lines per day whenever the endpoint
+                    # was unreachable, burying every other message in the log.
+                    _LOGGER.warning("PumpDev WebSocket disconnected (%s%s). Retrying in %.0fs...",
+                                    type(e).__name__,
+                                    f": {e}" if str(e) else " (no detail)",
+                                    backoff)
                     self._ws = None
-                    await asyncio.sleep(3.0)
+                    waited = 0.0
+                    while waited < backoff and not self._stop_event.is_set():
+                        await asyncio.sleep(0.5)
+                        waited += 0.5
+                    backoff = min(60.0, backoff * 1.7)
 
         try:
             self._loop.run_until_complete(_connect_and_listen())
         except Exception as e:
-            _LOGGER.debug(f"PumpDev loop terminated: {e}")
+            self._last_error = f"{type(e).__name__}: {e}"
+            _LOGGER.warning(f"PumpDev loop terminated: {e}")
         finally:
+            if not self._stop_event.is_set():
+                self._state = "DOWN"
             self._loop.close()
 
     def _resolve_market_cap_usd(self, event: dict) -> Optional[float]:
@@ -233,6 +295,10 @@ class PumpDevStreamClient:
 
     def _handle_ws_message(self, raw_msg: str):
         try:
+            self._message_count += 1
+            self._last_message_ts = time.time()
+            if self._state != "STREAMING":
+                self._state = "STREAMING"
             event = json.loads(raw_msg)
             if not isinstance(event, dict):
                 return
@@ -243,6 +309,7 @@ class PumpDevStreamClient:
 
             # 1. Handle New Token Creation
             if tx_type == "create" and mint:
+                self._token_count += 1
                 mcap_usd = self._resolve_market_cap_usd(event) or 0.0
                 mcap_sol = float(event.get("marketCapSol") or event.get("vSolInBondingCurve") or 0.0)
 

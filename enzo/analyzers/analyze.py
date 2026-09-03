@@ -125,7 +125,10 @@ def analyze(merged: dict, config: dict = None) -> dict:
     min_conf = float(ma.get("min_confidence_score", 55))
     max_holder_pct = float(ma.get("max_holder_percentage", 100) or 100)
 
-    liq = float(sig.get("liquidity_usd", sec.get("liquidity", 0)) or 0)
+    liq_raw = sig.get("liquidity_usd")
+    if liq_raw is None:
+        liq_raw = sec.get("liquidity")
+    liq = float(liq_raw or 0)
     vol_raw = sig.get("volume_24h_usd")
     has_volume = vol_raw is not None
     vol = float(vol_raw) if has_volume else 0.0
@@ -204,10 +207,30 @@ def analyze(merged: dict, config: dict = None) -> dict:
 
     if security_status == "DANGEROUS" and not hard_reject:
         rejected.append("SECURITY: DANGEROUS (deep rug signals)")
-    if liq < min_liq:
+    if liq_raw is None:
+        rejected.append("Liquidity UNKNOWN (provider returned no liquidity field)")
+    elif liq < min_liq:
         rejected.append(f"Liquidity ${liq:,.0f} < min ${min_liq:,.0f}")
     else:
         supporting.append(f"Liquidity ${liq:,.0f} >= min ${min_liq:,.0f}")
+
+    # ── Data availability gate (runs BEFORE the quality gates) ──────────────
+    # If the provider returned nothing, say so. Reporting "Market cap $0 < min"
+    # for a token whose data never arrived is what made 1,649 rejections look
+    # like bad tokens instead of a broken/rate-limited data source.
+    dq = merged.get("data_quality") or {}
+    missing = [n for n, v in (("market_cap_usd", market_cap), ("liquidity_usd", liq_raw),
+                              ("volume_24h_usd", vol_raw), ("price_usd", sig.get("price_usd")),
+                              ("buy_pressure_pct", bp_raw)) if v is None]
+    for extra in (dq.get("missing") or []):
+        if extra not in missing:
+            missing.append(extra)
+    no_data = len(missing) >= 3 or (dq.get("rate_limited") and market_cap is None)
+    if no_data:
+        why = "GMGN rate limit active" if dq.get("rate_limited") else "provider returned no usable fields"
+        rejected.append(f"NO_MARKET_DATA: {why} (missing: {', '.join(missing[:5])})")
+        # Copy, do not mutate: hard_reject is the list object inside sec_axis.
+        hard_reject = list(hard_reject) + ["NO_MARKET_DATA"]
 
     # Real Quality Gates (reject when the data is present and below the yaml floor)
     if min_mcap and market_cap is not None and float(market_cap) < min_mcap:
@@ -267,7 +290,18 @@ def analyze(merged: dict, config: dict = None) -> dict:
     hard_fail = bool(rejected)
     if hard_fail:
         decision = "IGNORE"
-        reason = "Failed security/liquidity gate (hard risk rejection)."
+        # Name the ACTUAL reason. "Failed security/liquidity gate" was shown for
+        # every rejection — including a provider that simply returned no data —
+        # which is why the audit log could not tell a risky token from a broken
+        # data source.
+        if "NO_MARKET_DATA" in hard_reject:
+            nd = next((r for r in rejected if str(r).startswith("NO_MARKET_DATA")), "NO_MARKET_DATA")
+            decision = "DATA_ERROR"
+            reason = f"Market data unavailable — {nd}"
+        else:
+            first = str(rejected[0])[:160]
+            extra = f" (+{len(rejected) - 1} more)" if len(rejected) > 1 else ""
+            reason = f"Rejected by quality gate: {first}{extra}"
     elif conf >= min_conf and security_status in ("SAFE", "WARNING"):
         decision = "BUY"
         reason = "No security risk; weighted confidence above threshold."

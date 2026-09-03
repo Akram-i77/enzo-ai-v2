@@ -1,0 +1,234 @@
+# ENZO × OpenClaw — عقد التشغيل والمراقبة
+### Deployment & supervision contract
+
+هذا الملف يشرح **بالضبط** كيف يشغّل OpenClaw بوت ENZO ويراقبه، وما الذي يعنيه كل
+رقم وكل حالة. كل ما هنا مبني على سلوك مُختبَر، لا على نوايا.
+
+> **القاعدة الذهبية:** إذا شككت في أي شيء، شغّل
+> `./enzoctl doctor` — فهو يفحص كل شيء ويعطيك سبب العطل وطريقة إصلاحه.
+
+---
+
+## 1. التشغيل لأول مرة / First run
+
+```bash
+cd <workspace>/enzo-ai-v2
+bash bootstrap.sh          # يثبّت المتطلبات ويتحقق (لا يلمس أموالك ولا إعداداتك)
+./enzoctl doctor           # يجب أن تكون كل البنود ✔
+./enzoctl start            # يشغّل المحرك + اللوحة + تيليجرام
+./enzoctl status           # للتأكد
+```
+
+`bootstrap.sh` يخرج بـ **exit code 0** عند النجاح و **1** عند الفشل، ويطبع لكل خطوة
+سطراً بصيغة `[ OK ]` / `[FAIL]` / `[WARN]` — أي أنه قابل للفحص آلياً من OpenClaw.
+
+---
+
+## 2. نقاط المراقبة / Supervision endpoints
+
+كل ما يحتاجه OpenClaw لمراقبة البوت، بلا قراءة ملفات أو تخمين:
+
+| الغرض | الأمر / الرابط | ملاحظات |
+|---|---|---|
+| **هل هو حي؟** | `GET /health` | `200` = سليم، **`503` = توجد مشكلة**. الجسم صغير ومناسب لـ `grep` |
+| الحالة الكاملة | `GET /api/health` | كل التفاصيل: رأس المال، التغذية، المنفّذ، المحرك |
+| من الطرفية | `./enzoctl health` | نفسها، بلا HTTP |
+| حالة مقروءة | `./enzoctl status` | **exit 0** = يعمل، **exit 1** = لا يعمل |
+| فحص شامل | `./enzoctl doctor` | **exit 0** = سليم، **exit 1** = مشكلة حرجة |
+| لأي آلة | أي أمر + `--json` | مثال: `./enzoctl status --json` |
+| من القرص مباشرة | `data/run/enzo-health.json` | يُكتب تلقائياً — يُقرأ حتى لو ماتت العملية |
+| معرّف العملية | `data/run/enzo.pid` | يُحذف عند الإيقاف النظيف |
+| سجل المشرف | `data/logs/supervisor.log` | مخرجات `enzoctl start` |
+
+### مثال فحص آلي / Example automated probe
+
+```bash
+code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
+[ "$code" = "200" ] || echo "ENZO degraded or down"
+```
+
+---
+
+## 3. ما الذي تعنيه الحالات / What the statuses mean
+
+`/api/health` يعيد `status` بإحدى ثلاث قيم:
+
+| القيمة | المعنى | ما يجب فعله |
+|---|---|---|
+| `ok` | كل الأنظمة تعمل ولا توجد مشاكل | لا شيء |
+| `degraded` | البوت يعمل لكن توجد مشكلة في `problems[]` | اقرأ القائمة — كل عنصر يحمل سببه |
+| `error` | تعذّرت قراءة الحالة أصلاً | `./enzoctl logs` ثم `./enzoctl doctor` |
+
+### رموز المشاكل المعروفة / Known problem codes
+
+كل رمز يظهر في `problems[]` مع سببه:
+
+| الرمز | المعنى | الإصلاح |
+|---|---|---|
+| `TRADING_PAUSED` | البوت موقوف يدوياً — لا دورات فحص | `./enzoctl resume` |
+| `RISK_HALTED: <سبب>` | قاطع المخاطر أوقف التداول | راجع `max_drawdown` / `max_daily_loss` |
+| `ENGINE_STALE` | المحرك لم يفحص منذ مدّة طويلة | `./enzoctl logs` |
+| `ENGINE_NEVER_SCANNED` | المحرك بدأ لكنه لم يكمل دورة بعد | انتظر دورة واحدة، ثم افحص السجل |
+| `EXIT_MONITOR_DOWN_WITH_OPEN_POSITIONS` | **مراكز مفتوحة بلا مراقبة** — أخطر حالة | `./enzoctl restart` فوراً |
+| `CAPITAL_BLOCKED` | تعذّرت قراءة المحفظة → **فتح المراكز محجوب** | `mp login` / `mp consent accept` |
+| `CAPITAL_SYNC_FAILED` | قراءة المحفظة فشلت (ضمن فترة السماح) | يتعافى تلقائياً عند نجاح القراءة |
+| `CAPITAL_BELOW_MIN_TRADE` | الرصيد أقل من `min_trade_usd` | موّل المحفظة |
+| `EXECUTOR_NOT_READY` | CLI مفقود / غير مُصادَق / المحفظة غير موجودة | الرسالة تحمل السبب المحدد |
+| `PUMPDEV_RETRYING` / `PUMPDEV_DOWN` | تغذية الإطلاقات الجديدة ميتة | تحقق من الشبكة وحزمة `websockets` |
+| `PUMPDEV_STALE` | التغذية متصلة لكن بلا رسائل منذ 90+ ثانية | عادةً تُستأنف تلقائياً |
+| `GMGN_RATE_LIMITED` | حظر مؤقت من GMGN | ينتهي تلقائياً |
+| `GMGN_DISCOVERY_FAILED` | أمر `gmgn-cli` فشل لكل الفئات | ثبّت `gmgn-cli` أو صحّح مساره |
+| `DISCOVERY_FAULT[<مصدر>]` | مصدر اكتشاف معيّن رمى خطأً | السبب مرفق |
+| `DASHBOARD_RENDER_ERROR` | تعذّر توليد اللوحة | `./enzoctl dashboard` لرؤية الخطأ |
+
+---
+
+## 4. سياسة إعادة التشغيل / Restart policy
+
+`enzoctl start` يفصل العملية عن الطرفية (`setsid`) ويكتب `data/run/enzo.pid`.
+
+- **SIGTERM** → إيقاف نظيف: المحرك يوقّف مراقب الخروج ويحذف ملف PID.
+- إذا لم يستجب خلال 15 ثانية → `enzoctl stop` يرسل **SIGKILL** ويحذّر.
+- المراكز المفتوحة تبقى في الدفتر، ومراقب الخروج يلتقطها عند إعادة التشغيل.
+
+```bash
+./enzoctl stop            # SIGTERM ثم SIGKILL بعد 15 ثانية
+./enzoctl restart         # إيقاف ثم تشغيل
+./enzoctl stop --grace 30 # مهلة أطول
+```
+
+**مهم:** إن كان OpenClaw يدير العملية بنفسه (systemd / pm2 / حاوية)، فاستخدم
+`enzoctl _supervise --no-dashboard --no-telegram` كأمر التشغيل المباشر — فهو يعمل
+في المقدمة (foreground) ولا يفصل نفسه، وهذا ما تتوقعه أدوات الإشراف.
+
+---
+
+## 5. دورة الحياة المالية / Money lifecycle
+
+هذا أهم قسم. كل خطوة فيها حماية قابلة للمراقبة:
+
+```
+دورة فحص (كل 60 ثانية افتراضياً)
+  │
+  ├─ 1. مزامنة رأس المال من المحفظة الحقيقية (mp token balance list)
+  │      ✗ فشلت + لا توجد قراءة حديثة  →  رأس المال = 0  →  فتح المراكز محجوب
+  │      ✗ فشلت + توجد قراءة < 300 ثانية → تُستخدم القراءة السابقة (تُعلَّم stale)
+  │      ✓ نجحت → USDC + (SOL القابل للنشر × السعر)، مع حجز رسوم SOL
+  │
+  ├─ 2. الاكتشاف: PumpDev WebSocket + GMGN (4 فئات) + قائمة المراقبة
+  │      أي فشل → يُسجَّل كتحذير مرئي + يظهر في /health
+  │
+  ├─ 3. التحليل العميق (6 محاور) لأعلى 12 مرشحاً
+  │      بيانات ناقصة → DATA_ERROR / NO_MARKET_DATA (لا يُخلط مع "عملة رديئة")
+  │
+  ├─ 4. قرار BUY؟  →  **بوابة القابلية للتداول أولاً**
+  │      لا يوجد مسار عبر swaps.xyz → NO_ROUTE
+  │      → لا يُفتح أي مركز، ويُبلَّغ المشغّل، وتُحفظ فترة انتظار ساعة
+  │        (حتى لا يُحرق حدّ الطلبات على طريق مسدود)
+  │
+  ├─ 5. تحجيم المركز على رأس المال المُتحقَّق منه
+  │      الحجم < min_trade_usd → يُرفض مع سبب واضح (لا مركز وهمي)
+  │      الحجم > max_trade_usd → يُقصّ (ينطبق على الشراء فقط، لا يمنع البيع أبداً)
+  │
+  ├─ 6. التنفيذ: mp --json token swap ...  (وحدات بشرية، بلا --yes)
+  │      ✓ نجح → يُفتح المركز ويُربط بـ tx_hash
+  │      ✗ فشل → يُتراجع عن المركز + **يُبلَّغ المشغّل بالسبب وطريقة الإصلاح**
+  │
+  └─ 7. مراقب الخروج (كل ثانيتين) يراقب المراكز المفتوحة
+         ✗ فشل البيع الحقيقي → تنبيه "عملات يتيمة في المحفظة" مع الأمر اليدوي
+```
+
+### مبدأ السلامة المعتمد / The safety principle
+
+> **عند الشك، البوت يرفض التداول ويخبرك — لا يخمّن.**
+
+مثال واقعي من الاختبار: عندما تعذّرت قراءة المحفظة، كان بإمكان الكود أن يرجع إلى
+رقم الدفتر الاحتياطي ($10,000 وهمية) ويحسب حجم مركز $200 ضد محفظة لا تملكه. بدلاً
+من ذلك يُحجب فتح المراكز ويُعلن `CAPITAL_BLOCKED`.
+
+---
+
+## 6. الأوامر اليومية / Daily commands
+
+```bash
+./enzoctl status              # نظرة سريعة
+./enzoctl positions            # المراكز المفتوحة + آخر الصفقات
+./enzoctl wallet               # الأرصدة الحقيقية + رأس المال القابل للنشر
+./enzoctl logs -f              # متابعة السجل حيّاً
+./enzoctl logs audit -n 200    # آخر 200 حدث تدقيق (ملوّن)
+./enzoctl logs supervisor      # سجل المشرف
+./enzoctl scan --force         # دورة فحص إضافية الآن
+./enzoctl pause                # إيقاف مؤقت (المراكز تبقى مُراقَبة)
+./enzoctl resume               # استئناف
+./enzoctl mode paper           # تحويل إلى محاكاة (يُنسخ احتياطياً تلقائياً)
+./enzoctl mode live            # تحويل إلى تداول حقيقي
+./enzoctl config execution     # عرض قسم معيّن من الإعدادات الفعّالة
+./enzoctl dashboard            # إعادة توليد لوحة HTML
+```
+
+كل أمر يقبل `--json`.
+
+---
+
+## 7. ملفات الحالة / State files
+
+| الملف | المحتوى |
+|---|---|
+| `config/enzo-config.yaml` | **المصدر الوحيد للحقيقة** — 24 قسماً، مع تعليقات |
+| `config/enzo-control.json` | `paused` — يُدار عبر `enzoctl pause/resume` |
+| `config/enzo-watchlist.json` | قائمة المراقبة. المفتاح `watchlist` (يقبل `mints`/`tokens` أيضاً) |
+| `config/enzo-secrets.json` | **لا يُفترض أن يكون في git** — انظر التحذير أدناه |
+| `data/enzo.db` | دفتر الحسابات (SQLite WAL): المراكز، الصفقات، رأس المال |
+| `data/run/enzo.pid` | معرّف العملية |
+| `data/run/enzo-health.json` | آخر لقطة صحة (يُقرأ حتى لو ماتت العملية) |
+| `data/run/enzo-capital.json` | آخر قراءة لرأس المال + عمرها |
+| `data/enzo-trade-gate.json` | ذاكرة العملات غير القابلة للتداول (فترة الانتظار) |
+| `data/enzo-audit.jsonl` | سجل التدقيق. يُقرأ من النهاية (أسرع 40×) |
+| `data/logs/supervisor.log` | مخرجات المشرف |
+
+---
+
+## 8. ⚠ تحذير أمني / Security warning
+
+`config/enzo-secrets.json` **مُتتبَّع في git**، أي أن توكن تيليجرام بداخله مكشوف
+لكل من يقرأ المستودع. تعامل معه كمسروق:
+
+1. افتح **@BotFather** في تيليجرام → `/revoke` → أنشئ tokناً جديداً.
+2. ضع التوكن الجديد في `config/enzo-secrets.json`.
+3. أخرج الملف من تتبّع git:
+   ```bash
+   git rm --cached config/enzo-secrets.json
+   echo "config/enzo-secrets.json" >> .gitignore
+   echo "data/" >> .gitignore
+   ```
+
+> لم تُنفَّذ هذه الخطوات تلقائياً لأن نطاق العمل المتفق عليه كان **إصلاح الأعطال
+> فقط** بلا إعادة هيكلة للمستودع أو تغيير في تاريخ git. القرار قرارك.
+
+---
+
+## 9. الاختبارات / Tests
+
+```bash
+PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py     # 47 assertion
+PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py   # 43 assertion
+```
+
+الاختبار الثاني يعمل في **صندوق معزول** (`ENZO_HOME` مؤقت) — لا يلمس قاعدة
+بياناتك ولا سجلاتك ولا أموالك. وهو يثبت المسار الكامل: اكتشاف → تحليل → BUY →
+بوابة القابلية → تحجيم على رأس المال الحقيقي → تنفيذ MoonPay → مركز مربوط بـ
+tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
+
+---
+
+## 10. التشخيص السريع / Quick triage
+
+| العَرَض | أول أمر | الأرجح |
+|---|---|---|
+| "البوت لا يتداول" | `./enzoctl doctor` | انظر أول بند ✖ حرج |
+| `/health` يعيد 503 | `./enzoctl health` | قائمة `problems` تحمل السبب |
+| "0 مرشحين" كل دورة | `./enzoctl logs -n 50` | `GMGN_DISCOVERY_FAILED` أو `PUMPDEV_*` |
+| اللوحة لا تتحدث | `./enzoctl status` | انظر `engine.last_scan_status` |
+| مركز مفتوح لا يُغلق | `./enzoctl status` | `EXIT_MONITOR_DOWN_WITH_OPEN_POSITIONS` |
+| رفض شراء متكرر | `./enzoctl logs audit -n 100` | `NO_ROUTE` = عملة على منحنى الربط |
+| الحجم أصغر من المتوقع | `./enzoctl wallet` | رأس المال الحقيقي مقابل `risk_per_trade` |

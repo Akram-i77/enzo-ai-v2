@@ -9,16 +9,199 @@ import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 
-from enzo.core.config import load_config, PORTFOLIO_JSON_PATH
+from enzo.core.config import load_config, PORTFOLIO_JSON_PATH, RUN_DIR
 import enzo.core.db as db
 import enzo.core.learn as learn
 import enzo.core.audit as audit
+import enzo.core.log as log
 from enzo.ui import notify
 from enzo.providers import gmgn, pump
+from enzo.execution import executor
+
+_LOGGER = log.get_logger("enzo.portfolio")
+
+# Deployable-capital snapshot, shared across processes (engine, dashboard,
+# enzoctl) without adding a DB migration.
+CAPITAL_PATH = os.path.join(RUN_DIR, "enzo-capital.json")
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deployable capital — the number position sizing is actually based on.
+#
+# Before this existed, sizing used portfolio_state.initial_capital, a static
+# value that sat at $2.06. At 1 % risk with a 50 % stop that produced a $0.04
+# position, below execution.min_trade_usd ($1.00), so every BUY was rejected at
+# the executor and rolled back. The bot could never enter a trade regardless of
+# signal quality.
+# ─────────────────────────────────────────────────────────────────────────────
+def _read_capital_file() -> dict:
+    try:
+        if os.path.exists(CAPITAL_PATH):
+            with open(CAPITAL_PATH, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                return d if isinstance(d, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def _write_capital_file(d: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(CAPITAL_PATH), exist_ok=True)
+        tmp = CAPITAL_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, indent=2)
+        os.replace(tmp, CAPITAL_PATH)
+    except Exception:
+        pass
+
+
+def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = False) -> dict:
+    """Refresh deployable capital from the real wallet (live + capital_source=wallet).
+
+    Read-only by default. Pass rebase=True (the engine does, once per cycle) to
+    also rebase portfolio_state.initial_capital onto the wallet figure — and even
+    then only when the ledger number is genuinely implausible and there is no
+    closed-trade history, so ROI/win-rate never silently change meaning and the
+    drawdown baseline is not reset every cycle.
+
+    Read-only matters: `enzoctl doctor` and `enzoctl wallet` must be able to
+    report capital without mutating the ledger.
+
+    Returns {"source": "wallet"|"ledger", "usd": float, "ok": bool, "detail": str}
+    """
+    cfg = cfg or load_config()
+    ex = cfg.get("execution") or {}
+    paper = bool(cfg.get("paper_mode", True))
+    source = str(ex.get("capital_source") or "wallet")
+    ttl = float(ex.get("capital_sync_ttl_sec", 60))
+
+    state = load_state()
+    ledger_cash = float(state.get("initial_capital", 0.0) or 0.0) + float(state.get("realized_pnl", 0.0) or 0.0)
+
+    if paper or source != "wallet":
+        out = {"source": "ledger", "usd": round(max(ledger_cash, 0.0), 2), "ok": True,
+               "detail": "paper mode" if paper else f"capital_source={source}"}
+        _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
+        return out
+
+    snap = _read_capital_file()
+    age = time.time() - float(snap.get("ts") or 0.0)
+    if not force and snap.get("ok") and age < ttl:
+        return {**snap, "age_sec": round(age, 1)}
+
+    cap = executor.sync_wallet_capital(force=force, cfg=cfg)
+    if not cap.get("ok"):
+        detail = cap.get("detail") or "wallet balance read failed"
+        # MONEY SAFETY: in LIVE mode we refuse to size positions on a number we
+        # could not verify against the real wallet. db._fallback_state() returns
+        # a fictitious $10,000 when the ledger cannot be read, and sizing 1% of
+        # that would attempt a $200 trade against a wallet holding far less.
+        # Refusing is fail-safe and loud; guessing is silent and expensive.
+        # A recent successful reading may still be used briefly (grace window).
+        grace = float(ex.get("capital_sync_grace_sec", 300))
+        snap_age = time.time() - float(snap.get("ts") or 0.0)
+        if snap.get("ok") and snap.get("source") == "wallet" and snap_age < grace:
+            _LOGGER.warning("Capital sync failed (%s) — using last good wallet reading "
+                            "$%.2f from %.0fs ago (grace %.0fs)",
+                            detail, float(snap.get("usd") or 0.0), snap_age, grace)
+            out = {"source": "wallet", "usd": float(snap.get("usd") or 0.0), "ok": True,
+                   "detail": f"stale-but-in-grace: {detail}", "stale": True,
+                   "age_sec": round(snap_age, 1)}
+        else:
+            _LOGGER.error("Capital sync failed (%s) and no fresh wallet reading is "
+                          "available — LIVE position sizing is BLOCKED until the "
+                          "wallet can be read. Fix the CLI/auth and it resumes "
+                          "automatically.", detail)
+            out = {"source": "wallet", "usd": 0.0, "ok": False, "detail": detail,
+                   "blocked": True}
+            try:
+                audit.log_event(category="RISK", level="ERROR",
+                                message=f"LIVE capital unreadable — trading blocked: {detail}",
+                                data={"detail": str(detail)[:300]})
+            except Exception:
+                pass
+        _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
+        return out
+
+    usd = float(cap.get("total_usd", 0.0) or 0.0)
+    out = {"source": "wallet", "usd": round(usd, 2), "ok": True, "detail": "",
+           "wallet": cap.get("wallet"), "usdc": cap.get("usdc"), "sol": cap.get("sol"),
+           "sol_price": cap.get("sol_price"), "deployable_sol": cap.get("deployable_sol"),
+           "sol_reserve": cap.get("sol_reserve")}
+    _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
+
+    if rebase:
+        _maybe_rebase(usd, cap, state)
+
+    return out
+
+
+def _maybe_rebase(usd: float, cap: dict, state: dict) -> None:
+    """Rebase initial_capital onto the real wallet figure when it is implausible.
+
+    Guarded so it is convergent rather than something that fires every cycle:
+      * never with closed-trade history (ROI/win-rate would change meaning),
+      * never while a position is open (the ledger would no longer add up),
+      * only when the ledger figure is below the minimum tradable size, or is
+        out by more than 50% of the wallet reading.
+    Without the last guard the drawdown baseline would be reset on every cycle
+    and the max_drawdown circuit breaker would become meaningless.
+    """
+    try:
+        if usd <= 0:
+            return
+        if state.get("closed_positions") or (state.get("open_positions") or {}):
+            return
+        ledger = float(state.get("initial_capital") or 0.0)
+        cfg = load_config()
+        min_trade = float((cfg.get("execution") or {}).get("min_trade_usd", 1.0))
+        implausible = ledger < min_trade or abs(ledger - usd) > 0.5 * max(usd, 1.0)
+        if not implausible:
+            return
+        if db.atomic_update_initial_capital(usd):
+            _LOGGER.info("initial_capital rebased to live wallet capital: $%.2f (was $%.2f)",
+                         usd, ledger)
+            audit.log_event(
+                category="SYSTEM", level="INFO",
+                message=f"Capital base rebased to live wallet balance: ${usd:,.2f} "
+                        f"(was ${ledger:,.2f}; USDC ${float(cap.get('usdc') or 0):,.2f} + "
+                        f"{float(cap.get('deployable_sol') or 0):.4f} SOL)",
+                data={"usd": round(usd, 2), "previous": round(ledger, 2), "source": "wallet"},
+            )
+    except Exception as e:
+        _LOGGER.debug("initial_capital rebase skipped: %s", e)
+
+
+def deployable_capital(cfg: dict = None, state: dict = None, force: bool = False) -> float:
+    """USD available to deploy into new positions right now.
+
+    In LIVE+wallet mode this is the verified wallet balance (0.0 if it could not
+    be read, which blocks sizing). Only paper mode / capital_source=ledger falls
+    back to ledger cash.
+    """
+    res = sync_capital_base(force=force, cfg=cfg)
+    try:
+        return max(0.0, float(res.get("usd") or 0.0))
+    except Exception:
+        cfg = cfg or load_config()
+        if not bool(cfg.get("paper_mode", True)):
+            return 0.0
+        state = state or load_state()
+        return max(0.0, float(state.get("initial_capital", 0.0) or 0.0)
+                   + float(state.get("realized_pnl", 0.0) or 0.0))
+
+
+def capital_info() -> dict:
+    """Last known capital snapshot for the dashboard / status output."""
+    d = _read_capital_file()
+    if d.get("ts"):
+        d["age_sec"] = round(time.time() - float(d["ts"]), 1)
+    return d
 
 
 def _risk_pct_for(confidence: float, cfg: dict) -> float:
@@ -51,16 +234,22 @@ def equity(state: dict) -> float:
     return eq
 
 
-def _can_open(state: dict, cfg: dict, size_usd: float) -> Tuple[bool, str]:
+def _can_open(state: dict, cfg: dict, size_usd: float, capital_usd: float = None) -> Tuple[bool, str]:
+    """Exposure/slot gate. `capital_usd` is the DEPLOYABLE base (live wallet
+    balance in live mode) rather than ledger equity, so the max_exposure cap
+    refers to money the bot can actually spend."""
     rm = cfg.get("risk_management", {})
     max_open = int(rm.get("max_open_positions", 5))
     max_exp_pct = float(rm.get("max_exposure", 30.0))
     open_count = len(state.get("open_positions") or {})
     if open_count >= max_open:
         return False, f"max_open_positions reached ({max_open})"
+    base = float(capital_usd) if capital_usd is not None else equity(state)
     exposure = sum(float(p.get("size_usd", 0.0)) for p in (state.get("open_positions") or {}).values())
-    if exposure + size_usd > equity(state) * (max_exp_pct / 100.0):
-        return False, "max_exposure limit"
+    cap = base * (max_exp_pct / 100.0)
+    if exposure + size_usd > cap:
+        return False, (f"max_exposure limit (${exposure + size_usd:,.2f} would exceed "
+                       f"{max_exp_pct:.0f}% of ${base:,.2f} = ${cap:,.2f})")
     return True, "ok"
 
 
@@ -123,6 +312,39 @@ def current_market_cap(mint: str, max_age: float = 10.0) -> Optional[float]:
     return None
 
 
+def prospective_size(decision: dict, cfg: dict = None) -> dict:
+    """Compute the size open_position WOULD use, without opening anything.
+
+    The live tradability gate needs the real notional (a $1 probe would pass a
+    route check that the actual $5.50 order might fail on a thin market), but
+    it must run before the ledger position exists.
+    """
+    cfg = cfg or load_config()
+    state = load_state()
+    rm = cfg.get("risk_management", {}) or {}
+    xs = cfg.get("exit_strategy", {}) or {}
+    risk_pct = _risk_pct_for(float(decision.get("confidence_score") or 0), cfg)
+    max_exp_pct = float(rm.get("max_exposure", 30.0))
+    stop_pct = float(xs.get("stop_loss_percentage", 50.0)) / 100.0
+
+    capital_usd = deployable_capital(cfg, state)
+    eq = capital_usd if capital_usd > 0 else equity(state)
+    risk_usd = eq * (risk_pct / 100.0)
+    size_usd = risk_usd / stop_pct if stop_pct > 0 else risk_usd
+    size_usd = min(size_usd, eq * (max_exp_pct / 100.0))
+
+    ex_cfg = cfg.get("execution", {}) or {}
+    ps_cfg = cfg.get("position_sizing", {}) or {}
+    floor_usd = float(ps_cfg.get("min_position_usd", ex_cfg.get("min_trade_usd", 1.0)) or 0.0)
+    ceil_usd = float(ex_cfg.get("max_trade_usd", 0.0) or 0.0)
+    if ceil_usd:
+        size_usd = min(size_usd, ceil_usd)
+
+    return {"size_usd": round(size_usd, 6), "capital_usd": round(float(eq), 2),
+            "risk_pct": round(float(risk_pct), 3), "floor_usd": floor_usd,
+            "ceil_usd": ceil_usd, "above_floor": size_usd >= floor_usd}
+
+
 def open_position(decision: dict, cfg: dict = None) -> dict:
     """Atomically open a new trading position."""
     cfg = cfg or load_config()
@@ -147,11 +369,29 @@ def open_position(decision: dict, cfg: dict = None) -> dict:
     stop_pct = float(xs.get("stop_loss_percentage", 50.0)) / 100.0
     max_hours = float(xs.get("max_holding_time_hours", 48))
 
-    eq = equity(state)
+    # Sizing base: real deployable capital (live wallet) instead of a static
+    # ledger number. This is the fix for "$2.06 capital -> $0.04 positions".
+    capital_usd = deployable_capital(cfg, state)
+    eq = capital_usd if capital_usd > 0 else equity(state)
     risk_usd = eq * (risk_pct / 100.0)
     size_usd = risk_usd / stop_pct if stop_pct > 0 else risk_usd
     max_exp_usd = eq * (max_exp_pct / 100.0)
     size_usd = min(size_usd, max_exp_usd)
+
+    # Never size below what the executor can actually send, and never above the
+    # configured per-trade ceiling.
+    ex_cfg = cfg.get("execution", {}) or {}
+    ps_cfg = cfg.get("position_sizing", {}) or {}
+    floor_usd = float(ps_cfg.get("min_position_usd", ex_cfg.get("min_trade_usd", 1.0)) or 0.0)
+    ceil_usd = float(ex_cfg.get("max_trade_usd", 0.0) or 0.0)
+    if size_usd < floor_usd:
+        return {"ok": False,
+                "reason": (f"SIZE_BELOW_FLOOR: computed ${size_usd:,.4f} from ${eq:,.2f} deployable "
+                           f"capital at {risk_pct:.1f}% risk is below the ${floor_usd:,.2f} minimum. "
+                           f"Fund the wallet, raise risk_per_trade, or lower min_trade_usd.")}
+    if ceil_usd and size_usd > ceil_usd:
+        size_usd = ceil_usd
+
     amount = size_usd / entry
 
     entry_mc = decision.get("entry_market_cap") or decision.get("market_cap_usd")
@@ -166,7 +406,7 @@ def open_position(decision: dict, cfg: dict = None) -> dict:
     halt = is_halted(state, cfg)
     if halt:
         return {"ok": False, "reason": f"HALTED: {halt}"}
-    ok, reason = _can_open(state, cfg, size_usd)
+    ok, reason = _can_open(state, cfg, size_usd, capital_usd=eq)
     if not ok:
         return {"ok": False, "reason": reason}
 
@@ -182,6 +422,8 @@ def open_position(decision: dict, cfg: dict = None) -> dict:
         "take_profit_mc": (tp_mc or (entry_mc * (1 + tp_pct / 100.0))) if entry_mc else None,
         "size_usd": round(size_usd, 2),
         "initial_size_usd": round(size_usd, 2),
+        "capital_base_usd": round(float(eq), 2),
+        "risk_pct_used": round(float(risk_pct), 3),
         "amount": amount,
         "initial_amount": amount,
         "realized_pnl_total": 0.0,

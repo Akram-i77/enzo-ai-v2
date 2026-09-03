@@ -79,10 +79,65 @@ def record(decision: dict, extra: dict = None):
         pass
 
 
-def load_audit(n: int = None) -> list:
+_TAIL_BLOCK = 64 * 1024  # read the audit log backwards in 64 KB blocks
+
+
+def _tail_lines(path: str, max_lines: int) -> list:
+    """Return the last `max_lines` lines of a file WITHOUT reading all of it.
+
+    `load_audit()` used to parse every line of enzo-audit.jsonl and only then
+    slice `rows[-n:]`. The file had already grown to 4.7 MB / 14,528 rows (83 %
+    of them duplicate stale-price warnings), and /api/activity calls this on
+    every 10-second dashboard poll — so the dashboard got slower until it
+    stalled. Seeking from the end keeps this O(rows requested).
+    """
+    out: list = []
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return out
+    if size == 0:
+        return out
+
+    with open(path, "rb") as f:
+        pos = size
+        buf = b""
+        while pos > 0 and len(out) <= max_lines:
+            step = min(_TAIL_BLOCK, pos)
+            pos -= step
+            f.seek(pos)
+            buf = f.read(step) + buf
+            lines = buf.split(b"\n")
+            # the first element is a partial line unless we are at offset 0
+            buf = lines[0] if pos > 0 else b""
+            chunk = lines[1:] if pos > 0 else lines
+            for raw in reversed(chunk):
+                raw = raw.strip()
+                if raw:
+                    out.append(raw)
+                    if len(out) >= max_lines:
+                        break
+        if pos == 0 and buf.strip() and len(out) < max_lines:
+            out.append(buf.strip())
+
+    out.reverse()
     rows = []
+    for raw in out:
+        try:
+            rows.append(json.loads(raw.decode("utf-8", errors="replace")))
+        except Exception:
+            continue
+    return rows
+
+
+def load_audit(n: int = None) -> list:
+    """Load audit rows. With `n`, only the last n rows are read from disk."""
     if not os.path.exists(AUDIT_JSONL_PATH):
-        return rows
+        return []
+    if n:
+        # over-read slightly: some lines may be corrupt or partially written
+        return _tail_lines(AUDIT_JSONL_PATH, int(n) + 16)[-int(n):]
+    rows = []
     with open(AUDIT_JSONL_PATH, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -91,7 +146,38 @@ def load_audit(n: int = None) -> list:
                     rows.append(json.loads(line))
                 except Exception:
                     pass
-    return rows[-n:] if n else rows
+    return rows
+
+
+def rotate_audit(max_bytes: int = 5 * 1024 * 1024, keep: int = 3) -> Optional[str]:
+    """Rotate enzo-audit.jsonl once it exceeds `max_bytes`.
+
+    Returns the archive path, or None when no rotation was needed. Called from
+    the supervisor loop so the activity feed can never grow without bound.
+    """
+    try:
+        if not os.path.exists(AUDIT_JSONL_PATH):
+            return None
+        if os.path.getsize(AUDIT_JSONL_PATH) < max_bytes:
+            return None
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        archive = f"{AUDIT_JSONL_PATH}.{stamp}"
+        os.replace(AUDIT_JSONL_PATH, archive)
+        # prune old archives beyond `keep`
+        archives = sorted(
+            (f for f in os.listdir(os.path.dirname(AUDIT_JSONL_PATH))
+             if f.startswith(os.path.basename(AUDIT_JSONL_PATH) + ".")
+             and ".bak." not in f),
+            reverse=True,
+        )
+        for old in archives[keep:]:
+            try:
+                os.remove(os.path.join(os.path.dirname(AUDIT_JSONL_PATH), old))
+            except OSError:
+                pass
+        return archive
+    except Exception:
+        return None
 
 
 # ================================================================ Live Activity Stream API
