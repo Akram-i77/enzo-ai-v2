@@ -1226,7 +1226,14 @@ def generate() -> str:
     function floorBadge(p) {{
       if (!p || !p.min_floor_applied) return '';
       var er = Number(p.effective_risk_pct || 0);
-      var tip = 'الحجم رُفع إلى الحد الأدنى للصفقة لأن رأس المال صغير.\n' +
+      // NOTE: the escape below must stay doubled (backslash backslash n) in
+      // the Python source, because this whole template is a NON-RAW f-string.
+      // A single backslash-n would be expanded by Python into a REAL newline
+      // inside a single-quoted JS string -> SyntaxError -> the entire script
+      // block dies: every button and the activity stream stop working while
+      // the static HTML still looks alive. Same applies to any backslash
+      // escape written anywhere in this template, comments included.
+      var tip = 'الحجم رُفع إلى الحد الأدنى للصفقة لأن رأس المال صغير.\\n' +
                 'المخاطرة الفعلية: ' + er.toFixed(1) + '% من رأس المال.';
       return ' <span title="' + tip.replace(/"/g, '&quot;') + '"' +
              ' style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;' +

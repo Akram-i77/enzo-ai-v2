@@ -325,6 +325,9 @@ DEFAULTS = {
         # Tokens proven unroutable are skipped for this long (seconds).
         "not_routable_cooldown_sec": 3600,
         "moonpay_bin": "",
+        # MoonPay spells Solana "solana"; the shared `chain` key spells it
+        # "sol" for GMGN. Empty = translate automatically at the MoonPay boundary.
+        "moonpay_chain": "",
     },
     "dashboard": {
         "port": 8077,

@@ -303,6 +303,20 @@ execution:
   # Leave empty to auto-detect; set a full path if installed somewhere unusual.
   moonpay_bin: ""
 
+  # ── اسم السلسلة كما يريده MoonPay / MoonPay's chain identifier ────────────
+  # مهم: مفتاح `chain:` العام في أعلى هذا الملف مضبوط على "sol" لأن برنامج
+  # GMGN يسمّي سولانا كذلك. لكن MoonPay يسميها "solana" ويرفض "sol" بالرسالة:
+  #     Chain definition not found: sol
+  # البوت يترجم الاسم تلقائياً عند كل استدعاء لـ MoonPay، فلا حاجة لتغيير
+  # `chain:` (تغييره سيكسر GMGN). اضبط هذا المفتاح فقط إذا طلب MoonPay يوماً
+  # اسماً مختلفاً. فارغ = ترجمة تلقائية.
+  # IMPORTANT: the shared `chain:` key at the top of this file is "sol" because
+  # that is GMGN's spelling. MoonPay's is "solana" and it rejects "sol". Enzo
+  # translates automatically at every MoonPay boundary, so do NOT change
+  # `chain:` (that would break GMGN). Set this only if MoonPay ever wants a
+  # different identifier. Empty = translate automatically.
+  moonpay_chain: ""
+
   # ── النقل المحلي (اختياري، مغلق افتراضياً) / local API (optional) ──────
   # تشغيل `mp serve` يعطي واجهة HTTP محلية. البوت يستخدم CLI مباشرة بشكل
   # افتراضي لأنه أبسط وأسهل تشخيصاً داخل workspace.

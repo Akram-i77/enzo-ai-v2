@@ -81,6 +81,7 @@ E_CLI_NOT_FOUND = "CLI_NOT_FOUND"
 E_NOT_AUTHED = "NOT_AUTHENTICATED"
 E_CONSENT = "CONSENT_REQUIRED"
 E_UNKNOWN_OPTION = "UNKNOWN_OPTION"
+E_BAD_CHAIN = "CHAIN_NOT_SUPPORTED"
 E_NO_ROUTE = "NO_ROUTE"
 E_INSUFFICIENT = "INSUFFICIENT_BALANCE"
 E_INSUFFICIENT_FEE = "INSUFFICIENT_SOL_FOR_FEES"
@@ -96,6 +97,49 @@ E_UNKNOWN = "UNKNOWN"
 # Errors that mean "this specific token cannot be traded right now" — cached so
 # we stop paying rate-limit budget to re-discover the same dead end.
 _TOKEN_LEVEL_ERRORS = {E_NO_ROUTE, E_INSUFFICIENT}
+
+
+# ── Chain identifier normalization ───────────────────────────────────────────
+# GMGN's CLI names Solana "sol"; the MoonPay CLI names it "solana" and REJECTS
+# "sol" with:  Chain definition not found: sol
+# One shared config key (`chain:`) feeds both providers, so the value must be
+# translated at the MoonPay boundary. Left untranslated, EVERY MoonPay call
+# fails — balance list, token retrieve, quote and swap alike — which surfaces as
+# NO_ROUTE for every single token plus "capital unreadable", i.e. the bot
+# discovers and scores BUY signals but can never execute one.
+_MOONPAY_CHAIN_ALIASES = {
+    "sol": "solana",
+    "solana": "solana",
+    "solana-mainnet": "solana",
+    "solana_mainnet": "solana",
+    "solanamainnet": "solana",
+    "mainnet-beta": "solana",
+    "eth": "ethereum",
+    "ethereum": "ethereum",
+    "bsc": "bsc",
+    "base": "base",
+    "polygon": "polygon",
+}
+
+
+def moonpay_chain(cfg: dict = None, raw: str = None) -> str:
+    """The chain identifier the MoonPay CLI will actually accept.
+
+    `raw` normalizes an explicitly supplied value (so any call site is safe).
+    Without it, an `execution.moonpay_chain` override wins; otherwise the shared
+    `chain:` key is translated. Unknown values pass through untouched so a chain
+    added later is never silently rewritten into something wrong.
+    """
+    if raw is not None and str(raw).strip():
+        val = str(raw).strip()
+        return _MOONPAY_CHAIN_ALIASES.get(val.lower(), val)
+    cfg = cfg or load_config()
+    ex = cfg.get("execution") or {}
+    explicit = str(ex.get("moonpay_chain") or "").strip()
+    if explicit:
+        return _MOONPAY_CHAIN_ALIASES.get(explicit.lower(), explicit)
+    val = str(cfg.get("chain") or "solana").strip()
+    return _MOONPAY_CHAIN_ALIASES.get(val.lower(), val) or "solana"
 
 
 def _to_smallest_unit(token_address: str, human_amount: float) -> int:
@@ -342,6 +386,14 @@ def classify_error(code: int, out: Any, err: str) -> str:
         return E_NOT_AUTHED
     if "429" in low or "rate limit" in low or "too many requests" in low:
         return E_RATE_LIMITED
+    # A chain-identifier mistake reads like an unsupported token, so name it
+    # precisely: "Chain definition not found: sol" means WE sent the wrong
+    # chain spelling (GMGN's "sol" instead of MoonPay's "solana"), not that the
+    # token is untradable. Must precede the no-route rule, which would
+    # otherwise swallow it into a misleading NO_ROUTE.
+    if any(k in low for k in ("chain definition not found", "unsupported chain",
+                              "invalid chain", "unknown chain", "chain not supported")):
+        return E_BAD_CHAIN
     if any(k in low for k in ("no route", "no quote", "unable to find", "not routable",
                               "no swap route", "unsupported token", "liquidity", "no market",
                               "could not find a route", "insufficient liquidity")):
@@ -390,6 +442,7 @@ def _explanation(text: str) -> List[str]:
 def _balances_raw(wallet: str = None, chain: str = "solana", cfg: dict = None) -> List[dict]:
     cfg = cfg or load_config()
     wallet = wallet or get_wallet_name(cfg)
+    chain = moonpay_chain(cfg, chain)
     args = ["token", "balance", "list", "--wallet", wallet, "--chain", chain]
     args += _explanation("Enzo reads wallet balances to size positions and verify fee reserve")
     code, out, err = _run_moonpay(args, timeout=30, cfg=cfg)
@@ -524,14 +577,17 @@ def get_wallet_snapshot(wallet: str = None, cfg: dict = None) -> Dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Quote (pre-flight — does NOT execute)
 # ─────────────────────────────────────────────────────────────────────────────
-def get_quote(from_token: str, to_token: str, from_amount: float,
-              chain: str = "solana", cfg: dict = None) -> Optional[Dict[str, Any]]:
-    """Get a swap quote WITHOUT executing.
+def _quote_with_reason(from_token: str, to_token: str, from_amount: float,
+                       chain: str = "solana", cfg: dict = None) -> Tuple[Optional[Dict[str, Any]], str]:
+    """(quote_or_None, reason_code).
 
-    Real schema: from:{chain,token,amount} + to:{chain,token,amount}, so the
-    flags are --from-chain/--from-token/--from-amount and --to-chain/--to-token.
-    There is no --chain on this command. Amounts are HUMAN token units.
+    Split out from get_quote so the tradability gate can report WHY a quote
+    failed. Previously every failure — a wrong chain name, a missing consent,
+    an expired login, a rate limit — collapsed into NO_ROUTE, which reads as
+    "MoonPay cannot trade this token". That misdirection sent a real incident
+    down the wrong path: the tokens were fine, the chain identifier was not.
     """
+    chain = moonpay_chain(cfg, chain)  # GMGN says "sol"; MoonPay requires "solana"
     args = [
         "token", "quote",
         "--from-chain", chain,
@@ -546,20 +602,32 @@ def get_quote(from_token: str, to_token: str, from_amount: float,
         reason = classify_error(code, out, err)
         _LOGGER.info("quote failed %s→%s (%s): %s", from_token[:6], to_token[:6], reason,
                      str(err or out)[:180])
-        return None
+        return None, reason
     if isinstance(out, dict):
-        return out
+        return out, "OK"
     if isinstance(out, list) and out and isinstance(out[0], dict):
-        return out[0]
-    return None
+        return out[0], "OK"
+    return None, E_BAD_RESPONSE
+
+
+def get_quote(from_token: str, to_token: str, from_amount: float,
+              chain: str = "solana", cfg: dict = None) -> Optional[Dict[str, Any]]:
+    """Get a swap quote WITHOUT executing.
+
+    Real schema: from:{chain,token,amount} + to:{chain,token,amount}, so the
+    flags are --from-chain/--from-token/--from-amount and --to-chain/--to-token.
+    There is no --chain on this command. Amounts are HUMAN token units.
+    """
+    quote, _reason = _quote_with_reason(from_token, to_token, from_amount, chain, cfg)
+    return quote
 
 
 def quote_ok(from_token: str, to_token: str, from_amount: float,
              chain: str = "solana", cfg: dict = None) -> Tuple[bool, str, Optional[dict]]:
     """(routable, reason_code, quote). Used by the tradability gate."""
-    q = get_quote(from_token, to_token, from_amount, chain, cfg)
+    q, reason = _quote_with_reason(from_token, to_token, from_amount, chain, cfg)
     if q is None:
-        return False, E_NO_ROUTE, None
+        return False, reason, None
     return True, "ROUTABLE", q
 
 
@@ -632,6 +700,7 @@ def clear_gate(mint: str = None) -> int:
 def token_retrieve(mint: str, chain: str = "solana", cfg: dict = None) -> Optional[dict]:
     """`mp token retrieve` works for ANY mint — MoonPay's research endpoints are
     not limited to the trending list."""
+    chain = moonpay_chain(cfg, chain)  # GMGN says "sol"; MoonPay requires "solana"
     args = ["token", "retrieve", "--token", mint, "--chain", chain]
     args += _explanation("Enzo verifies the token is known and routable before committing capital")
     code, out, err = _run_moonpay(args, timeout=45, cfg=cfg)
@@ -655,7 +724,7 @@ def check_tradable(mint: str, amount_usd: float, cfg: dict = None,
                 "cached": True, "detail": "cooldown active"}
 
     from_token = base_token_address(cfg)
-    chain = str(cfg.get("chain") or "solana")
+    chain = moonpay_chain(cfg)
     if get_base_token(cfg) == "USDC":
         from_amount = float(amount_usd)
     else:
@@ -691,6 +760,7 @@ def check_tradable(mint: str, amount_usd: float, cfg: dict = None,
 # ─────────────────────────────────────────────────────────────────────────────
 def get_tx_status(tx_hash: str, chain: str = "solana", cfg: dict = None) -> Optional[Dict[str, Any]]:
     """`transaction retrieve` takes --transactionId (not --id, and no --chain)."""
+    chain = moonpay_chain(cfg, chain)  # GMGN says "sol"; MoonPay requires "solana"
     if not tx_hash:
         return None
     args = ["transaction", "retrieve", "--transactionId", str(tx_hash)]
@@ -748,6 +818,7 @@ def execute_swap(from_token: str, to_token: str, from_amount: float,
     trap the bot in a position it could not close.
     """
     cfg = cfg or load_config()
+    chain = moonpay_chain(cfg, chain)  # GMGN says "sol"; MoonPay requires "solana"
     ex = cfg.get("execution") or {}
     wallet = wallet or get_wallet_name(cfg)
     explanation = explanation or "Enzo trading bot position entry on Solana"
@@ -947,7 +1018,7 @@ def buy_token(mint: str, amount_usd: float, wallet: str = None,
     explanation = explanation or f"Enzo BUY {str(mint)[:8]} on Solana (${float(amount_usd):.2f})"
     result = execute_swap(from_token=from_token, to_token=mint, from_amount=from_amount,
                           wallet=wallet, explanation=explanation,
-                          chain=str(cfg.get("chain") or "solana"), cfg=cfg,
+                          chain=moonpay_chain(cfg), cfg=cfg,
                           direction="buy")
     result["amount_usd"] = float(amount_usd)
     result["base_token"] = base
@@ -996,7 +1067,7 @@ def sell_token(mint: str, amount_spl: float = None, wallet: str = None,
     explanation = explanation or f"Enzo SELL {str(mint)[:8]} on Solana"
     result = execute_swap(from_token=mint, to_token=to_token, from_amount=sell_amount,
                           wallet=wallet, explanation=explanation,
-                          chain=str(cfg.get("chain") or "solana"), cfg=cfg,
+                          chain=moonpay_chain(cfg), cfg=cfg,
                           direction="sell")
     result["base_token"] = base
     result["mint"] = mint

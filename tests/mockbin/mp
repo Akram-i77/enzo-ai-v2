@@ -38,6 +38,17 @@ while i < len(rest):
         opts[a] = True; i += 1; continue
     i += 1
 
+# Optional argv recorder: lets tests assert the EXACT command line the bot sent,
+# which is the only way to catch a contract violation the mock would otherwise
+# tolerate (e.g. GMGN's "sol" reaching MoonPay, which needs "solana").
+_log = os.environ.get("MOCK_ARGV_LOG")
+if _log:
+    try:
+        with open(_log, "a", encoding="utf-8") as _fh:
+            _fh.write(json.dumps({"argv": argv}) + "\n")
+    except Exception:
+        pass
+
 key = tuple(pos)
 # find longest matching tool path
 match = None
@@ -52,6 +63,20 @@ for o in opts:
 for o, req in spec.items():
     if req and o not in opts:
         print(f"error: required option '{o} <{o[2:]}>' not specified", file=sys.stderr); sys.exit(1)
+
+# ── Chain registry validation ────────────────────────────────────────────────
+# The real CLI resolves --chain against its own chain registry and rejects
+# unknown identifiers with exactly:  Chain definition not found: <value>
+# GMGN names Solana "sol"; MoonPay names it "solana". This mock USED to accept
+# any string, which is why the whole test suite stayed green while every real
+# MoonPay call failed with NO_ROUTE. Do not relax this list.
+KNOWN_CHAINS = {"solana", "ethereum", "bsc", "base", "polygon", "bitcoin",
+                "arbitrum", "optimism", "avax"}
+for _cf in ("--chain", "--from-chain", "--to-chain"):
+    _cv = opts.get(_cf)
+    if isinstance(_cv, str) and _cv.strip().lower() not in KNOWN_CHAINS:
+        print(f"Chain definition not found: {_cv}", file=sys.stderr)
+        sys.exit(1)
 
 def emit(obj):
     if json_out: print(json.dumps(obj, indent=2))
