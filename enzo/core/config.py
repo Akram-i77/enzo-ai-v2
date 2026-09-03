@@ -118,12 +118,14 @@ DEFAULTS = {
         "stale_event_log_every_n_cycles": 30,
     },
     "market_analysis": {
-        "min_liquidity": 150,
-        "min_volume": 50,
+        # Defaults mirror config/enzo-config.yaml (tightened 2026-09-03) so that
+        # a missing YAML key cannot silently revert to the old loose floors.
+        "min_liquidity": 5000,
+        "min_volume": 8000,
         "min_holders": 10,
-        "min_market_cap": 1000,
+        "min_market_cap": 5000,
         "min_confidence_score": 55,
-        "min_buy_pressure": 40,
+        "min_buy_pressure": 30,
         "max_scam_score": 15,
         "max_holder_percentage": 10.0,
     },
@@ -211,8 +213,12 @@ DEFAULTS = {
                 "sniper_owned_hard_pct": 40,
                 "top10_hard_pct": 90,
                 "top10_soft_pct": 70,
-                "min_mcap": 1000,
-                "min_volume": 50,
+                # Fallbacks only — screen_pump_card prefers market_analysis.*
+                # Kept aligned so the two sections cannot silently disagree.
+                # min_holders stays 0: pre-migration pump.fun tokens legitimately
+                # report no holder data yet (see pre_migration_exempt).
+                "min_mcap": 5000,
+                "min_volume": 8000,
                 "min_holders": 0,
                 "pre_migration_exempt": True,
             },

@@ -41,15 +41,27 @@ exit_monitor:
   # the dashboard re-parse a 4.7 MB file every 10 seconds.
   # How many cycles to wait before repeating the same stale-price warning.
   stale_event_log_every_n_cycles: 30
+# ── بوابات جودة السوق / Market quality gates ─────────────────────────────────
+# أي عملة تحت هذه الحدود تُرفض قبل حساب الثقة (بوابة صلبة، ليست تخفيض نقاط).
+# شُدِّدت بتاريخ 2026-09-03 بطلب المالك: سيولة وحجم وقيمة سوقية أعلى،
+# مع تخفيف ضغط الشراء من 40% إلى 30%.
+# Tightened 2026-09-03 at owner request: higher liquidity/volume/mcap floors,
+# buy-pressure eased 40% -> 30%.
 market_analysis:
-  min_liquidity: 150
-  min_volume: 50
-  min_holders: 10
-  min_market_cap: 1000
-  min_confidence_score: 55
-  min_buy_pressure: 40
-  max_scam_score: 15
-  max_holder_percentage: 10.0
+  min_liquidity: 5000          # كان 150  (was 150)
+  min_volume: 8000             # كان 50   (was 50)
+  min_holders: 10              # بلا تغيير (unchanged)
+  min_market_cap: 5000         # كان 1000 (was 1000)
+  min_confidence_score: 55     # عتبة الشراء — بلا تغيير (BUY threshold)
+  min_buy_pressure: 30         # كان 40   (was 40) — تخفيف مقصود
+  max_scam_score: 15           # ⚠ غير مفعّل في الكود — انظر الملاحظة أدناه
+  max_holder_percentage: 10.0  # ⚠ غير مفعّل في الكود — انظر الملاحظة أدناه
+# ⚠ NOTE / ملاحظة: المفتاحان الأخيران أعلاه لا يقرأهما أي كود حالياً، فتعديلهما
+# لا يغيّر سلوك البوت. الحماية الفعلية من التركّز تأتي من security_scan
+# (رفض قاطع عند top10 > 85%) ومن list_screen / screen_pump_card.
+# The last two keys above are currently DEAD (no code reads them). Real
+# concentration protection comes from security_scan (hard reject top10 > 85%)
+# and the list_screen / screen_pump_card pre-filters.
 scam_detection:
   honeypot_risk_threshold: 0.7
   rug_pull_risk_threshold: 0.7
@@ -137,9 +149,9 @@ data_sources:
       sniper_owned_hard_pct: 40
       top10_hard_pct: 90
       top10_soft_pct: 70
-      min_mcap: 1000
-      min_volume: 50
-      min_holders: 0
+      min_mcap: 5000       # احتياطي فقط — screen_pump_card يفضّل market_analysis.min_market_cap
+      min_volume: 8000     # fallback only — kept aligned with market_analysis
+      min_holders: 0       # مقصود: عملات pump.fun قبل التخرّج لا تُبلغ عن حامليها بعد
       pre_migration_exempt: true
     penalties:
       bundler_penalty_threshold: 0.3
