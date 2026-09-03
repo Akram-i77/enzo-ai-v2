@@ -24,8 +24,11 @@ hdr()  { printf '\n== %s\n' "$1"; }
 
 PY="${PYTHON:-python3}"
 MODE_FILE="$(mktemp -t enzo-mode.XXXXXX 2>/dev/null || echo "$ROOT/.enzo-mode")"
+DASH_ERR="$(mktemp -t enzo-dash.XXXXXX 2>/dev/null || echo "$ROOT/.enzo-dash.err")"
 export ENZO_MODE_FILE="$MODE_FILE"
-trap 'rm -f "$MODE_FILE"' EXIT
+# Unique per run: a fixed /tmp filename would let two concurrent bootstraps
+# (or a stale file from a previous failure) cross-contaminate the report.
+trap 'rm -f "$MODE_FILE" "$DASH_ERR"' EXIT
 
 hdr "Python interpreter"
 if ! command -v "$PY" >/dev/null 2>&1; then
@@ -178,7 +181,7 @@ if "$PY" -c "
 import sys; sys.path.insert(0,'.')
 from enzo.core import db; db.init_db()
 from enzo.ui import dashboard; dashboard.generate()
-" 2>/tmp/enzo-bootstrap-dash.err; then ok "dashboard.generate() succeeded"; else bad "dashboard.generate() failed:"; sed 's/^/           /' /tmp/enzo-bootstrap-dash.err | tail -5; fi
+" 2>"$DASH_ERR"; then ok "dashboard.generate() succeeded"; else bad "dashboard.generate() failed:"; sed 's/^/           /' "$DASH_ERR" | tail -5; fi
 
 printf '\n'
 if [[ $FAIL -eq 0 ]]; then
