@@ -12,27 +12,51 @@ from enzo.providers import gmgn
 from enzo.analyzers import security
 
 
-def _dev_reputation_penalty(created_count: Optional[float], open_ratio: Optional[float]) -> float:
+def _dev_reputation_penalty(created_count: Optional[float], open_ratio: Optional[float],
+                            da: Optional[dict] = None) -> float:
+    """Serial-launcher penalty, driven by `dev_behavior.factory_dev_*` config.
+
+    Every number here used to be hardcoded while the YAML advertised knobs with
+    the same names and the same values - so editing the YAML did nothing and the
+    owner could not tell. The defaults below are byte-for-byte the old hardcoded
+    numbers, so wiring this is behaviour-neutral until an owner changes a value;
+    from then on the value is honoured. `da` is the dev_behavior config dict.
+    """
     if not created_count:
         return 0.0
+    da = da or {}
+
+    def _n(key, fallback):
+        try:
+            return float(da.get(key, fallback))
+        except Exception:
+            return float(fallback)
+
+    heavy_at = _n("factory_dev_heavy_created", 200)
+    mid_at = _n("factory_dev_mid_created", 50)
+    min_at = _n("factory_dev_min_created", 10)
+
     penalty = 0.0
-    if created_count >= 200:
-        penalty += 45
-    elif created_count >= 50:
-        penalty += 30
-    elif created_count >= 10:
-        penalty += 15
+    if created_count >= heavy_at:
+        penalty += _n("factory_dev_heavy_penalty", 45)
+    elif created_count >= mid_at:
+        penalty += _n("factory_dev_mid_penalty", 30)
+    elif created_count >= min_at:
+        penalty += _n("factory_dev_penalty", 15)
 
     if open_ratio is not None:
-        if open_ratio < 0.03:
-            penalty += 25
-        elif open_ratio < 0.10:
-            penalty += 15
-        elif open_ratio < 0.25:
-            penalty += 5
+        dead_at = _n("factory_dev_dead_open_ratio", 0.03)
+        low_at = _n("factory_dev_low_open_ratio", 0.10)
+        watch_at = _n("factory_dev_watching_open_ratio", 0.25)
+        if open_ratio < dead_at:
+            penalty += _n("factory_dev_dead_open_penalty", 25)
+        elif open_ratio < low_at:
+            penalty += _n("factory_dev_low_open_penalty", 15)
+        elif open_ratio < watch_at:
+            penalty += _n("factory_dev_watching_open_penalty", 5)
     else:
-        penalty += 8
-    return min(penalty, 80.0)
+        penalty += _n("factory_dev_no_open_ratio_penalty", 8)
+    return min(penalty, _n("factory_dev_penalty_cap", 80.0))
 
 
 def dev_analysis(mint: str, merged: dict = None, config: dict = None) -> dict:
@@ -107,7 +131,7 @@ def dev_analysis(mint: str, merged: dict = None, config: dict = None) -> dict:
 
     flags_factory = None
     if creator_created is not None:
-        penalty = _dev_reputation_penalty(creator_created, open_ratio)
+        penalty = _dev_reputation_penalty(creator_created, open_ratio, da)
         if penalty > 0:
             events.append(f"DEV_FACTORY({int(creator_created)}_created)")
             score -= penalty

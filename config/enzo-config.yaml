@@ -242,6 +242,19 @@ dev_behavior:
   factory_dev_low_open_ratio: 0.1
   factory_dev_low_open_penalty: 15
   factory_dev_no_open_ratio_penalty: 8
+  # ── بقية سلالم عقوبة «المصنع» — كانت أرقاماً صلبة في الكود ────────────────
+  # كل القيم أدناه هي حرفياً ما كان مطبَّقاً قبل ربطها، فالسلوك لم يتغير؛
+  # الفرق أنها صارت قابلة للتعديل من هنا فعلاً.
+  # الوسط بين 10 و200 عملة منشأة (كان مطبَّقاً برقم صلب).
+  factory_dev_mid_created: 50
+  factory_dev_mid_penalty: 30
+  # نسبة العملات ما زالت حيّة: ميتة (<3%) · منخفضة (<10%) · تحت المراقبة (<25%).
+  factory_dev_dead_open_ratio: 0.03
+  factory_dev_dead_open_penalty: 25
+  factory_dev_watching_open_ratio: 0.25
+  factory_dev_watching_open_penalty: 5
+  # سقف مجموع العقوبة مهما تعدّدت الأسباب.
+  factory_dev_penalty_cap: 80.0
   no_big_hits_max_ath_mc: 100000
   no_big_hits_penalty: 10
 market_structure:
@@ -268,6 +281,13 @@ position_sizing:
   # override is logged at WARNING, written to the audit trail, and stored on the
   # position as min_floor_applied + effective_risk_pct.
   min_trade_is_floor: true
+
+  # ── أرضية حجم المركز بالدولار / minimum position size in USD ──────────────
+  # يُستخدم مع min_trade_is_floor: إذا نزل الحجم المحسوب عن هذه الأرضية رُفع
+  # إليها (لا ترفض الصفقة). هذه هي القيمة التي يقرؤها الكود فعلاً لأرضية
+  # الحجم؛ min_trade_usd في قسم execution هي أرضية المنفّذ. الاثنان 1.0.
+  # Floor applied to the computed position size (raised, never rejected).
+  min_position_usd: 1.0
   confidence_bands:
   - min: 55
     max: 60
@@ -384,3 +404,17 @@ execution:
   use_local_api: false
   local_api_url: http://127.0.0.1:8787
   local_api_timeout_sec: 45
+
+# ── لوحة التحكم / dashboard ───────────────────────────────────────────────────
+# كانت هذه القيم مدفونة في افتراضيات الكود وحدها، فلم يكن بإمكانك تغيير المنفذ
+# أو سرعة التحديث من هنا. القيم أدناه مطابقة تماماً لما كان يعمل به البوت.
+dashboard:
+  # المنفذ الذي تفتح عليه اللوحة في المتصفح.
+  port: 8077
+  # 0.0.0.0 = تستمع على كل الواجهات (مطلوب للمعاينة وللدخول من جهاز آخر).
+  # اجعلها 127.0.0.1 إن أردت قصر الوصول على الجهاز نفسه.
+  host: 0.0.0.0
+  # كم ثانية بين كل تحديث تلقائي للوحة.
+  refresh_seconds: 10
+  # عدد الأحداث المعروضة في تدفق النشاط.
+  activity_limit: 100

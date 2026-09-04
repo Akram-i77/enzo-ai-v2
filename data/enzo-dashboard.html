@@ -306,6 +306,7 @@
       color: var(--text-muted); font-weight: 600;
     }
     .stage-pill.hit { background: var(--accent-emerald-glow); border-color: var(--accent-emerald); color: var(--accent-emerald); }
+    .stage-pill.rug { background: rgba(244,63,94,.16); border-color: rgba(244,63,94,.5); color: #fb7185; }
 
     /* 6-Axis AI Matrix */
     .axes-grid {
@@ -341,11 +342,38 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
       display: none; z-index: 1000; font-size: 13px; font-weight: 600;
     }
+
+    /* Fault banner — makes a broken/stale dashboard impossible to miss */
+    .fault-banner {
+      display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: rgba(244, 63, 94, 0.10);
+      border: 1px solid rgba(244, 63, 94, 0.45);
+      border-left: 4px solid var(--accent-rose);
+      border-radius: 12px; padding: 12px 16px;
+      font-size: 13px; color: #fecdd3;
+    }
+    .fault-banner.shown { display: flex; }
+    .fault-banner.warn {
+      background: rgba(245, 158, 11, 0.10);
+      border-color: rgba(245, 158, 11, 0.45);
+      border-left-color: var(--accent-amber); color: #fde68a;
+    }
+    .fault-icon { font-size: 18px; }
+    .fault-hint { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
   </style>
 </head>
 <body>
 
 <div class="dashboard-container">
+
+  <!-- Persistent fault banner: shows when the page could not be regenerated or
+       when the browser has lost contact with the API. Hidden by default. -->
+  <div id="faultBanner" class="fault-banner" style="display:none;">
+    <span class="fault-icon">⚠</span>
+    <span id="faultBannerText"></span>
+    <span class="fault-hint" id="faultBannerHint"></span>
+  </div>
+  
 
   <!-- Top Header Navigation -->
   <header class="top-header">
@@ -353,18 +381,21 @@
       <div class="brand-logo">⚡</div>
       <div class="brand-text">
         <h1>ENZO QUANT TERMINAL <span style="font-size: 12px; font-weight: 600; color: var(--accent-cyan); background: rgba(6,182,212,0.12); padding: 2px 8px; border-radius: 12px;">v2.5 PRO</span></h1>
-        <p>AUTONOMOUS SOLANA MEMECOIN ENGINE • PUMPDEV WS & GMGN LAYER</p>
+        <p>AUTONOMOUS SOLANA MEMECOIN • REAL TRADING ✅ • MOONPAY CLI (SOL base) • WALLET: enzo-trading</p>
+        <p style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">
+          RENDERED 2026-09-04 23:12:09 UTC • CAPITAL SOURCE: WALLET • POLL <span id="hdrPollAge">—</span>
+        </p>
       </div>
     </div>
 
     <div class="header-actions">
-      <div id="engineStatusBadge" class="status-badge paused">
+      <div id="engineStatusBadge" class="status-badge live">
         <span class="pulse-dot"></span>
-        <span id="engineStatusText">⏸ PAUSED</span>
+        <span id="engineStatusText">● LIVE SCANNING</span>
       </div>
 
       <button id="toggleBotBtn" class="btn" onclick="toggleBotPause()">
-        <span>▶ Resume Bot</span>
+        <span>⏸ Pause Bot</span>
       </button>
 
       <button class="btn btn-primary" onclick="triggerManualScan()">
@@ -382,12 +413,12 @@
     <!-- Card 1: Equity -->
     <div class="kpi-card cyan">
       <div class="kpi-title">
-        <span>Total Equity</span>
+        <span>Wallet Balance (live)</span>
         <span>💵 USD</span>
       </div>
-      <div class="kpi-value" id="kpiEquity">$2.06</div>
+      <div class="kpi-value" id="kpiEquity">$559.40</div>
       <div class="kpi-subtext">
-        <span>Init: $2</span> • <span id="kpiPeakEquity">Peak: $2</span>
+        <span>Init: $2</span> • <span id="kpiPeakEquity">Peak: $2</span> • <span>Ledger: $2.06</span>
       </div>
     </div>
 
@@ -743,7 +774,7 @@
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">⚡ GMGN Rate Limiter</span>
-            <span class="axis-score color-pos" id="gmgnBanStatus">NORMAL (0.8 req/s)</span>
+            <span class="axis-score color-pos" id="gmgnBanStatus">NORMAL (2.9 req/s · 350 ms gap)</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Token bucket rate controller active with automatic backoff and unban coordination.</p>
         </div>
@@ -753,7 +784,7 @@
             <span class="axis-name">🛡️ Circuit Breakers</span>
             <span class="axis-score color-pos">ARMED</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-secondary);">Auto-halts on 8% daily loss, 25% max drawdown, or 12 consecutive paper losses.</p>
+          <p style="font-size: 12px; color: var(--text-secondary);">Auto-halts on 8% daily loss, 25% max drawdown, or 12 consecutive losses. Risk/trade: 2.5%.</p>
         </div>
 
         <div class="axis-card">
@@ -762,6 +793,33 @@
             <span class="axis-score color-pos">SQLite WAL Mode</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">ACID compliant concurrent multi-process transaction ledger active at data/enzo.db.</p>
+        </div>
+
+        <div class="axis-card" id="rugProtectionCard">
+          <div class="axis-header">
+            <span class="axis-name">🚩 Rug Protection Layers</span>
+            <span class="axis-score color-pos" id="rugProtectionStatus">3/3 ARMED</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+            <div>
+              <span class="stage-pill hit">L1 · FINGERPRINT VETO · ARMED</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                Rejects at entry on absolute fingerprints: bundlers &ge; 6, snipers &ge; 8, rats &ge; 5 inside top-20, top-10 selling &ge; 25, avg wallet age &lt; 3.0d, factory &ge; 50 mints with &lt; 3% still alive. Soft flags fire at 50% of each veto and mark the position for L3.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill hit">L3 · EARLY STOP · ARMED</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                -12% stop during the first 10 minutes for FLAGGED entries only. Clean entries keep the normal stop/trailing untouched.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill hit">L4 · LIVE TRIPWIRE · ARMED</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                2 of 3 votes closes the position at any price, checked every 20s: liquidity pulled &ge; 40%, holders down &ge; 15%, top-10 sells jump &ge; 15 or flip to dumping.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -832,25 +890,81 @@
       }).catch(function(e) { showToast('Scan error'); });
   }
 
+  // ── Liveness tracking ────────────────────────────────────────────────
+  // Previously every fetch failure was swallowed by `.catch(function(e) {})`,
+  // so a dead/stalled backend looked identical to a healthy one: the page just
+  // sat there showing the numbers from the last successful poll. Now failures
+  // are counted and surfaced in the fault banner.
+  var lastGoodPoll = Date.now();
+  var pollFailures = 0;
+  var POLL_STALE_MS = 35000;   // 3.5 missed 10s polls
+
+  function setFault(kind, text, hint) {
+    var b = document.getElementById('faultBanner');
+    var t = document.getElementById('faultBannerText');
+    var h = document.getElementById('faultBannerHint');
+    if (!b) return;
+    if (!kind) { b.className = 'fault-banner'; b.style.display = 'none'; return; }
+    b.className = 'fault-banner shown' + (kind === 'warn' ? ' warn' : '');
+    b.style.display = 'flex';
+    t.textContent = text;
+    h.textContent = hint || '';
+  }
+
+  function notePollOk() {
+    pollFailures = 0;
+    lastGoodPoll = Date.now();
+    // only clear a client-side fault; a server-rendered banner keeps its own id
+    if (!document.getElementById('serverFault')) setFault(null);
+  }
+
+  function notePollFail(what, err) {
+    pollFailures++;
+    setFault('error',
+      'Lost contact with the ENZO API (' + what + ') — ' + pollFailures +
+      ' consecutive failed poll(s). The numbers on this page are frozen at the last successful update.',
+      'Check that the bot process is alive: python3 enzo.py status  ·  error: ' + (err || 'n/a'));
+  }
+
+  function tickPollAge() {
+    var el = document.getElementById('hdrPollAge');
+    if (!el) return;
+    var age = Math.round((Date.now() - lastGoodPoll) / 1000);
+    el.textContent = age + 's ago';
+    el.style.color = age > POLL_STALE_MS / 1000 ? 'var(--accent-rose)' : 'var(--text-muted)';
+    if (age > POLL_STALE_MS / 1000 && pollFailures === 0) {
+      setFault('warn',
+        'Data is ' + age + 's old — the API has not answered a poll recently.',
+        'The engine may be busy in a long scan cycle, or the server thread may have died.');
+    }
+  }
+
   function refreshData(force) {
     // 1. Fetch State
     fetch('/api/state', { cache: 'no-store' })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(res) {
-        if (!res || res.status !== 'success') return;
+        if (!res || res.status !== 'success') throw new Error((res && res.message) || 'bad payload');
         stateCache = res;
         updateUI(res);
-      }).catch(function(e) {});
+        notePollOk();
+      }).catch(function(e) { notePollFail('/api/state', e.message || e); });
 
     // 2. Fetch Activity Stream
     fetch('/api/activity', { cache: 'no-store' })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(res) {
-        if (!res || res.status !== 'success') return;
+        if (!res || res.status !== 'success') throw new Error((res && res.message) || 'bad payload');
         allActivities = res.activities || [];
         renderActivities();
         updateSubsystems(res.subsystems);
-      }).catch(function(e) {});
+      }).catch(function(e) { /* state poll owns the banner */ });
   }
 
   function updateSubsystems(sub) {
@@ -892,14 +1006,21 @@
 
       var detailsStr = '';
       if (data.axes) {
+        // Read the EXACT keys analyze.py writes: wallet_behavior / dev_behavior.
+        // The old code read .wallet and .dev, which are undefined, so `|| 0`
+        // printed 0 for EVERY token and made each one look like it had a dead
+        // wallet and a dead dev. Show 'n/a' (never a fake 0) when an axis has no
+        // data: unavailable axes are excluded from the weighted confidence, so
+        // a zero here would misrepresent the score.
+        var ax = function(k) { var v = data.axes[k]; return (typeof v === 'number') ? v : 'n/a'; };
         detailsStr = '<div class="act-details">' +
-          '<span>🛡️ Security: ' + (data.axes.security || 0) + '</span>' +
-          '<span>👛 Wallet: ' + (data.axes.wallet || 0) + '</span>' +
-          '<span>👨‍💻 Dev: ' + (data.axes.dev || 0) + '</span>' +
-          '<span>🔥 Momentum: ' + (data.axes.momentum || 0) + '</span>' +
-          '<span>📊 Structure: ' + (data.axes.market_structure || 0) + '</span>' +
-          '<span>💧 Liq: ' + (data.axes.liquidity || 0) + '</span>' +
-          (data.market_cap_usd ? '<span>💰 MC: $' + Number(data.market_cap_usd).toLocaleString() + '</span>' : '') +
+          '<span>🛡️ Security: ' + ax('security') + '</span>' +
+          '<span>👛 Wallet: ' + ax('wallet_behavior') + '</span>' +
+          '<span>👨‍💻 Dev: ' + ax('dev_behavior') + '</span>' +
+          '<span>🔥 Momentum: ' + ax('momentum') + '</span>' +
+          '<span>📊 Structure: ' + ax('market_structure') + '</span>' +
+          '<span>💧 Liq: ' + ax('liquidity') + '</span>' +
+          (data.market_cap_usd ? '<span>💰 MC: $' + Number(data.market_cap_usd).toLocaleString('en-US') + '</span>' : '') +
           '</div>';
       }
 
@@ -940,7 +1061,8 @@
     }
 
     // KPIs
-    document.getElementById('kpiEquity').textContent = '$' + pf.equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var eqShow = (typeof pf.wallet_usd === 'number' && pf.wallet_usd > 0) ? pf.wallet_usd : pf.equity;
+    document.getElementById('kpiEquity').textContent = '$' + eqShow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('kpiPeakEquity').textContent = 'Peak: $' + pf.peak_equity.toLocaleString('en-US', { maximumFractionDigits: 0 });
     
     var rpEl = document.getElementById('kpiRealizedPnL');
@@ -961,6 +1083,46 @@
     
     if (data.learning) {
       document.getElementById('kpiAiBias').textContent = (data.learning.confidence_bias >= 0 ? '+' : '') + Number(data.learning.confidence_bias).toFixed(1);
+    }
+
+    // A position whose size was raised to execution.min_trade_usd because the
+    // wallet is small. Without this badge a $1.00 position looks like a config
+    // mistake; with it the operator can see the risk model was overridden and by
+    // how much.
+    function floorBadge(p) {
+      if (!p || !p.min_floor_applied) return '';
+      var er = Number(p.effective_risk_pct || 0);
+      // NOTE: the escape below must stay doubled (backslash backslash n) in
+      // the Python source, because this whole template is a NON-RAW f-string.
+      // A single backslash-n would be expanded by Python into a REAL newline
+      // inside a single-quoted JS string -> SyntaxError -> the entire script
+      // block dies: every button and the activity stream stop working while
+      // the static HTML still looks alive. Same applies to any backslash
+      // escape written anywhere in this template, comments included.
+      var tip = 'الحجم رُفع إلى الحد الأدنى للصفقة لأن رأس المال صغير.\n' +
+                'المخاطرة الفعلية: ' + er.toFixed(1) + '% من رأس المال.';
+      return ' <span title="' + tip.replace(/"/g, '&quot;') + '"' +
+             ' style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;' +
+             'font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;' +
+             'background:rgba(255,193,7,.16);color:#ffc107;border:1px solid rgba(255,193,7,.35);">' +
+             'الأرضية · مخاطرة ' + er.toFixed(1) + '%</span>';
+    }
+
+    // Rug badge: this entry carried SOFT flags (half the veto thresholds) from
+    // layer 1, so layer 3 arms a tighter early stop on it. The owner must see
+    // which open positions are in that state and why. No backslash escapes are
+    // used here on purpose - this template is a non-raw f-string.
+    function rugBadge(p) {
+      if (!p) return '';
+      var flags = p.rug_flags || [];
+      if (!flags.length) return '';
+      var tip = 'دخول مشبوب: ' + flags.join(' · ') +
+                ' — الوقف المبكر -12% مفعّل لأول 10 دقيقة، وكاشف الرغّ يراقبه كل 20 ثانية.';
+      return ' <span title="' + tip.replace(/"/g, '&quot;') + '"' +
+             ' style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;' +
+             'font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;' +
+             'background:rgba(244,63,94,.16);color:#fb7185;border:1px solid rgba(244,63,94,.35);">' +
+             '🚩 ' + flags.length + ' علم</span>';
     }
 
     // Open Positions Table
@@ -984,15 +1146,15 @@
         var s2 = stages[1] ? 'stage-pill hit' : 'stage-pill';
         var s3 = stages[2] ? 'stage-pill hit' : 'stage-pill';
 
-        var trailStr = p.trailing_active ? '<span class="color-pos" style="font-weight:700;">ACTIVE ($' + Number(p.trailing_stop_mc||0).toLocaleString() + ')</span>' : '<span style="color:var(--text-muted)">SL: $' + Number(p.stop_loss_mc||0).toLocaleString() + '</span>';
+        var trailStr = p.trailing_active ? '<span class="color-pos" style="font-weight:700;">ACTIVE ($' + Number(p.trailing_stop_mc||0).toLocaleString('en-US') + ')</span>' : '<span style="color:var(--text-muted)">SL: $' + Number(p.stop_loss_mc||0).toLocaleString('en-US') + '</span>';
 
         rows += '<tr>' +
           '<td><div class="token-cell"><div class="token-icon">' + sym.substring(0, 3) + '</div>' +
           '<div class="token-info"><span class="token-sym">' + sym + '</span>' +
           '<span class="token-ca" onclick="copyCA(\'' + m + '\')">' + m.substring(0, 6) + '...' + m.substring(m.length - 4) + ' 📋</span></div></div></td>' +
-          '<td><strong>$' + size.toLocaleString() + '</strong></td>' +
-          '<td>$' + entryMc.toLocaleString() + '</td>' +
-          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString() : '—') + '</strong></td>' +
+          '<td><strong>$' + size.toLocaleString('en-US') + '</strong>' + floorBadge(p) + rugBadge(p) + '</td>' +
+          '<td>$' + entryMc.toLocaleString('en-US') + '</td>' +
+          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString('en-US') : '—') + (p.price_is_live === false ? ' <span title="no live price right now (feed stale) - last known value shown" style="color:#f59e0b;">⚠</span>' : '') + '</strong></td>' +
           '<td class="' + (upnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (upnl >= 0 ? '+$' : '-$') + Math.abs(upnl).toFixed(2) + ' (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(1) + '%)</strong></td>' +
           '<td><div class="stages-roadmap"><span class="' + s1 + '">T1: 30%</span><span class="' + s2 + '">T2: 70%</span><span class="' + s3 + '">T3: 150%</span></div></td>' +
           '<td>' + trailStr + '</td>' +
@@ -1052,15 +1214,17 @@
       var pnl = Number(c.pnl || 0);
       var pnlPct = Number(c.pnl_pct || 0);
       var reason = c.reason || 'CLOSED';
-      var reasonClass = reason.indexOf('TP') >= 0 ? 'stage-pill hit' : (reason.indexOf('STOP') >= 0 ? 'stage-pill' : 'stage-pill');
+      var reasonClass = (reason.indexOf('RUG_TRIPWIRE') >= 0 || reason.indexOf('EARLY_STOP') >= 0)
+        ? 'stage-pill rug'
+        : (reason.indexOf('TP') >= 0 ? 'stage-pill hit' : (reason.indexOf('STOP') >= 0 ? 'stage-pill' : 'stage-pill'));
       var closedAt = (c.closed_at || '').substring(0, 16).replace('T', ' ');
       var openedAt = (c.opened_at || '').substring(0, 16).replace('T', ' ');
 
       rows += '<tr>' +
         '<td><strong>' + sym + '</strong></td>' +
         '<td><span class="' + reasonClass + '">' + reason + '</span></td>' +
-        '<td>$' + Number(c.entry_market_cap || 0).toLocaleString() + '</td>' +
-        '<td>$' + Number(c.exit_market_cap || 0).toLocaleString() + '</td>' +
+        '<td>$' + Number(c.entry_market_cap || 0).toLocaleString('en-US') + '</td>' +
+        '<td>$' + Number(c.exit_market_cap || 0).toLocaleString('en-US') + '</td>' +
         '<td class="' + (pnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2) + '</strong></td>' +
         '<td class="' + (pnlPct >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%</strong></td>' +
         '<td>' + openedAt + '</td>' +
@@ -1085,6 +1249,7 @@
     var canvas = document.getElementById('equityCanvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
+    if (!ctx) return;
     var rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio || 800;
     canvas.height = rect.height * window.devicePixelRatio || 320;
@@ -1129,7 +1294,7 @@
       ctx.moveTo(padL, gy);
       ctx.lineTo(w - padR, gy);
       ctx.stroke();
-      ctx.fillText('$' + Math.round(gVal).toLocaleString(), padL - 8, gy + 4);
+      ctx.fillText('$' + Math.round(gVal).toLocaleString('en-US'), padL - 8, gy + 4);
     }
 
     // Area Gradient
@@ -1174,6 +1339,12 @@
   // Auto-Refresh Poll Engine (every 10 seconds — light on the DB & rate limiter)
   refreshData(false);
   setInterval(function() { refreshData(false); }, 10000);
+  setInterval(tickPollAge, 1000);
+  // Re-poll immediately when the tab regains focus or connectivity returns.
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) refreshData(true);
+  });
+  window.addEventListener('online', function() { refreshData(true); });
 </script>
 </body>
 </html>

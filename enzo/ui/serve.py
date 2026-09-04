@@ -411,6 +411,7 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
 
                 # Risk Limits Details
                 rm = cfg.get("risk_management", {})
+                _rug = cfg.get("rug_protection", {}) or {}
                 max_daily = float(rm.get("max_daily_loss", 8.0))
                 max_dd = float(rm.get("max_drawdown", 25.0))
                 eq = float(state.get("equity", init_cap))
@@ -461,7 +462,31 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                         "take_profit_stages": cfg.get("exit_strategy", {}).get("take_profit_stages", []),
                         "stop_loss_percentage": cfg.get("exit_strategy", {}).get("stop_loss_percentage", 50.0),
                         "trailing_stop_percentage": cfg.get("exit_strategy", {}).get("trailing_stop_percentage", 30.0),
-                        "weights": cfg.get("weighted_confidence", {})
+                        "weights": cfg.get("weighted_confidence", {}),
+                        # Rug-protection layers (1/3/4). Exposed so the owner can
+                        # SEE from the dashboard whether each layer is armed and
+                        # with which thresholds, without opening the YAML. Read
+                        # straight from the loaded config - no extra I/O.
+                        "rug_protection": {
+                            "fingerprints_enabled": bool(_rug.get("fingerprints_enabled", True)),
+                            "early_stop_enabled": bool(_rug.get("early_stop_enabled", True)),
+                            "early_stop_pct": float(_rug.get("early_stop_pct", 12.0)),
+                            "early_stop_window_min": float(_rug.get("early_stop_window_min", 10.0)),
+                            "tripwire_enabled": bool(_rug.get("tripwire_enabled", True)),
+                            "tripwire_poll_sec": float(_rug.get("tripwire_poll_sec", 20.0)),
+                            "tripwire_min_votes": int(_rug.get("tripwire_min_votes", 2)),
+                            "tripwire_liq_pull_pct": float(_rug.get("tripwire_liq_pull_pct", 40.0)),
+                            "tripwire_holder_drop_pct": float(_rug.get("tripwire_holder_drop_pct", 15.0)),
+                            "tripwire_top10_sells_jump": int(_rug.get("tripwire_top10_sells_jump", 15)),
+                            "veto_bundlers_top20": int(_rug.get("veto_bundlers_top20", 6)),
+                            "veto_snipers_top20": int(_rug.get("veto_snipers_top20", 8)),
+                            "veto_rats_top20": int(_rug.get("veto_rats_top20", 5)),
+                            "veto_top10_cur_sells": int(_rug.get("veto_top10_cur_sells", 25)),
+                            "veto_avg_wallet_age_days": float(_rug.get("veto_avg_wallet_age_days", 3.0)),
+                            "veto_factory_created": int(_rug.get("veto_factory_created", 50)),
+                            "veto_factory_open_ratio": float(_rug.get("veto_factory_open_ratio", 0.03)),
+                            "soft_flag_ratio": float(_rug.get("soft_flag_ratio", 0.5)),
+                        }
                     }
                 }
                 return self._send_json(res)
@@ -471,7 +496,11 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
         # 2. Real-Time Bot Activity & Decisions Stream API
         if parsed.path == "/api/activity":
             try:
-                activities = audit.get_recent_activities(limit=100)
+                # activity_limit is an owner knob (dashboard.activity_limit);
+                # it was hardcoded to 100 while the YAML advertised it.
+                _dash_cfg = (load_config().get("dashboard") or {})
+                activities = audit.get_recent_activities(
+                    limit=int(_dash_cfg.get("activity_limit", 100)))
                 # PEEK, never create: this endpoint is polled every few seconds
                 # by the dashboard, and get_pumpdev_client() here opened a second
                 # WebSocket from the same IP - pump.dev then rate-limited the IP

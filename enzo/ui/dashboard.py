@@ -136,6 +136,44 @@ def generate() -> str:
     max_daily_loss = float(rm_cfg.get("max_daily_loss", 8.0))
     max_drawdown = float(rm_cfg.get("max_drawdown", 25.0))
     cons_limit = int(rm_cfg.get("consecutive_losses_limit", 12))
+    # Rug-protection layers (1/3/4) — baked into the Diagnostics tab so the owner
+    # can see at a glance whether each layer is armed and with which numbers,
+    # instead of having to open the YAML. Values come from the loaded config, so
+    # they are always the ones the engine is actually running with.
+    rug_cfg = cfg.get("rug_protection", {}) or {}
+    _on = lambda b: ("ARMED" if b else "OFF")
+    _cls = lambda b: ("color-pos" if b else "color-neg")
+    rug_l1_on = bool(rug_cfg.get("fingerprints_enabled", True))
+    rug_l3_on = bool(rug_cfg.get("early_stop_enabled", True))
+    rug_l4_on = bool(rug_cfg.get("tripwire_enabled", True))
+    rug_l1_txt = _on(rug_l1_on); rug_l1_cls = _cls(rug_l1_on)
+    rug_l3_txt = _on(rug_l3_on); rug_l3_cls = _cls(rug_l3_on)
+    rug_l4_txt = _on(rug_l4_on); rug_l4_cls = _cls(rug_l4_on)
+    rug_veto_bundlers = int(rug_cfg.get("veto_bundlers_top20", 6))
+    rug_veto_snipers = int(rug_cfg.get("veto_snipers_top20", 8))
+    rug_veto_rats = int(rug_cfg.get("veto_rats_top20", 5))
+    rug_veto_sells = int(rug_cfg.get("veto_top10_cur_sells", 25))
+    rug_veto_age = float(rug_cfg.get("veto_avg_wallet_age_days", 3.0))
+    rug_veto_factory = int(rug_cfg.get("veto_factory_created", 50))
+    rug_veto_open_ratio = float(rug_cfg.get("veto_factory_open_ratio", 0.03)) * 100.0
+    rug_flag_ratio = float(rug_cfg.get("soft_flag_ratio", 0.5)) * 100.0
+    rug_es_pct = float(rug_cfg.get("early_stop_pct", 12.0))
+    rug_es_win = float(rug_cfg.get("early_stop_window_min", 10.0))
+    rug_tw_poll = float(rug_cfg.get("tripwire_poll_sec", 20.0))
+    rug_tw_votes = int(rug_cfg.get("tripwire_min_votes", 2))
+    rug_tw_liq = float(rug_cfg.get("tripwire_liq_pull_pct", 40.0))
+    rug_tw_hold = float(rug_cfg.get("tripwire_holder_drop_pct", 15.0))
+    rug_tw_sells = int(rug_cfg.get("tripwire_top10_sells_jump", 15))
+    # dashboard.refresh_seconds drives the browser polling interval. It was a
+    # hardcoded 10000ms while the config advertised the knob.
+    _dash_cfg = cfg.get("dashboard", {}) or {}
+    dash_refresh_ms = max(2000, int(float(_dash_cfg.get("refresh_seconds", 10)) * 1000))
+    rug_armed = sum(1 for b in (rug_l1_on, rug_l3_on, rug_l4_on) if b)
+    rug_hdr_txt = f"{rug_armed}/3 ARMED"
+    rug_hdr_cls = "color-pos" if rug_armed == 3 else ("color-neg" if rug_armed == 0 else "color-warn")
+    rug_l1_pill = "hit" if rug_l1_on else ""
+    rug_l3_pill = "hit" if rug_l3_on else ""
+    rug_l4_pill = "hit" if rug_l4_on else ""
     capital_source = str(ex_cfg.get("capital_source", "wallet"))
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     scan_interval = 0
@@ -483,6 +521,7 @@ def generate() -> str:
       color: var(--text-muted); font-weight: 600;
     }}
     .stage-pill.hit {{ background: var(--accent-emerald-glow); border-color: var(--accent-emerald); color: var(--accent-emerald); }}
+    .stage-pill.rug {{ background: rgba(244,63,94,.16); border-color: rgba(244,63,94,.5); color: #fb7185; }}
 
     /* 6-Axis AI Matrix */
     .axes-grid {{
@@ -970,6 +1009,33 @@ def generate() -> str:
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">ACID compliant concurrent multi-process transaction ledger active at data/enzo.db.</p>
         </div>
+
+        <div class="axis-card" id="rugProtectionCard">
+          <div class="axis-header">
+            <span class="axis-name">🚩 Rug Protection Layers</span>
+            <span class="axis-score {rug_hdr_cls}" id="rugProtectionStatus">{rug_hdr_txt}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+            <div>
+              <span class="stage-pill {rug_l1_pill}">L1 · FINGERPRINT VETO · {rug_l1_txt}</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                Rejects at entry on absolute fingerprints: bundlers &ge; {rug_veto_bundlers}, snipers &ge; {rug_veto_snipers}, rats &ge; {rug_veto_rats} inside top-20, top-10 selling &ge; {rug_veto_sells}, avg wallet age &lt; {rug_veto_age:.1f}d, factory &ge; {rug_veto_factory} mints with &lt; {rug_veto_open_ratio:.0f}% still alive. Soft flags fire at {rug_flag_ratio:.0f}% of each veto and mark the position for L3.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {rug_l3_pill}">L3 · EARLY STOP · {rug_l3_txt}</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                -{rug_es_pct:.0f}% stop during the first {rug_es_win:.0f} minutes for FLAGGED entries only. Clean entries keep the normal stop/trailing untouched.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {rug_l4_pill}">L4 · LIVE TRIPWIRE · {rug_l4_txt}</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                {rug_tw_votes} of 3 votes closes the position at any price, checked every {rug_tw_poll:.0f}s: liquidity pulled &ge; {rug_tw_liq:.0f}%, holders down &ge; {rug_tw_hold:.0f}%, top-10 sells jump &ge; {rug_tw_sells} or flip to dumping.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1257,6 +1323,23 @@ def generate() -> str:
              'الأرضية · مخاطرة ' + er.toFixed(1) + '%</span>';
     }}
 
+    // Rug badge: this entry carried SOFT flags (half the veto thresholds) from
+    // layer 1, so layer 3 arms a tighter early stop on it. The owner must see
+    // which open positions are in that state and why. No backslash escapes are
+    // used here on purpose - this template is a non-raw f-string.
+    function rugBadge(p) {{
+      if (!p) return '';
+      var flags = p.rug_flags || [];
+      if (!flags.length) return '';
+      var tip = 'دخول مشبوب: ' + flags.join(' · ') +
+                ' — الوقف المبكر -{rug_es_pct:.0f}% مفعّل لأول {rug_es_win:.0f} دقيقة، وكاشف الرغّ يراقبه كل {rug_tw_poll:.0f} ثانية.';
+      return ' <span title=\"' + tip.replace(/\"/g, '&quot;') + '\"' +
+             ' style=\"display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;' +
+             'font-size:10px;font-weight:700;letter-spacing:.3px;cursor:help;' +
+             'background:rgba(244,63,94,.16);color:#fb7185;border:1px solid rgba(244,63,94,.35);\">' +
+             '🚩 ' + flags.length + ' علم</span>';
+    }}
+
     // Open Positions Table
     var posTable = document.getElementById('positionsTableBody');
     var openMints = Object.keys(data.open_positions || {{}});
@@ -1284,7 +1367,7 @@ def generate() -> str:
           '<td><div class="token-cell"><div class="token-icon">' + sym.substring(0, 3) + '</div>' +
           '<div class="token-info"><span class="token-sym">' + sym + '</span>' +
           '<span class="token-ca" onclick="copyCA(\\'' + m + '\\')">' + m.substring(0, 6) + '...' + m.substring(m.length - 4) + ' 📋</span></div></div></td>' +
-          '<td><strong>$' + size.toLocaleString('en-US') + '</strong>' + floorBadge(p) + '</td>' +
+          '<td><strong>$' + size.toLocaleString('en-US') + '</strong>' + floorBadge(p) + rugBadge(p) + '</td>' +
           '<td>$' + entryMc.toLocaleString('en-US') + '</td>' +
           '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString('en-US') : '—') + (p.price_is_live === false ? ' <span title="no live price right now (feed stale) - last known value shown" style="color:#f59e0b;">⚠</span>' : '') + '</strong></td>' +
           '<td class="' + (upnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (upnl >= 0 ? '+$' : '-$') + Math.abs(upnl).toFixed(2) + ' (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(1) + '%)</strong></td>' +
@@ -1346,7 +1429,9 @@ def generate() -> str:
       var pnl = Number(c.pnl || 0);
       var pnlPct = Number(c.pnl_pct || 0);
       var reason = c.reason || 'CLOSED';
-      var reasonClass = reason.indexOf('TP') >= 0 ? 'stage-pill hit' : (reason.indexOf('STOP') >= 0 ? 'stage-pill' : 'stage-pill');
+      var reasonClass = (reason.indexOf('RUG_TRIPWIRE') >= 0 || reason.indexOf('EARLY_STOP') >= 0)
+        ? 'stage-pill rug'
+        : (reason.indexOf('TP') >= 0 ? 'stage-pill hit' : (reason.indexOf('STOP') >= 0 ? 'stage-pill' : 'stage-pill'));
       var closedAt = (c.closed_at || '').substring(0, 16).replace('T', ' ');
       var openedAt = (c.opened_at || '').substring(0, 16).replace('T', ' ');
 
@@ -1468,7 +1553,7 @@ def generate() -> str:
 
   // Auto-Refresh Poll Engine (every 10 seconds — light on the DB & rate limiter)
   refreshData(false);
-  setInterval(function() {{ refreshData(false); }}, 10000);
+  setInterval(function() {{ refreshData(false); }}, {dash_refresh_ms});
   setInterval(tickPollAge, 1000);
   // Re-poll immediately when the tab regains focus or connectivity returns.
   document.addEventListener('visibilitychange', function() {{

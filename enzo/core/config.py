@@ -311,6 +311,13 @@ DEFAULTS = {
         "factory_dev_low_open_ratio": 0.1,
         "factory_dev_low_open_penalty": 15,
         "factory_dev_no_open_ratio_penalty": 8,
+        "factory_dev_mid_created": 50,
+        "factory_dev_mid_penalty": 30,
+        "factory_dev_dead_open_ratio": 0.03,
+        "factory_dev_dead_open_penalty": 25,
+        "factory_dev_watching_open_ratio": 0.25,
+        "factory_dev_watching_open_penalty": 5,
+        "factory_dev_penalty_cap": 80.0,
         "no_big_hits_max_ath_mc": 100000,
         "no_big_hits_penalty": 10,
     },
@@ -329,6 +336,7 @@ DEFAULTS = {
         ],
         # Live-mode floor: never size a position below what the executor can send.
         "min_position_usd": 1.0,
+        "min_trade_is_floor": True,
     },
     "learning": {
         "enabled": True,
@@ -338,6 +346,7 @@ DEFAULTS = {
     "cache": {"holder_dist_ttl": 600},
     "execution": {
         "wallet_name": "enzo-trading",
+        "capital_sync_grace_sec": 300,
         "base_token": "USDC",
         "slippage_bps": 50,
         "min_trade_usd": 1.0,
