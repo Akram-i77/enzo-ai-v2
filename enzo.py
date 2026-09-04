@@ -182,12 +182,12 @@ def cmd_learn(args):
 
 
 def cmd_pause(args):
-    botctl.set_paused(True)
+    botctl.set_paused(True, by="cli:enzo.py pause")
     print("[✓] ENZO trading paused.")
 
 
 def cmd_resume(args):
-    botctl.set_paused(False)
+    botctl.set_paused(False, by="cli:enzo.py resume")
     print("[✓] ENZO trading resumed.")
 
 

@@ -782,7 +782,7 @@ def cmd_scan(args):
 
 def cmd_pause(args):
     from enzo.ui import botctl
-    botctl.set_paused(True)
+    botctl.set_paused(True, by="cli:enzoctl pause")
     return _set(args, {"paused": True},
                 [yellow("⏸  ENZO paused — scan cycles will be skipped."),
                  dim("   Open positions are STILL monitored by the exit monitor."),
@@ -791,7 +791,7 @@ def cmd_pause(args):
 
 def cmd_resume(args):
     from enzo.ui import botctl
-    botctl.set_paused(False)
+    botctl.set_paused(False, by="cli:enzoctl resume")
     pid, alive, _ = _pid()
     lines = [green("▶  ENZO resumed — scanning will continue on the next cycle.")]
     if not alive:

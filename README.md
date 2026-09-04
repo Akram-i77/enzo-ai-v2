@@ -81,7 +81,8 @@ mp verify --email you@example.com --code <CODE>
   6. سجّل المركز مع tx_hash وأرسل تنبيه تيليجرام
 
 كل ثانيتين:
-  مراقب الخروج يفحص المراكز المفتوحة (وقف خسارة، جني أرباح مرحلي، تتبع)
+  مراقب الخروج يفحص المراكز المفتوحة
+  (وقف خسارة، جني أرباح مرحلي، وقف متحرك، خروج الركود، حد زمني)
 ```
 
 ### مبدأ السلامة / Safety principle
@@ -94,6 +95,48 @@ mp verify --email you@example.com --code <CODE>
 - فشل بيع حقيقي → تنبيه **"عملات يتيمة في المحفظة"** مع الأمر اليدوي الكامل.
 - `min_trade_usd` **أرضية لا عتبة رفض**: برأس مال $2.06 يُحسب حجم $0.16 فيُرفع إلى $1 وتُنفَّذ الصفقة — لكن الأرضية لا تتخطى أبداً ما تملكه المحفظة فعلاً.
 - `max_trade_usd` ينطبق على **الشراء فقط** — لا يمنع البيع أبداً، وإلا حُبس البوت في مركز.
+- **ملف التحكم تالف → البوت يبقى موقوفاً** (فشل آمن). مفتاح الإيقاف لا يُعيد
+  تسليح التداول الحقيقي بصمت أبداً؛ الضغط على «استئناف» يُصلح الملف.
+- **عطل في مركز واحد لا يُسقط دورة الخروج كلها** — قائمة مراحل جني الربح تُطبَّع
+  قبل استخدامها، فلا يبقى مركز حقيقي عاجزاً عن الإغلاق.
+
+---
+
+## قواعد الخروج / Exit rules
+
+تُقيَّم كل ثانيتين على كل مركز مفتوح، بهذا الترتيب:
+
+| القاعدة | القيمة الحالية | المعنى |
+|---|---|---|
+| **جني أرباح مرحلي** | +30% → بيع 30% · +70% → بيع 30% · +150% → بيع 40% | يُقفل الربح على دفعات |
+| **الوقف المتحرك** | `40%` | **يقوم بوظيفتين** — انظر أدناه |
+| **خروج الركود** | مفعّل · +15% · 30 ثانية | ربح جامد لا يصنع قمة جديدة |
+| **وقف الخسارة** | `-38%` | الحد الأدنى الصارم |
+| **الحد الزمني** | 48 ساعة | لا مركز يُترك مفتوحاً للأبد |
+
+### ⚠ الرقم `trailing_stop_percentage` يقوم بوظيفتين
+
+1. **عتبة التشغيل:** الوقف المتحرك لا يستيقظ إلا بعد ارتفاع العملة **+40%** فوق سعر الدخول.
+2. **عتبة التنفيذ:** بعد استيقاظه يُغلق إذا هبطت **40% من أعلى قمة** بلغتها.
+
+النتيجة: عند التنفيذ تخرج بنحو **-16% من سعر الدخول** (‎1.40 × 0.60 = 0.84‎).
+وهذه النقطة تقع **فوق** وقف الخسارة (-38%)، فالمتحرك يسبق دائماً ويحوّل خسارة
+-38% محتملة إلى -16% مقفلة. لكن **قبل** بلوغ +40% يبقى المتحرك نائماً،
+والحماية الوحيدة هي وقف الخسارة.
+
+مقايضة يجب معرفتها: رقم أعلى = مساحة أوسع للعملة لترتفع (خروج مبكر أقل في
+عملات شديدة التذبذب)، لكنه يُبقي ربحاً أقل حين يُنفَّذ فعلاً.
+
+### خروج الركود / Stall exit
+
+يُغلق المركز **كربح** حين يتجمّد: الشرطان معاً — ربح ≥ `stall_min_gain_pct`
+(15%) **و** لا قمة سوقية جديدة منذ ≥ `stall_seconds` (30 ثانية). لا يُطلَق
+أبداً على مركز خاسر (تلك مهمة وقف الخسارة). ساعة الركود تُحفظ مع المركز
+فتنجو من إعادة التشغيل.
+
+> 30 ثانية مدة قصيرة. إن وجدت الصفقات الرابحة تُغلق مبكراً أكثر مما تحب،
+> ارفع `stall_seconds` إلى 60 أو 120 — التغيير يلتقطه البوت **دون** إعادة تشغيل.
+
 
 ---
 
@@ -119,10 +162,33 @@ risk_management:
   max_drawdown: 25.0           # % → قاطع الدائرة
   max_open_positions: 5
 
+exit_strategy:                 # انظر قسم «قواعد الخروج» أعلاه
+  stop_loss_percentage: 38.0
+  trailing_stop_percentage: 40.0   # عتبة تشغيل + عتبة تنفيذ معاً
+  stall_exit_enabled: true
+  stall_min_gain_pct: 15.0
+  stall_seconds: 30.0
+  take_profit_stages: [{pct: 30, sell: 0.3}, {pct: 70, sell: 0.3}, {pct: 150, sell: 0.4}]
+  max_holding_time_hours: 48
+
+market_analysis:               # عتبات الاكتشاف — حدّدها المالك
+  min_liquidity: 5000
+  min_volume: 8000
+  min_holders: 10
+  min_market_cap: 5000
+  min_confidence_score: 55
+  min_buy_pressure: 30
+  max_scam_score: 15           # ⚠ غير مفعّل في الكود
+  max_holder_percentage: 10.0  # ⚠ غير مفعّل في الكود
+
 data_sources:
   gmgn:
     cli: gmgn-cli              # اسم في PATH أو مسار كامل
 ```
+
+**`chain: sol` لا تغيّرها** — GMGN تتطلب `sol` بينما MoonPay تتطلب `solana`؛
+طبقة `moonpay_chain()` تترجم عند الحد الفاصل تلقائياً. تغييرها يدوياً يعيد
+عطل `NO_ROUTE` على كل صفقة.
 
 بعد أي تعديل: `./enzoctl doctor` ثم `./enzoctl restart`.
 
@@ -146,8 +212,8 @@ enzo/
 config/      enzo-config.yaml · enzo-control.json · enzo-watchlist.json
 data/        enzo.db (الدفتر) · run/ (pid + health) · logs/ · audit
 docs/        OPENCLAW_DEPLOYMENT.md · ENZO_FULL_DIAGNOSIS.md
-tests/       test_executor.py (47) · test_engine_e2e.py (43) ·
-             test_min_trade_floor.py (34)
+tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay الوهمية) ·
+             conftest_paths.py
 ```
 
 ---
@@ -158,9 +224,16 @@ tests/       test_executor.py (47) · test_engine_e2e.py (43) ·
 |---|---|
 | هل هو حي؟ (مناسب للمشرفين) | `GET /health` → `200` سليم، **`503` مشكلة** |
 | الحالة الكاملة | `GET /api/health` |
+| المحفظة والمراكز والإحصاءات | `GET /api/state` |
 | نشاط الأنظمة الفرعية | `GET /api/activity` |
+| أسعار المراكز المفتوحة (للمخطط) | `GET /api/prices` |
 | اللوحة | `GET /enzo-dashboard.html` |
+| إيقاف/استئناف التداول | `POST /api/control/toggle` |
+| دورة فحص فورية | `POST /api/scan` |
 | من القرص (لو ماتت العملية) | `data/run/enzo-health.json` |
+
+المنفذ الافتراضي **8077** (`./enzoctl dashboard` أو `python3 -m enzo.ui.serve <port>`).
+يرتبط بـ `0.0.0.0` فيقبل الطلبات من أي واجهة مضيفة.
 
 كل حالة `degraded` تحمل قائمة `problems[]` برموز محددة وأسبابها —
 الجدول الكامل في [`docs/OPENCLAW_DEPLOYMENT.md`](docs/OPENCLAW_DEPLOYMENT.md#3-ما-الذي-تعنيه-الحالات--what-the-statuses-mean).
@@ -169,14 +242,29 @@ tests/       test_executor.py (47) · test_engine_e2e.py (43) ·
 
 ## الاختبارات / Tests
 
+ثماني حزم، **258 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+
 ```bash
-PATH=/tmp/mockbin:$PATH python3 tests/test_executor.py        # 47 assertion
-PATH=/tmp/mockbin:$PATH python3 tests/test_engine_e2e.py      # 43 assertion
-PATH=/tmp/mockbin:$PATH python3 tests/test_min_trade_floor.py # 34 assertion
+python3 tests/test_executor.py             #  47  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
+python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
+python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها
+python3 tests/test_min_trade_floor.py      #  34  min_trade_usd كأرضية لا كعتبة رفض
+python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة ومنع NO_ROUTE
+python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف (فشل آمن + كتابة ذرّية)
+python3 tests/test_base_token_capital.py   #  23  رأس المال بحسب عملة الأساس
+python3 tests/test_dashboard_js.py         #  12  صحة JavaScript المولَّد في اللوحة
 ```
+
+لا حاجة لضبط `PATH`: واجهة MoonPay الوهمية مرفقة داخل المستودع في
+`tests/mockbin/` وتُحلّ تلقائياً عبر `tests/conftest_paths.py`.
 
 `tests/test_engine_e2e.py` يعمل في صندوق معزول عبر `ENZO_HOME` — لا يلمس قاعدة
 بياناتك ولا أموالك. وهو يثبت المسار الكامل من الاكتشاف حتى التنفيذ الحي.
+
+> **قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم الثماني وتأكد من `0 failed`.
+> للتحقق من اللوحة في متصفح فعلي (يتطلب `npm i jsdom`) يمكن تحميل الصفحة من
+> الخادم الحي والنقر على كل زر؛ الفحص الثابت في `test_dashboard_js.py` يغطي
+> الصحة النحوية وربط الأزرار دون أي اعتماديات.
 
 ---
 

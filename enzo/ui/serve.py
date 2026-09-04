@@ -616,7 +616,7 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == "/api/control/toggle":
             try:
                 cur = botctl.is_paused()
-                botctl.set_paused(not cur)
+                botctl.set_paused(not cur, by="web-dashboard")
                 audit.log_event(
                     category="SYSTEM",
                     level="INFO",

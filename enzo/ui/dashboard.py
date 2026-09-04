@@ -1364,6 +1364,7 @@ def generate() -> str:
     var canvas = document.getElementById('equityCanvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
+    if (!ctx) return;
     var rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio || 800;
     canvas.height = rect.height * window.devicePixelRatio || 320;

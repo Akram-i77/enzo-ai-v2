@@ -30,28 +30,70 @@ TG_ANSWER_CB = "https://api.telegram.org/bot{}/answerCallbackQuery"
 
 
 def is_paused() -> bool:
+    """True when the operator has asked the bot to stop trading.
+
+    A missing control file means nobody has ever written one, so the honest
+    answer is "not paused". A file that EXISTS but cannot be parsed is a
+    different matter: it means a pause may have been requested and the record of
+    it was damaged. Returning False there would silently re-arm live trading
+    against the operator's explicit instruction — the one failure mode this flag
+    exists to prevent. So an unreadable control file fails CLOSED (stays paused)
+    and logs loudly. Recovery is trivial: pressing Resume on the dashboard (or
+    `enzoctl resume`) rewrites the file atomically.
+    """
     if not os.path.exists(CONTROL_PATH):
         return False
     try:
         with open(CONTROL_PATH, "r", encoding="utf-8") as f:
             return bool(json.load(f).get("paused", False))
-    except Exception:
-        return False
+    except Exception as e:
+        _LOGGER.error(
+            "Control file %s is unreadable (%s: %s) - failing CLOSED, treating the "
+            "bot as PAUSED so live trading cannot resume silently. Press Resume on "
+            "the dashboard or run `enzoctl resume` to rewrite it.",
+            CONTROL_PATH, type(e).__name__, e,
+        )
+        return True
 
 
-def set_paused(paused: bool):
+def set_paused(paused: bool, by: str = "unknown"):
+    """Persist the pause flag atomically, with an audit trail.
+
+    The write goes to a temp file and is swapped in with os.replace(), matching
+    the convention used by db.py / config.py / learn.py. A plain open(..., "w")
+    could be interrupted mid-write and leave a truncated file, which is exactly
+    the corruption is_paused() now fails closed on. `updated_at` / `updated_by`
+    are recorded so it is always possible to tell when trading was stopped and
+    by which surface (dashboard, Telegram, CLI).
+    """
     try:
         os.makedirs(os.path.dirname(CONTROL_PATH), exist_ok=True)
         data = {}
         if os.path.exists(CONTROL_PATH):
             try:
                 with open(CONTROL_PATH, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            except Exception:
-                pass
-        data["paused"] = paused
-        with open(CONTROL_PATH, "w", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    data = loaded
+                else:
+                    _LOGGER.error(
+                        "Control file %s held %s, not an object - rebuilding it.",
+                        CONTROL_PATH, type(loaded).__name__,
+                    )
+            except Exception as e:
+                _LOGGER.error(
+                    "Control file %s could not be read (%s: %s) - rebuilding it.",
+                    CONTROL_PATH, type(e).__name__, e,
+                )
+        data["paused"] = bool(paused)
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        data["updated_by"] = str(by or "unknown")
+        tmp = CONTROL_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, CONTROL_PATH)  # atomic on POSIX
     except Exception as e:
         _LOGGER.error(f"Failed to set paused state: {e}")
 
@@ -339,7 +381,7 @@ class TelegramBotListener:
             try:
                 if data == "btn_toggle_pause":
                     cur = is_paused()
-                    set_paused(not cur)
+                    set_paused(not cur, by="telegram:button")
                     dashboard.generate()
                     answer_callback(cb_id, "تم استئناف البوت" if cur else "تم إيقاف البوت مؤقتاً")
                     text, markup = build_main_menu_card()
@@ -411,12 +453,12 @@ class TelegramBotListener:
                     threading.Thread(target=lambda: (engine.scan_once(), dashboard.generate()), daemon=True).start()
 
                 elif cmd == "/pause":
-                    set_paused(True)
+                    set_paused(True, by="telegram:/pause")
                     dashboard.generate()
                     send_message(chat_id, "⏸ <b>تم إيقاف التداول مؤقتاً (PAUSED).</b>")
 
                 elif cmd == "/resume":
-                    set_paused(False)
+                    set_paused(False, by="telegram:/resume")
                     dashboard.generate()
                     send_message(chat_id, "▶ <b>تم استئناف التداول النشط (RESUMED).</b>")
             except Exception as e:
