@@ -270,6 +270,31 @@ def analyze(merged: dict, config: dict = None) -> dict:
         except Exception:
             pass
 
+def rug_rejection(dev_axis: dict) -> str | None:
+    """Return a rejection reason when the developer's behaviour IS the rug.
+
+    A dev wallet that closed its entire position is not a trade, it is a request
+    for exit liquidity. The dev axis score alone cannot carry this signal: it is
+    one of six weighted axes, so five healthy axes outvote a dead dev. The CAT
+    trade of 2026-09-04 bought with dev_behavior=0 (DEV_SOLD_ALL) because the
+    weighted confidence still cleared the threshold at 56.15.
+    """
+    if not dev_axis.get("available"):
+        return None
+    events = [str(e) for e in (dev_axis.get("events") or [])]
+    if "DEV_SOLD_ALL" in events:
+        return ("RUG: developer wallet CLOSED its entire position (DEV_SOLD_ALL) - "
+                "no holder is left to support the price")
+    try:
+        score = float(dev_axis.get("score") or 0.0)
+    except (TypeError, ValueError):
+        score = 0.0
+    if score <= 0 and events:
+        return (f"RUG: dev-behaviour score {score:.0f} with events: "
+                + ", ".join(events[:3]))
+    return None
+
+
     # Machine Learning Features
     features = {
         "security_ok": security_status == "SAFE",
@@ -285,6 +310,11 @@ def analyze(merged: dict, config: dict = None) -> dict:
         "momentum_positive": pc1h >= 0,
         "liquidity_ok": liq >= min_liq,
     }
+
+    # ── Rug gate: dev dumping is a veto, not one vote among six ──────────
+    _rug = rug_rejection(dev_axis)
+    if _rug:
+        rejected.append(_rug)
 
     # Decision Logic
     hard_fail = bool(rejected)

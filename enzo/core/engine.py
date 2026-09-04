@@ -474,6 +474,14 @@ def run_loop(interval_sec: float = 60.0):
     monitor = exit_monitor.get_exit_monitor()
     monitor.start()
 
+    # Publish the feed state once immediately so status pages have something
+    # truthful before the first cycle finishes.
+    try:
+        from enzo.providers import pump as _pump_pub
+        _pump_pub.publish_status()
+    except Exception:
+        pass
+
     stopping = {"flag": False}
 
     def _handle_term(signum, frame):
@@ -507,6 +515,11 @@ def run_loop(interval_sec: float = 60.0):
                                     data={"cycle": cycles})
                 except Exception:
                     pass
+            try:
+                from enzo.providers import pump as _pump_pub
+                _pump_pub.publish_status()
+            except Exception:
+                pass
             elapsed = time.time() - t0
             sleep_time = max(1.0, interval_sec - elapsed)
             # Sleep in small slices so SIGTERM is honoured promptly.

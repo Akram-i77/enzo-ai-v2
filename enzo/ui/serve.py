@@ -134,12 +134,28 @@ def health_snapshot() -> dict:
     # ── Discovery feed: a dead WebSocket is why the bot "found 0 candidates"
     # for its entire life while every status page said everything was fine.
     pump_state = {}
-    try:
-        pump_state = pump.get_pumpdev_client().status()
-    except Exception:
-        pass
-    pstate = str(pump_state.get("state") or "UNKNOWN")
-    if pstate in ("DOWN", "RETRYING"):
+    _client = pump.peek_pumpdev_client()   # never CREATE the feed in this process
+    if _client is None:
+        # The engine process owns the WebSocket. Report on it from the health
+        # file it writes instead of opening a competing connection that gets
+        # the shared IP rate-limited.
+        try:
+            import json as _json
+            from enzo.core.config import RUN_DIR
+            with open(os.path.join(RUN_DIR, "enzo-health.json"), encoding="utf-8") as _hf:
+                pump_state = (_json.load(_hf) or {}).get("pump") or {}
+        except Exception:
+            pump_state = {}
+        pstate = str(pump_state.get("state") or "OWNED_BY_ENGINE")
+    else:
+        try:
+            pump_state = _client.status()
+        except Exception:
+            pump_state = {}
+        pstate = str(pump_state.get("state") or "UNKNOWN")
+    if pstate == "OWNED_BY_ENGINE":
+        pass  # healthy: the engine owns the feed; its health file carries detail
+    elif pstate in ("DOWN", "RETRYING"):
         detail = str(pump_state.get("last_error") or "")[:90]
         problems.append(f"PUMPDEV_{pstate}" + (f": {detail}" if detail else ""))
     elif pump_state.get("stale"):
@@ -360,6 +376,16 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
 
                     pos_data = dict(p)
                     pos_data["current_market_cap"] = cur_mc
+                    # Honest price provenance: which source, how old, and whether
+                    # it may be called live at all. Without this the card fell
+                    # back to the ENTRY market cap and displayed it as current.
+                    _psrc = p.get("price_source") or None
+                    _pts = float(p.get("price_ts") or 0.0)
+                    _age = (time.time() - _pts) if _pts > 0 else None
+                    pos_data["price_source"] = _psrc
+                    pos_data["price_age_sec"] = round(_age, 1) if _age is not None else None
+                    pos_data["price_is_live"] = bool(_psrc) and _age is not None and _age <= 30.0
+                    pos_data["price_fallback_to_entry"] = bool(_psrc) is False
                     pos_data["unrealized_pnl"] = round(upnl_usd, 2)
                     pos_data["unrealized_pnl_pct"] = round(upnl_pct, 2)
                     open_pos[mint] = pos_data
@@ -446,8 +472,16 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == "/api/activity":
             try:
                 activities = audit.get_recent_activities(limit=100)
-                pump_client = pump.get_pumpdev_client()
-                recent_stream_tokens = pump_client.get_recent_tokens(limit=20)
+                # PEEK, never create: this endpoint is polled every few seconds
+                # by the dashboard, and get_pumpdev_client() here opened a second
+                # WebSocket from the same IP - pump.dev then rate-limited the IP
+                # ("Too many connections") and the ENGINE's feed starved, which
+                # is why every price on the dashboard went stale at once.
+                pump_client = pump.peek_pumpdev_client()
+                if pump_client is not None:
+                    recent_stream_tokens = pump_client.get_recent_tokens(limit=20)
+                else:
+                    recent_stream_tokens = []
                 
                 # Every field below is OBSERVED, not asserted. The previous
                 # version hardcoded exit_monitor="ARMED" and
@@ -455,11 +489,15 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                 # "did we happen to buffer a token", so a dead WebSocket looked
                 # like "CONNECTING" forever and a stopped exit monitor still
                 # reported itself armed while open positions went unmonitored.
-                pump_state = {}
-                try:
-                    pump_state = pump_client.status()
-                except Exception as e:
-                    pump_state = {"state": "UNKNOWN", "last_error": str(e)}
+                if pump_client is not None:
+                    pump_state = {}
+                    try:
+                        pump_state = pump_client.status()
+                    except Exception as e:
+                        pump_state = {"state": "UNKNOWN", "last_error": str(e)}
+                else:
+                    pump_state = pump.read_published_status() or {
+                        "state": "OWNED_BY_ENGINE"}
 
                 gmgn_ban = 0.0
                 try:

@@ -996,6 +996,52 @@ def cmd_trades(args):
     return cmd_positions(args)
 
 
+def cmd_rebase(args):
+    """Accept a realised loss as the new starting point and re-arm the breakers.
+
+    The drawdown circuit breaker (peak vs equity >= max_drawdown) does NOT clear
+    by itself - unlike the daily-loss halt, which resets at UTC midnight. After
+    a real loss the bot would otherwise stay halted forever with no sanctioned
+    way back, which reads as "the bot is dead". Rebasing resets initial_capital
+    AND peak_equity onto today's equity, zeroes daily_loss and clears `halted`,
+    so ROI/win-rate are measured from the new base. Closed-trade history is
+    kept, but its percentage meaning changes - hence the mandatory --confirm.
+    """
+    from enzo.core import db
+    from enzo.core.config import load_config
+    from enzo.execution import portfolio as pf
+    cfg = load_config()
+    st = pf.load_state()
+    eq = float(pf.equity(st) or 0.0)
+    halt = pf.is_halted(st, cfg)
+    old_base = float(st.get("initial_capital") or 0.0)
+    old_peak = float(st.get("peak_equity") or 0.0)
+    value = float(args.value) if getattr(args, "value", None) else eq
+    if value <= 0:
+        return _set(args, {"ok": False}, [yellow("Equity is 0 - nothing to rebase onto.")], 1)
+    if not getattr(args, "confirm", False):
+        lines = [
+            yellow("⚠  rebase accepts the loss and re-arms the risk breakers:"),
+            dim(f"   initial_capital : ${old_base:,.2f} -> ${value:,.2f}"),
+            dim(f"   peak_equity     : ${old_peak:,.2f} -> ${value:,.2f}"),
+            dim("   daily_loss      : reset to 0   ·   halted: cleared"),
+            dim("   closed trades are KEPT, but ROI/win-rate are measured"),
+            dim("   from the new base from now on."),
+            dim(f"   current halt    : {halt or 'none'}"),
+            "",
+            yellow("   Re-run with --confirm to apply:  ./enzoctl rebase --confirm"),
+        ]
+        return _set(args, {"ok": False, "confirm_required": True,
+                           "current_equity": round(eq, 2), "halt": halt}, lines, 1)
+    if not db.atomic_update_initial_capital(value):
+        return _set(args, {"ok": False, "changed": False},
+                    [yellow(f"Base already equals ${value:,.2f} - nothing changed."),
+                     dim("   If a halt persists, equity itself must recover first.")], 1)
+    return _set(args, {"ok": True, "new_base": round(value, 2)},
+                [green(f"✔ Capital base rebased to ${value:,.2f}; halt cleared."),
+                 dim("   The breakers now measure drawdown from this point.")], 0)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 def build_parser():
     p = argparse.ArgumentParser(
@@ -1046,6 +1092,13 @@ def build_parser():
 
     add("pause", cmd_pause, "pause trading (exits still monitored)")
     add("resume", cmd_resume, "resume trading")
+
+    sp = add("rebase", cmd_rebase,
+             "accept a realised loss: reset capital base + clear the halt")
+    sp.add_argument("--value", type=float,
+                    help="explicit new base in USD (default: current equity)")
+    sp.add_argument("--confirm", action="store_true",
+                    help="apply (without it nothing is changed)")
 
     sp = add("mode", cmd_mode, "switch paper_mode")
     sp.add_argument("target", choices=["live", "paper"])

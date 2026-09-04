@@ -1286,7 +1286,7 @@ def generate() -> str:
           '<span class="token-ca" onclick="copyCA(\\'' + m + '\\')">' + m.substring(0, 6) + '...' + m.substring(m.length - 4) + ' 📋</span></div></div></td>' +
           '<td><strong>$' + size.toLocaleString('en-US') + '</strong>' + floorBadge(p) + '</td>' +
           '<td>$' + entryMc.toLocaleString('en-US') + '</td>' +
-          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString('en-US') : '—') + '</strong></td>' +
+          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString('en-US') : '—') + (p.price_is_live === false ? ' <span title="no live price right now (feed stale) - last known value shown" style="color:#f59e0b;">⚠</span>' : '') + '</strong></td>' +
           '<td class="' + (upnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (upnl >= 0 ? '+$' : '-$') + Math.abs(upnl).toFixed(2) + ' (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(1) + '%)</strong></td>' +
           '<td><div class="stages-roadmap"><span class="' + s1 + '">T1: 30%</span><span class="' + s2 + '">T2: 70%</span><span class="' + s3 + '">T3: 150%</span></div></td>' +
           '<td>' + trailStr + '</td>' +

@@ -15,7 +15,7 @@ import urllib.request
 import urllib.error
 from typing import List, Dict, Any, Optional, Set
 
-from enzo.core.config import load_config, load_secrets
+from enzo.core.config import load_config, load_secrets, RUN_DIR
 from enzo.providers import gmgn
 import enzo.core.log as log
 
@@ -364,6 +364,57 @@ def get_pumpdev_client() -> PumpDevStreamClient:
     if _PUMPDEV_CLIENT is None:
         _PUMPDEV_CLIENT = PumpDevStreamClient()
         _PUMPDEV_CLIENT.start()
+    return _PUMPDEV_CLIENT
+
+
+FEED_STATUS_PATH = os.path.join(RUN_DIR, "enzo-feed.json")
+
+
+def publish_status() -> None:
+    """Owner-side: snapshot this process's feed state for the status pages.
+
+    Only the process that OWNS the WebSocket may call get_pumpdev_client(), so
+    the dashboard cannot ask it directly. The engine publishes its view here
+    each cycle and serve.py reads the file - one connection per IP, still a
+    single source of truth.
+    """
+    client = _PUMPDEV_CLIENT
+    if client is None:
+        return
+    try:
+        st = dict(client.status() or {})
+        st["ts"] = time.time()
+        st["owner_pid"] = os.getpid()
+        tmp = FEED_STATUS_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(st, f)
+        os.replace(tmp, FEED_STATUS_PATH)
+    except Exception:
+        pass
+
+
+def read_published_status(max_age_sec: float = 180.0) -> dict:
+    """Consumer-side: the engine's last published feed state, or {} if absent."""
+    try:
+        with open(FEED_STATUS_PATH, "r", encoding="utf-8") as f:
+            d = json.load(f) or {}
+        if time.time() - float(d.get("ts") or 0.0) > max_age_sec:
+            return {}
+        return d
+    except Exception:
+        return {}
+
+
+def peek_pumpdev_client() -> PumpDevStreamClient | None:
+    """Return the already-running client WITHOUT creating one.
+
+    pump.dev rate-limits per IP ("Too many connections"), so exactly ONE process
+    may own the WebSocket - the engine. The dashboard server used to call
+    get_pumpdev_client() while building /health, which opened a SECOND connection
+    from the same IP, got the IP limited, and starved the engine's feed: prices
+    went stale everywhere while two processes both believed they were helping.
+    Status pages must peek, never create.
+    """
     return _PUMPDEV_CLIENT
 
 

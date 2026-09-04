@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timezone
 from typing import Dict, Optional, Set, Tuple
 
+from enzo.core import db
 from enzo.core.config import load_config
 from enzo.execution import portfolio, executor
 from enzo.providers import gmgn, pump
@@ -129,6 +130,18 @@ class ExitMonitor:
                             self._consecutive_failures[mint] = 0
                             self._warned_mints.discard(mint)
                             valid_mcaps[mint] = price_meta["market_cap"]
+                            # Record WHERE the price came from and WHEN, so the
+                            # dashboard can show "live (gmgn, 3s)" instead of
+                            # silently presenting a stale or entry figure as if
+                            # it were now. Staleness you can see is a decision;
+                            # staleness you cannot is a trap.
+                            try:
+                                db.atomic_update_position_extra(mint, {
+                                    "price_source": str(price_meta.get("source") or ""),
+                                    "price_ts": float(price_meta.get("timestamp") or 0.0),
+                                })
+                            except Exception:
+                                pass
                         else:
                             self._consecutive_failures[mint] = self._consecutive_failures.get(mint, 0) + 1
                             fail_count = self._consecutive_failures[mint]
