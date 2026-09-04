@@ -160,8 +160,13 @@ DEFAULTS = {
             {"pct": 70, "sell": 0.3},
             {"pct": 150, "sell": 0.4},
         ],
-        "stop_loss_percentage": 50.0,
-        "trailing_stop_percentage": 30.0,
+        # Defaults mirror config/enzo-config.yaml (owner-tuned 2026-09-03) so a
+        # missing YAML key cannot silently revert to the old looser exits.
+        "stop_loss_percentage": 38.0,
+        "trailing_stop_percentage": 40.0,
+        "stall_exit_enabled": True,
+        "stall_min_gain_pct": 15.0,
+        "stall_seconds": 30.0,
         "max_holding_time_hours": 48,
     },
     "scoring_weights": {

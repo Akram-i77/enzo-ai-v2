@@ -606,7 +606,13 @@ def close_position(state: dict, mint: str, exit_market_cap: float, reason: str) 
     entry_mc = float(pos.get("entry_market_cap") or 0.0)
     ratio = (exit_market_cap / entry_mc - 1) if entry_mc > 0 else 0.0
     this_pnl = float(pos.get("size_usd", 0.0)) * ratio
-    if pos.get("stages_hit"):
+    # `any(...)` not a bare truthiness test: check_exits now normalizes
+    # stages_hit to one slot per stage, so the list is non-empty (and therefore
+    # truthy) even when no stage has fired. The intent here is "a partial
+    # take-profit actually happened", which only `any()` expresses. Without it
+    # the recorded PnL would silently switch to the staged formula for every
+    # plain exit.
+    if any(pos.get("stages_hit") or []):
         record_pnl = float(pos.get("realized_pnl_total", 0.0)) + this_pnl
         init_size = float(pos.get("initial_size_usd", pos.get("size_usd", 0.0)))
         record_pnl_pct = (record_pnl / init_size * 100) if init_size > 0 else 0.0
@@ -672,8 +678,14 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
     cfg = load_config()
     paper = bool(cfg.get("paper_mode", True))
     xs = cfg.get("exit_strategy", {})
-    trail_pct = float(xs.get("trailing_stop_percentage", 30.0))
-    stop_pct = float(xs.get("stop_loss_percentage", 50.0))
+    trail_pct = float(xs.get("trailing_stop_percentage", 40.0))
+    stop_pct = float(xs.get("stop_loss_percentage", 38.0))
+    # Stall exit: "tokens that pump and flatline rarely re-pump" (MoonPay's
+    # pump.fun guide calls this the most important exit rule). Take profit when
+    # the position is up but the market cap has stopped making new highs.
+    stall_on = bool(xs.get("stall_exit_enabled", False))
+    stall_gain = float(xs.get("stall_min_gain_pct", 15.0))
+    stall_secs = float(xs.get("stall_seconds", 30.0))
     stages = xs.get("take_profit_stages") or []
     state = load_state()
     closed = []
@@ -701,10 +713,30 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
 
         entry_mc = float(pos["entry_market_cap"])
         pct = (mcap / entry_mc - 1) * 100 if entry_mc > 0 else 0.0
+
+        # stages_hit must be a list with one slot per stage. open_position()
+        # builds it correctly, but a position reloaded from the DB with an empty
+        # stages_hit_json comes back as [] — and `[][i] = True` raises IndexError.
+        # That exception is caught by the exit monitor's outer handler, which
+        # means the WHOLE cycle aborts every 2 seconds and NO position can be
+        # closed at all: an unexitable bag with real money in it. Normalize here
+        # so the exit path cannot be taken down by one malformed row.
+        _sh = pos.get("stages_hit")
+        if not isinstance(_sh, list):
+            _sh = []
+        if stages and len(_sh) < len(stages):
+            _sh = _sh + [False] * (len(stages) - len(_sh))
+        pos["stages_hit"] = _sh
         pos["current_market_cap"] = mcap
         pos["unrealized_pnl"] = float(pos.get("size_usd", 0.0)) * (pct / 100.0)
 
-        peak_mc = max(float(pos.get("peak_market_cap", entry_mc)), mcap)
+        prev_peak = float(pos.get("peak_market_cap", entry_mc) or entry_mc)
+        peak_mc = max(prev_peak, mcap)
+        # Stall detection needs the TIME of the last new high, so the clock
+        # resets only on a genuine new peak — not on every poll. No dedicated
+        # column exists; db persists unknown position fields via extra_json.
+        if peak_mc > prev_peak or not pos.get("peak_market_cap_at"):
+            pos["peak_market_cap_at"] = now
         pos["peak_market_cap"] = peak_mc
         if not pos.get("trailing_active"):
             if mcap >= entry_mc * (1 + trail_pct / 100.0):
@@ -737,7 +769,13 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
                             )
                         except Exception:
                             pass
-                    pos.setdefault("stages_hit", [])[i] = True
+                    _shw = pos.get("stages_hit")
+                    if not isinstance(_shw, list):
+                        _shw = []
+                    while len(_shw) <= i:
+                        _shw.append(False)
+                    _shw[i] = True
+                    pos["stages_hit"] = _shw
                     if is_last or float(pos.get("amount", 0.0)) <= 1e-9:
                         r = close_position(state, mint, mcap, f"TP_FINAL_{int(st['pct'])}%")
                         if r.get("ok"):
@@ -754,8 +792,17 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
             opened = now
         held_hours = (now - opened) / 3600.0
 
+        peak_at = float(pos.get("peak_market_cap_at") or 0.0)
+        stalled = (stall_on and pct >= stall_gain and peak_at > 0.0
+                   and (now - peak_at) >= stall_secs)
+
         if pos.get("trailing_active") and pos.get("trailing_stop_mc") and mcap <= float(pos["trailing_stop_mc"]):
             r = close_position(state, mint, mcap, "TRAILING_STOP")
+        elif stalled:
+            # Deliberately ahead of STOP_LOSS: a stalled winner should be taken
+            # as profit, not held until it round-trips into a loss.
+            r = close_position(state, mint, mcap,
+                               f"STALL_EXIT(+{pct:.0f}%, flat {int(now - peak_at)}s)")
         elif (not stages) and pos.get("take_profit_mc") and mcap >= float(pos["take_profit_mc"]):
             r = close_position(state, mint, mcap, "TAKE_PROFIT")
         elif mcap <= entry_mc * (1 - stop_pct / 100.0):
