@@ -188,13 +188,45 @@ def test_activity_stream_wiring():
           "unexpected absent ids: " + ", ".join(sorted(referenced - present))[:200])
 
 
+
+def test_axis_keys_match_backend():
+    """The activity stream once printed Wallet: 0 / Dev: 0 for EVERY token.
+
+    Cause: analyze.py writes the six axis scores under wallet_behavior /
+    dev_behavior, while the dashboard JS read data.axes.wallet / data.axes.dev.
+    `undefined || 0` is 0, so every card showed two dead-looking zeros and the
+    operator could not tell a bad wallet from a missing key. This cross-checks
+    the two files so the contract can never drift again.
+    """
+    print("\n=== المحاور: اللوحة تقرأ ما يكتبه المحلّل بالضبط ===")
+    with open(os.path.join(REPO, "enzo", "analyzers", "analyze.py"), encoding="utf-8") as f:
+        an = f.read()
+    axes_block = re.search(r"axes\s*=\s*\{(.*?)\n    \}", an, re.S)
+    backend = set(re.findall(r'"([a-z_]+)":', axes_block.group(1))) if axes_block else set()
+
+    with open(os.path.join(REPO, "enzo", "ui", "dashboard.py"), encoding="utf-8") as f:
+        dash = f.read()
+    reads = set(re.findall(r"ax\('([a-z_]+)'\)", dash))
+    reads |= set(re.findall(r"data\.axes\.([a-zA-Z_]+)", dash))
+
+    check("المحلّل يكتب المحاور الستة", backend == {"security", "wallet_behavior",
+          "dev_behavior", "momentum", "market_structure", "liquidity"}, str(sorted(backend)))
+    missing = reads - backend
+    check("كل مفتاح تقرأه اللوحة يكتبه المحلّل فعلاً", not missing, str(sorted(missing)))
+    unread = backend - reads
+    check("كل محور يكتبه المحلّل تعرضه اللوحة", not unread, str(sorted(unread)))
+    check("لا بقايا قراءة نقطية قديمة (axes.wallet / axes.dev)",
+          re.search(r"data\.axes\.(wallet|dev)\b", dash) is None)
+    check("محور بلا بيانات يظهر n/a لا صفراً كاذباً", "'n/a'" in dash)
+
 if __name__ == "__main__":
     print("=" * 68)
     print("  Dashboard JavaScript regression guard")
     print("=" * 68)
     for fn in (test_source_has_no_expandable_escapes,
                test_generated_js_parses,
-               test_activity_stream_wiring):
+               test_activity_stream_wiring,
+               test_axis_keys_match_backend):
         try:
             fn()
         except Exception as e:

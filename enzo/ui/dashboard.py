@@ -1155,14 +1155,21 @@ def generate() -> str:
 
       var detailsStr = '';
       if (data.axes) {{
+        // Read the EXACT keys analyze.py writes: wallet_behavior / dev_behavior.
+        // The old code read .wallet and .dev, which are undefined, so `|| 0`
+        // printed 0 for EVERY token and made each one look like it had a dead
+        // wallet and a dead dev. Show 'n/a' (never a fake 0) when an axis has no
+        // data: unavailable axes are excluded from the weighted confidence, so
+        // a zero here would misrepresent the score.
+        var ax = function(k) {{ var v = data.axes[k]; return (typeof v === 'number') ? v : 'n/a'; }};
         detailsStr = '<div class="act-details">' +
-          '<span>🛡️ Security: ' + (data.axes.security || 0) + '</span>' +
-          '<span>👛 Wallet: ' + (data.axes.wallet || 0) + '</span>' +
-          '<span>👨‍💻 Dev: ' + (data.axes.dev || 0) + '</span>' +
-          '<span>🔥 Momentum: ' + (data.axes.momentum || 0) + '</span>' +
-          '<span>📊 Structure: ' + (data.axes.market_structure || 0) + '</span>' +
-          '<span>💧 Liq: ' + (data.axes.liquidity || 0) + '</span>' +
-          (data.market_cap_usd ? '<span>💰 MC: $' + Number(data.market_cap_usd).toLocaleString() + '</span>' : '') +
+          '<span>🛡️ Security: ' + ax('security') + '</span>' +
+          '<span>👛 Wallet: ' + ax('wallet_behavior') + '</span>' +
+          '<span>👨‍💻 Dev: ' + ax('dev_behavior') + '</span>' +
+          '<span>🔥 Momentum: ' + ax('momentum') + '</span>' +
+          '<span>📊 Structure: ' + ax('market_structure') + '</span>' +
+          '<span>💧 Liq: ' + ax('liquidity') + '</span>' +
+          (data.market_cap_usd ? '<span>💰 MC: $' + Number(data.market_cap_usd).toLocaleString('en-US') + '</span>' : '') +
           '</div>';
       }}
 
@@ -1271,15 +1278,15 @@ def generate() -> str:
         var s2 = stages[1] ? 'stage-pill hit' : 'stage-pill';
         var s3 = stages[2] ? 'stage-pill hit' : 'stage-pill';
 
-        var trailStr = p.trailing_active ? '<span class="color-pos" style="font-weight:700;">ACTIVE ($' + Number(p.trailing_stop_mc||0).toLocaleString() + ')</span>' : '<span style="color:var(--text-muted)">SL: $' + Number(p.stop_loss_mc||0).toLocaleString() + '</span>';
+        var trailStr = p.trailing_active ? '<span class="color-pos" style="font-weight:700;">ACTIVE ($' + Number(p.trailing_stop_mc||0).toLocaleString('en-US') + ')</span>' : '<span style="color:var(--text-muted)">SL: $' + Number(p.stop_loss_mc||0).toLocaleString('en-US') + '</span>';
 
         rows += '<tr>' +
           '<td><div class="token-cell"><div class="token-icon">' + sym.substring(0, 3) + '</div>' +
           '<div class="token-info"><span class="token-sym">' + sym + '</span>' +
           '<span class="token-ca" onclick="copyCA(\\'' + m + '\\')">' + m.substring(0, 6) + '...' + m.substring(m.length - 4) + ' 📋</span></div></div></td>' +
-          '<td><strong>$' + size.toLocaleString() + '</strong>' + floorBadge(p) + '</td>' +
-          '<td>$' + entryMc.toLocaleString() + '</td>' +
-          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString() : '—') + '</strong></td>' +
+          '<td><strong>$' + size.toLocaleString('en-US') + '</strong>' + floorBadge(p) + '</td>' +
+          '<td>$' + entryMc.toLocaleString('en-US') + '</td>' +
+          '<td><strong style="color:var(--accent-cyan);">' + (liveMc ? '$' + liveMc.toLocaleString('en-US') : '—') + '</strong></td>' +
           '<td class="' + (upnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (upnl >= 0 ? '+$' : '-$') + Math.abs(upnl).toFixed(2) + ' (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(1) + '%)</strong></td>' +
           '<td><div class="stages-roadmap"><span class="' + s1 + '">T1: 30%</span><span class="' + s2 + '">T2: 70%</span><span class="' + s3 + '">T3: 150%</span></div></td>' +
           '<td>' + trailStr + '</td>' +
@@ -1346,8 +1353,8 @@ def generate() -> str:
       rows += '<tr>' +
         '<td><strong>' + sym + '</strong></td>' +
         '<td><span class="' + reasonClass + '">' + reason + '</span></td>' +
-        '<td>$' + Number(c.entry_market_cap || 0).toLocaleString() + '</td>' +
-        '<td>$' + Number(c.exit_market_cap || 0).toLocaleString() + '</td>' +
+        '<td>$' + Number(c.entry_market_cap || 0).toLocaleString('en-US') + '</td>' +
+        '<td>$' + Number(c.exit_market_cap || 0).toLocaleString('en-US') + '</td>' +
         '<td class="' + (pnl >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2) + '</strong></td>' +
         '<td class="' + (pnlPct >= 0 ? 'color-pos' : 'color-neg') + '"><strong>' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%</strong></td>' +
         '<td>' + openedAt + '</td>' +
@@ -1417,7 +1424,7 @@ def generate() -> str:
       ctx.moveTo(padL, gy);
       ctx.lineTo(w - padR, gy);
       ctx.stroke();
-      ctx.fillText('$' + Math.round(gVal).toLocaleString(), padL - 8, gy + 4);
+      ctx.fillText('$' + Math.round(gVal).toLocaleString('en-US'), padL - 8, gy + 4);
     }}
 
     // Area Gradient
