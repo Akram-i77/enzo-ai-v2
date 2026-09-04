@@ -21,7 +21,7 @@ risk_management:
   max_exposure: 30.0
   max_daily_loss: 8.0
   max_drawdown: 25.0
-  enable_risk_halts: true
+  enable_risk_halts: false
   consecutive_losses_limit: 12
   max_open_positions: 5
   exit_monitor_interval_seconds: 1

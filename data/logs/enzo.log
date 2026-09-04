@@ -20698,3 +20698,932 @@
 2026-09-02 22:23:02 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
 2026-09-02 22:23:02 [WARNING] [enzo.pump] Python 'websockets' package not installed. PumpDev real-time streaming inactive.
 2026-09-02 22:28:52 [INFO] [enzo.engine] Discovered 0 pre-screened candidate tokens.
+2026-09-04 21:03:28 [ERROR] [enzo.pump] Python 'websockets' package not installed — the launch feed cannot connect, so discovery yields 0 candidates
+2026-09-04 21:03:28 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:03:28 [ERROR] [enzo.pump] Fix: python3 -m pip install websockets   (or: bash bootstrap.sh)
+2026-09-04 21:03:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:03:39 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.80, reserve 0.0200 SOL)
+2026-09-04 21:05:53 [INFO] [enzo.gmgn] GMGN CLI resolved: /home/openclaw/.npm-global/bin/gmgn-cli
+2026-09-04 21:05:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:05:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:06:02 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:06:02 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:06:13 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:06:17 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:06:32 [INFO] [enzo.botctl] Telegram Interactive Bot Listener started.
+2026-09-04 21:06:32 [INFO] [enzo.engine] Starting ENZO Engine loop (interval: 60.0s)...
+2026-09-04 21:06:32 [INFO] [enzo.engine] Mode: LIVE
+2026-09-04 21:06:32 [INFO] [enzo.exit_monitor] Exit monitor background service started.
+2026-09-04 21:06:32 [INFO] [enzo.engine] Deployable capital: $5.06 (live wallet)
+2026-09-04 21:06:32 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:06:32 [INFO] [enzo.serve] Dashboard server listening on http://0.0.0.0:8077/  (health: /health)
+2026-09-04 21:06:32 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:06:33 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:06:34 [INFO] [enzo.gmgn] GMGN CLI resolved: /home/openclaw/.npm-global/bin/gmgn-cli
+2026-09-04 21:06:34 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:06:37 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:06:37 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:06:37 [INFO] [enzo.engine] Discovered 72 pre-screened candidate tokens.
+2026-09-04 21:06:37 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 72 candidates (depth cap: 12).
+2026-09-04 21:06:42 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:06:42 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:06:43 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:06:43 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:06:44 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> BUY (conf=65.4)
+2026-09-04 21:06:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:06:45 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:06:45 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:06:48 [WARNING] [enzo.portfolio] Minimum-trade floor applied: AujAMvjxukHe2rBeEWbeVEGSi1Kji5hnYB77qGPxpump sized at $1.00 (risk model asked for $0.2663 on $5.06 capital). Effective risk is 7.5% of capital, not the configured 2.0%.
+2026-09-04 21:06:48 [INFO] [enzo.pump] Subscribed to 1 token trades on PumpDev WebSocket.
+2026-09-04 21:06:48 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'trollfone', 'mint': 'AujAMvjxukHe2rBeEWbeVEGSi1Kji5hnYB77qGPxpump', 'entry_price': 0.00012092982, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 117831.23, 'current_market_cap': 117831.23, 'stop_loss_mc': 73055.36, 'take_profit_mc': 294578.08, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 5.06, 'risk_pct_used': 2.0, 'min_floor_applied': True, 'effective_risk_pct': 7.51, 'amount': 8269.25898012583, 'initial_amount': 8269.25898012583, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:06:48.263317+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $25,865 >= min $5,000', 'Market cap $117,831 >= min $5,000', 'Volume24h $30,721 >= min $8,000', 'Holders 99.0 >= min 10.0', 'Buy pressure 73.4% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': 'AujAMvjxukHe2rBeEWbeVEGSi1Kji5hnYB77qGPxpump', 'token_type': 'PUMP', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 82.7, 'holder_count': 99.0, 'liquidity': 25865.47797133056, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 42.0, 'available': True, 'dev_address': 'EG6bKRo6pZNkj7MJtJTN1nv25XT6rHGff3wT6n5u9uAE', 'dev_share': None, 'events': ['DEV_UNKNOWN', 'DEV_FACTORY(1_created)'], 'flags': ['dev=EG6bKRo6pZNkj7MJtJTN1nv25XT6rHGff3wT6n5u9uAE', 'dev_share=None%', 'DEV_UNKNOWN', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 99.0, 'liquidity': 25865.47797133056, 'creator_status': 'creator_hold', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 61, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=73.4%', 'buy_ratio=73%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 73.4, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 35, 'available': False, 'flags': ['insufficient_samples -> conservative'], 'detail': {'samples': 1, 'imbalance_score': 35.0}}, 'liquidity': {'score': 100, 'flags': ['liquidity=$25,865 (min $5,000)'], 'detail': {'liquidity': 25865.47797133056, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': False, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': False, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 65.4, 'peak_price': 0.00012092982, 'peak_market_cap': 117831.23, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:06:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:06:48 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:06:49 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:06:52 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:06:52 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:06:53 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:06:59 [INFO] [enzo.executor] Wallet capital synced: $5.06 deployable (USDC $0.00 + 0.0497 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:06:59 [INFO] [enzo.engine] Executing REAL swap: $1.00 into AujAMvjx...
+2026-09-04 21:07:20 [INFO] [enzo.executor] ✓ swap executed: So1111 → AujAMv | 0.009825112989 SOL | sig=4nyFuhc5KdP2GLFN
+2026-09-04 21:07:20 [INFO] [enzo.engine] ✓ REAL SWAP EXECUTED — tx: 4nyFuhc5KdP2GLFNLnpBB8BYZb5aEiKkJgzQAjHGTjjZ9aJpGSimZmyoaFEymU19riRdAZVRMNz6NUP4Bi9ANCBd
+2026-09-04 21:07:26 [INFO] [enzo.engine] Scanned CAB (6AUpzASW...) -> DATA_ERROR (conf=68.4)
+2026-09-04 21:07:34 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=70.4)
+2026-09-04 21:07:41 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=54.4)
+2026-09-04 21:07:56 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:07:56 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:07:56 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:07:57 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:07:57 [INFO] [enzo.engine] Scanned WOFI (FrxuaXm7...) -> DATA_ERROR (conf=70.4)
+2026-09-04 21:08:00 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:08:00 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:08:03 [INFO] [enzo.engine] Scanned AMC (sFnfUdYg...) -> DATA_ERROR (conf=70.4)
+2026-09-04 21:08:03 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:08:04 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:08:07 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 21:08:10 [INFO] [enzo.engine] Scanned Juror (AV2Rx5bA...) -> DATA_ERROR (conf=66.4)
+2026-09-04 21:08:18 [INFO] [enzo.engine] Scanned TIKTOK (GRs97iSg...) -> DATA_ERROR (conf=54.4)
+2026-09-04 21:08:26 [INFO] [enzo.engine] Scanned onlypump (6E4BpZc7...) -> DATA_ERROR (conf=63.4)
+2026-09-04 21:08:33 [INFO] [enzo.engine] Scanned CINEMA (4yZCTAi8...) -> DATA_ERROR (conf=48.4)
+2026-09-04 21:08:49 [INFO] [enzo.engine] Scanned CINEMA (HYUFJihm...) -> DATA_ERROR (conf=54.4)
+2026-09-04 21:08:55 [INFO] [enzo.engine] Scanned IDIOT (2B8FUhAL...) -> DATA_ERROR (conf=70.4)
+2026-09-04 21:09:03 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.68, reserve 0.0200 SOL)
+2026-09-04 21:09:03 [INFO] [enzo.engine] Deployable capital: $3.50 (live wallet)
+2026-09-04 21:09:03 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:09:04 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: The read operation timed out
+2026-09-04 21:09:05 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:09:05 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:09:05 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:09:05 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:09:06 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:09:06 [INFO] [enzo.engine] Discovered 69 pre-screened candidate tokens.
+2026-09-04 21:09:06 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 69 candidates (depth cap: 12).
+2026-09-04 21:09:06 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:09:09 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:09:09 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:09:09 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:09:12 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:09:12 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:09:13 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> IGNORE (conf=35.4)
+2026-09-04 21:09:15 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:09:16 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:09:19 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:09:21 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> BUY (conf=65.4)
+2026-09-04 21:09:25 [INFO] [enzo.engine] Open position result: {'ok': False, 'reason': 'already open'}
+2026-09-04 21:09:25 [INFO] [enzo.engine] BUY skipped for trollfone: already open
+2026-09-04 21:09:31 [INFO] [enzo.engine] Scanned CAB (6AUpzASW...) -> BUY (conf=60.4)
+2026-09-04 21:09:36 [WARNING] [enzo.portfolio] Minimum-trade floor applied: 6AUpzASW3z5wS3Legk1F5rwwEwjKyXFx36Sqqwhfpump sized at $1.00 (risk model asked for $0.2303 on $3.50 capital). Effective risk is 10.9% of capital, not the configured 2.5%.
+2026-09-04 21:09:36 [INFO] [enzo.pump] Subscribed to 1 token trades on PumpDev WebSocket.
+2026-09-04 21:09:37 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'CAB', 'mint': '6AUpzASW3z5wS3Legk1F5rwwEwjKyXFx36Sqqwhfpump', 'entry_price': 7.0196469e-05, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 59513.82, 'current_market_cap': 59513.82, 'stop_loss_mc': 36898.57, 'take_profit_mc': 148784.55, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 3.5, 'risk_pct_used': 2.5, 'min_floor_applied': True, 'effective_risk_pct': 10.857, 'amount': 14245.7307930973, 'initial_amount': 14245.7307930973, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:09:36.990682+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $18,617 >= min $5,000', 'Market cap $59,514 >= min $5,000', 'Volume24h $125,898 >= min $8,000', 'Holders 395.0 >= min 10.0', 'Buy pressure 64.1% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': '6AUpzASW3z5wS3Legk1F5rwwEwjKyXFx36Sqqwhfpump', 'token_type': 'PUMP', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 41.8, 'holder_count': 395.0, 'liquidity': 18616.64537679436, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 42.0, 'available': True, 'dev_address': '6mJi4Q5eUFBmqWkRi1HdmtXsMexoxcfqMTSxKizmpzb7', 'dev_share': None, 'events': ['DEV_UNKNOWN', 'DEV_FACTORY(1_created)'], 'flags': ['dev=6mJi4Q5eUFBmqWkRi1HdmtXsMexoxcfqMTSxKizmpzb7', 'dev_share=None%', 'DEV_UNKNOWN', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 395.0, 'liquidity': 18616.64537679436, 'creator_status': 'creator_hold', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 54, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=64.1%', 'buy_ratio=64%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 64.1, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 42.0, 'available': True, 'flags': ['mc_growth=-17.8%/window', 'liq_growth=-5.3%', 'buyers_increase=n/a%', '1h_momentum=+0.00%'], 'detail': {'mc_growth_pct': -17.809030855224385, 'liq_growth_pct': -5.251416237053133, 'buyer_increase_pct': None, 'volume_acceleration': None, 'imbalance_score': 50.0, 'green_candle_ratio': None, 'kline_vol_trend_pct': None, 'last_candle_up': None, 'price_change_5m': None, 'samples': 2, 'window_min': 2.1}}, 'liquidity': {'score': 74, 'flags': ['liquidity=$18,617 (min $5,000)'], 'detail': {'liquidity': 18616.64537679436, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': False, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': False, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 60.4, 'peak_price': 7.0196469e-05, 'peak_market_cap': 59513.82, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:09:37 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:09:50 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.68, reserve 0.0200 SOL)
+2026-09-04 21:09:50 [INFO] [enzo.engine] Executing REAL swap: $1.00 into 6AUpzASW...
+2026-09-04 21:09:52 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:09:52 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:09:52 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:09:52 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:09:55 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:05 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (TimeoutError: timed out during opening handshake). Retrying in 5s...
+2026-09-04 21:10:06 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:10:10 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:10:10 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:10:10 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:11 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:10:14 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:14 [ERROR] [enzo.executor] ✗ swap failed (UNKNOWN): {
+  "error": {
+    "message": "Transaction simulation failed: {\"InstructionError\":[3,{\"Custom\":15001}]}",
+    "code": 400
+  }
+}
+2026-09-04 21:10:14 [ERROR] [enzo.engine] Swap failed — rolling back position: UNKNOWN
+2026-09-04 21:10:14 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:10:17 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:18 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:10:21 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:21 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:10:23 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:10:23 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:10:24 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:10:28 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=53.4)
+2026-09-04 21:10:34 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=55.4)
+2026-09-04 21:10:42 [INFO] [enzo.engine] Scanned WOFI (FrxuaXm7...) -> DATA_ERROR (conf=67.4)
+2026-09-04 21:10:50 [INFO] [enzo.engine] Scanned AMC (sFnfUdYg...) -> DATA_ERROR (conf=67.4)
+2026-09-04 21:10:57 [INFO] [enzo.engine] Scanned TIKTOK (GRs97iSg...) -> DATA_ERROR (conf=53.4)
+2026-09-04 21:11:05 [INFO] [enzo.engine] Scanned onlypump (6E4BpZc7...) -> DATA_ERROR (conf=61.4)
+2026-09-04 21:11:12 [INFO] [enzo.engine] Scanned CINEMA (4yZCTAi8...) -> DATA_ERROR (conf=51.4)
+2026-09-04 21:11:14 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:11:20 [INFO] [enzo.engine] Scanned CINEMA (HYUFJihm...) -> DATA_ERROR (conf=53.4)
+2026-09-04 21:11:27 [INFO] [enzo.engine] Scanned Juror (BgsFETAj...) -> DATA_ERROR (conf=63.4)
+2026-09-04 21:11:35 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:11:35 [INFO] [enzo.engine] Deployable capital: $3.50 (live wallet)
+2026-09-04 21:11:36 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:11:37 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:11:38 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:11:38 [INFO] [enzo.engine] Discovered 74 pre-screened candidate tokens.
+2026-09-04 21:11:38 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 74 candidates (depth cap: 12).
+2026-09-04 21:11:46 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> IGNORE (conf=35.4)
+2026-09-04 21:11:53 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> IGNORE (conf=47.4)
+2026-09-04 21:11:56 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:00 [INFO] [enzo.engine] Scanned Tabby (3HEhYydk...) -> IGNORE (conf=54.4)
+2026-09-04 21:12:05 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:07 [INFO] [enzo.exit_monitor] Partial exit: trollfone | PnL: $+0.09 | Reason: TP_STAGE_30%
+2026-09-04 21:12:08 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:12:15 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:17 [INFO] [enzo.engine] Scanned UNKNOWN (6fCUKhSL...) -> DATA_ERROR (conf=63.4)
+2026-09-04 21:12:18 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:12:24 [INFO] [enzo.engine] Scanned IDIOT (B4H1TZkz...) -> DATA_ERROR (conf=63.4)
+2026-09-04 21:12:26 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:28 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:12:32 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> DATA_ERROR (conf=32.4)
+2026-09-04 21:12:35 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:38 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:12:39 [INFO] [enzo.engine] Scanned Tabby (56dZsGWq...) -> DATA_ERROR (conf=48.4)
+2026-09-04 21:12:45 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:48 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> DATA_ERROR (conf=70.4)
+2026-09-04 21:12:50 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:12:56 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:12:57 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=53.4)
+2026-09-04 21:13:01 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:13:05 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:06 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=55.4)
+2026-09-04 21:13:12 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:13:15 [INFO] [enzo.engine] Scanned WOFI (FrxuaXm7...) -> DATA_ERROR (conf=67.4)
+2026-09-04 21:13:15 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:16 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:13:24 [INFO] [enzo.engine] Scanned AMC (sFnfUdYg...) -> DATA_ERROR (conf=67.4)
+2026-09-04 21:13:26 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:26 [INFO] [enzo.engine] Deployable capital: $3.50 (live wallet)
+2026-09-04 21:13:26 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:13:26 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:13:27 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:13:28 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:13:28 [INFO] [enzo.engine] Discovered 75 pre-screened candidate tokens.
+2026-09-04 21:13:28 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 75 candidates (depth cap: 12).
+2026-09-04 21:13:34 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:13:35 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:35 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:13:36 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> IGNORE (conf=33.4)
+2026-09-04 21:13:44 [INFO] [enzo.engine] Scanned ELON💤 (Hs3mqGYE...) -> BUY (conf=61.4)
+2026-09-04 21:13:45 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:45 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:13:48 [WARNING] [enzo.portfolio] Minimum-trade floor applied: Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ sized at $1.00 (risk model asked for $0.1842 on $3.50 capital). Effective risk is 10.9% of capital, not the configured 2.0%.
+2026-09-04 21:13:49 [INFO] [enzo.pump] Subscribed to 1 token trades on PumpDev WebSocket.
+2026-09-04 21:13:49 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'ELON💤', 'mint': 'Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ', 'entry_price': 0.00018542878, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 175801.81, 'current_market_cap': 175801.81, 'stop_loss_mc': 108997.12, 'take_profit_mc': 439504.53, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 3.5, 'risk_pct_used': 2.0, 'min_floor_applied': True, 'effective_risk_pct': 10.857, 'amount': 5392.906106592515, 'initial_amount': 5392.906106592515, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:13:48.999654+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $33,125 >= min $5,000', 'Market cap $175,802 >= min $5,000', 'Volume24h $60,812 >= min $8,000', 'Holders 215.0 >= min 10.0', 'Buy pressure 47.3% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': 'Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ', 'token_type': 'STANDARD', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 83.4, 'holder_count': 215.0, 'liquidity': 33125.4722720165, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 42.0, 'available': True, 'dev_address': None, 'dev_share': None, 'events': ['DEV_UNKNOWN', 'DEV_FACTORY(1_created)'], 'flags': ['dev=unknown', 'dev_share=None%', 'DEV_UNKNOWN', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 215.0, 'liquidity': 33125.4722720165, 'creator_status': 'creator_hold', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 35, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=47.3%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 47.3, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 35, 'available': False, 'flags': ['insufficient_samples -> conservative'], 'detail': {'samples': 1, 'imbalance_score': 35.0}}, 'liquidity': {'score': 100, 'flags': ['liquidity=$33,125 (min $5,000)'], 'detail': {'liquidity': 33125.4722720165, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': False, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': False, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 61.4, 'peak_price': 0.00018542878, 'peak_market_cap': 175801.81, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:13:49 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:13:51 [INFO] [enzo.exit_monitor] Partial exit: ELON💤 | PnL: $+0.19 | Reason: TP_STAGE_30%
+2026-09-04 21:13:53 [INFO] [enzo.exit_monitor] Partial exit: ELON💤 | PnL: $+0.15 | Reason: TP_STAGE_70%
+2026-09-04 21:13:56 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:13:56 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:00 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:14:00 [INFO] [enzo.engine] Executing REAL swap: $1.00 into Hs3mqGYE...
+2026-09-04 21:14:06 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:08 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:14:16 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:17 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:14:23 [INFO] [enzo.executor] ✓ swap executed: So1111 → Hs3mqG | 0.00983574309 SOL | sig=2d4DrXgdAyoWkzAa
+2026-09-04 21:14:23 [INFO] [enzo.engine] ✓ REAL SWAP EXECUTED — tx: 2d4DrXgdAyoWkzAawUAYvPzdo7UobQeqxtjQvUwnhiY384gtUrQaqJ2QYfiHCbxVHmAFXvBZFMFPc13pz1YsyUBt
+2026-09-04 21:14:26 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:27 [INFO] [enzo.executor] Wallet capital synced: $3.50 deployable (USDC $0.00 + 0.0344 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:14:29 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=54.4)
+2026-09-04 21:14:30 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:14:36 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:36 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.67, reserve 0.0200 SOL)
+2026-09-04 21:14:37 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=31.4)
+2026-09-04 21:14:44 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> DATA_ERROR (conf=51.4)
+2026-09-04 21:14:46 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:14:46 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:14:52 [INFO] [enzo.engine] Scanned IDIOT (B4H1TZkz...) -> DATA_ERROR (conf=61.4)
+2026-09-04 21:14:56 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:15:00 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> DATA_ERROR (conf=67.4)
+2026-09-04 21:15:08 [INFO] [enzo.engine] Scanned Tabby (56dZsGWq...) -> DATA_ERROR (conf=49.4)
+2026-09-04 21:15:15 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> DATA_ERROR (conf=69.4)
+2026-09-04 21:15:22 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:22 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:23 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:15:25 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:30 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=55.6)
+2026-09-04 21:15:35 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:15:36 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:15:37 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:38 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:15:38 [INFO] [enzo.engine] Scanned WOFI (FrxuaXm7...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:15:39 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.64, reserve 0.0200 SOL)
+2026-09-04 21:15:40 [INFO] [enzo.engine] Deployable capital: $2.31 (live wallet)
+2026-09-04 21:15:40 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:15:47 [ERROR] [enzo.executor] ✗ swap failed (UNKNOWN): {
+  "error": {
+    "message": "Transaction simulation failed: {\"InstructionError\":[3,{\"Custom\":15001}]}",
+    "code": 400
+  }
+}
+2026-09-04 21:15:47 [ERROR] [enzo.exit_monitor] ✗ REAL SELL FAILED: ELON💤 — UNKNOWN
+2026-09-04 21:15:47 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:47 [WARNING] [enzo.notify] Telegram HTTP 400 error: {"ok":false,"error_code":400,"description":"Bad Request: can't parse entities: Unsupported start tag \"name\" at byte offset 408"}
+2026-09-04 21:15:47 [INFO] [enzo.exit_monitor] Position closed: ELON💤 (Hs3mqGYE) | PnL: $+0.54 (+53.8%) | Reason: TRAILING_STOP
+2026-09-04 21:15:48 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:15:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:15:58 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:15:59 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:15:59 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:15:59 [INFO] [enzo.engine] Discovered 73 pre-screened candidate tokens.
+2026-09-04 21:15:59 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 73 candidates (depth cap: 12).
+2026-09-04 21:16:06 [INFO] [enzo.engine] Scanned Tabby (7ZhEuic1...) -> IGNORE (conf=55.6)
+2026-09-04 21:16:06 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:16:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:14 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> IGNORE (conf=34.6)
+2026-09-04 21:16:17 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:16:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:21 [INFO] [enzo.engine] Scanned ELON💤 (Hs3mqGYE...) -> BUY (conf=62.6)
+2026-09-04 21:16:26 [WARNING] [enzo.portfolio] Minimum-trade floor applied: Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ sized at $1.00 (risk model asked for $0.1216 on $2.31 capital). Effective risk is 16.4% of capital, not the configured 2.0%.
+2026-09-04 21:16:26 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'ELON💤', 'mint': 'Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ', 'entry_price': 0.00037357196, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 329369.92, 'current_market_cap': 329369.92, 'stop_loss_mc': 204209.35, 'take_profit_mc': 823424.8, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 2.31, 'risk_pct_used': 2.0, 'min_floor_applied': True, 'effective_risk_pct': 16.45, 'amount': 2676.8604367415583, 'initial_amount': 2676.8604367415583, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:16:26.013639+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $48,298 >= min $5,000', 'Market cap $329,370 >= min $5,000', 'Volume24h $124,266 >= min $8,000', 'Holders 211.0 >= min 10.0', 'Buy pressure 46.9% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': 'Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ', 'token_type': 'STANDARD', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 83.4, 'holder_count': 211.0, 'liquidity': 48297.5022981846, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 42.0, 'available': True, 'dev_address': None, 'dev_share': None, 'events': ['DEV_UNKNOWN', 'DEV_FACTORY(1_created)'], 'flags': ['dev=unknown', 'dev_share=None%', 'DEV_UNKNOWN', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 211.0, 'liquidity': 48297.5022981846, 'creator_status': 'creator_hold', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 35, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=46.9%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 46.9, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 82.0, 'available': True, 'flags': ['mc_growth=87.4%/window', 'liq_growth=45.8%', 'buyers_increase=n/a%', '1h_momentum=+0.00%'], 'detail': {'mc_growth_pct': 87.35297435219807, 'liq_growth_pct': 45.80170178882254, 'buyer_increase_pct': None, 'volume_acceleration': None, 'imbalance_score': 50.0, 'green_candle_ratio': None, 'kline_vol_trend_pct': None, 'last_candle_up': None, 'price_change_5m': None, 'samples': 2, 'window_min': 2.6}}, 'liquidity': {'score': 100, 'flags': ['liquidity=$48,298 (min $5,000)'], 'detail': {'liquidity': 48297.5022981846, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': False, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': True, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 62.6, 'peak_price': 0.00037357196, 'peak_market_cap': 329369.92, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:16:26 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:27 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:16:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:37 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:16:37 [INFO] [enzo.engine] Executing REAL swap: $1.00 into Hs3mqGYE...
+2026-09-04 21:16:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:39 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:16:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:16:48 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:16:56 [ERROR] [enzo.executor] ✗ swap failed (UNKNOWN): {
+  "error": {
+    "message": "Transaction simulation failed: {\"InstructionError\":[5,{\"Custom\":6001}]}",
+    "code": 400
+  }
+}
+2026-09-04 21:16:56 [ERROR] [enzo.engine] Swap failed — rolling back position: UNKNOWN
+2026-09-04 21:16:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:17:02 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:17:03 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:17:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:17:11 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=65.6)
+2026-09-04 21:17:14 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:17:18 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:17:20 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> DATA_ERROR (conf=52.6)
+2026-09-04 21:17:21 [ERROR] [enzo.executor] ✗ swap failed (UNKNOWN): {
+  "error": {
+    "message": "Transaction simulation failed: {\"InstructionError\":[5,{\"Custom\":14}]}",
+    "code": 400
+  }
+}
+2026-09-04 21:17:21 [ERROR] [enzo.exit_monitor] ✗ REAL SELL FAILED: ELON💤 — UNKNOWN
+2026-09-04 21:17:21 [INFO] [enzo.exit_monitor] Position closed: ELON💤 (Hs3mqGYE) | PnL: $-0.44 (-44.3%) | Reason: STOP_LOSS
+2026-09-04 21:17:22 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:17:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:17:29 [INFO] [enzo.engine] Scanned IDIOT (B4H1TZkz...) -> DATA_ERROR (conf=57.6)
+2026-09-04 21:17:31 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:17:36 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:17:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:17:39 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.75, reserve 0.0200 SOL)
+2026-09-04 21:17:43 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:17:45 [INFO] [enzo.engine] Scanned Tabby (56dZsGWq...) -> DATA_ERROR (conf=48.6)
+2026-09-04 21:17:49 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:17:54 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> DATA_ERROR (conf=69.6)
+2026-09-04 21:17:56 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:18:02 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:18:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:11 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=55.6)
+2026-09-04 21:18:13 [INFO] [enzo.engine] Deployable capital: $2.31 (live wallet)
+2026-09-04 21:18:14 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:18:14 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "Invalid Solana wallet address: enzo-trading",
+    "code": 400
+  }
+} [UNKNOWN]
+2026-09-04 21:18:15 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:18:16 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:18:16 [INFO] [enzo.engine] Discovered 80 pre-screened candidate tokens.
+2026-09-04 21:18:16 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 80 candidates (depth cap: 12).
+2026-09-04 21:18:18 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:20 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:18:20 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:18:24 [INFO] [enzo.engine] Scanned TIKTOK (13fNfZmX...) -> BUY (conf=56.6)
+2026-09-04 21:18:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:29 [WARNING] [enzo.portfolio] Minimum-trade floor applied: 13fNfZmXeuqBdPN6dBPVNMBNi4kS6Twf2smGczfTJ4AE sized at $1.00 (risk model asked for $0.0608 on $2.31 capital). Effective risk is 16.4% of capital, not the configured 1.0%.
+2026-09-04 21:18:29 [INFO] [enzo.engine] Open position result: {'ok': False, 'reason': 'HALTED: daily loss 10.3% >= 8.0%'}
+2026-09-04 21:18:29 [INFO] [enzo.engine] BUY skipped for TIKTOK: HALTED: daily loss 10.3% >= 8.0%
+2026-09-04 21:18:30 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:18:36 [INFO] [enzo.engine] Scanned Tabby (G9gqSKUH...) -> IGNORE (conf=48.6)
+2026-09-04 21:18:39 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:42 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:18:44 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> BUY (conf=63.6)
+2026-09-04 21:18:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:49 [WARNING] [enzo.portfolio] Minimum-trade floor applied: EEvENJmYDZoeYDQGBRJ1daAZQGQZVXH1SGPSXKnVpump sized at $1.00 (risk model asked for $0.1216 on $2.31 capital). Effective risk is 16.4% of capital, not the configured 2.0%.
+2026-09-04 21:18:49 [INFO] [enzo.engine] Open position result: {'ok': False, 'reason': 'HALTED: daily loss 10.3% >= 8.0%'}
+2026-09-04 21:18:49 [INFO] [enzo.engine] BUY skipped for Redbull: HALTED: daily loss 10.3% >= 8.0%
+2026-09-04 21:18:53 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:18:56 [INFO] [enzo.engine] Scanned ELON💤 (Hs3mqGYE...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:18:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:18:59 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:04 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:19:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:09 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:11 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=71.6)
+2026-09-04 21:19:19 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:19:20 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:26 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:19:34 [INFO] [enzo.engine] Scanned Tabby (56dZsGWq...) -> DATA_ERROR (conf=47.6)
+2026-09-04 21:19:35 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:35 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:41 [INFO] [enzo.engine] Scanned trollfone (AujAMvjx...) -> DATA_ERROR (conf=69.6)
+2026-09-04 21:19:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:48 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:49 [INFO] [enzo.engine] Scanned STONKLESS (GLhZu4RX...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:19:49 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:50 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:56 [INFO] [enzo.engine] Scanned BUFO (Dhjj7d6g...) -> DATA_ERROR (conf=57.6)
+2026-09-04 21:19:57 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:19:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:19:58 [INFO] [enzo.engine] Deployable capital: $2.31 (live wallet)
+2026-09-04 21:19:59 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:20:00 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:20:01 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:20:01 [INFO] [enzo.engine] Discovered 79 pre-screened candidate tokens.
+2026-09-04 21:20:01 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 79 candidates (depth cap: 12).
+2026-09-04 21:20:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:20:08 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: The read operation timed out
+2026-09-04 21:20:09 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:20:09 [INFO] [enzo.engine] Scanned Tabby (ADpettDk...) -> IGNORE (conf=55.6)
+2026-09-04 21:20:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:20:17 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:20:18 [INFO] [enzo.engine] Scanned LASTPONS (7pTFAhuQ...) -> BUY (conf=64.6)
+2026-09-04 21:20:23 [WARNING] [enzo.portfolio] Minimum-trade floor applied: 7pTFAhuQSxhyXHni1soswozhJwAGz13kErrGVNHUpump sized at $1.00 (risk model asked for $0.1216 on $2.31 capital). Effective risk is 16.4% of capital, not the configured 2.0%.
+2026-09-04 21:20:23 [INFO] [enzo.engine] Open position result: {'ok': False, 'reason': 'HALTED: daily loss 10.4% >= 8.0%'}
+2026-09-04 21:20:23 [INFO] [enzo.engine] BUY skipped for LASTPONS: HALTED: daily loss 10.4% >= 8.0%
+2026-09-04 21:20:27 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:20:28 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:20:29 [INFO] [enzo.engine] Scanned CRC (2bs32SmD...) -> IGNORE (conf=62.6)
+2026-09-04 21:20:36 [INFO] [enzo.engine] Scanned TIKTOK (13fNfZmX...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:20:37 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:20:39 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:20:44 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:20:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:20:49 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:20:53 [INFO] [enzo.engine] Scanned ELON💤 (Hs3mqGYE...) -> DATA_ERROR (conf=45.6)
+2026-09-04 21:20:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:21:01 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:01 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:21:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:21:09 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=63.6)
+2026-09-04 21:21:10 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:16 [INFO] [enzo.engine] Scanned BUFOCOIN (3794JYx2...) -> DATA_ERROR (conf=48.6)
+2026-09-04 21:21:18 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:21:19 [INFO] [enzo.executor] Wallet capital synced: $2.31 deployable (USDC $0.00 + 0.0227 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:25 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:21:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:21:29 [INFO] [enzo.executor] Wallet capital synced: $2.51 deployable (USDC $0.00 + 0.0247 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:34 [INFO] [enzo.engine] Scanned HOOD (e1oJHabX...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:21:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:21:38 [INFO] [enzo.executor] Wallet capital synced: $2.51 deployable (USDC $0.00 + 0.0247 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:42 [INFO] [enzo.engine] Scanned Tabby (56dZsGWq...) -> DATA_ERROR (conf=47.6)
+2026-09-04 21:21:44 [INFO] [enzo.engine] Deployable capital: $2.51 (live wallet)
+2026-09-04 21:21:44 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:21:45 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:21:46 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:21:46 [INFO] [enzo.engine] Discovered 69 pre-screened candidate tokens.
+2026-09-04 21:21:46 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 69 candidates (depth cap: 12).
+2026-09-04 21:21:49 [INFO] [enzo.executor] Wallet capital synced: $2.51 deployable (USDC $0.00 + 0.0247 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:21:54 [INFO] [enzo.engine] Scanned Q币 (B6ALuSPN...) -> WAIT (conf=53.6)
+2026-09-04 21:22:01 [INFO] [enzo.engine] Scanned Juror (4vUxZ5n5...) -> IGNORE (conf=34.6)
+2026-09-04 21:22:10 [INFO] [enzo.engine] Scanned CRC (6LK8p4sd...) -> IGNORE (conf=43.6)
+2026-09-04 21:22:18 [INFO] [enzo.engine] Scanned LASTPONS (7pTFAhuQ...) -> DATA_ERROR (conf=66.6)
+2026-09-04 21:22:25 [INFO] [enzo.engine] Scanned Bufo (B4bhFcqV...) -> DATA_ERROR (conf=52.6)
+2026-09-04 21:22:33 [INFO] [enzo.engine] Scanned CRC (2bs32SmD...) -> DATA_ERROR (conf=61.6)
+2026-09-04 21:22:40 [INFO] [enzo.engine] Scanned TIKTOK (13fNfZmX...) -> DATA_ERROR (conf=54.6)
+2026-09-04 21:22:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:22:49 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> DATA_ERROR (conf=67.6)
+2026-09-04 21:22:52 [INFO] [enzo.executor] Wallet capital synced: $3.54 deployable (USDC $0.00 + 0.0348 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:22:56 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:23:04 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:04 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:05 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=52.6)
+2026-09-04 21:23:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:12 [INFO] [enzo.engine] Scanned BUFOCOIN (3794JYx2...) -> DATA_ERROR (conf=48.6)
+2026-09-04 21:23:14 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:15 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:15 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:15 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:15 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:18 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:27 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:28 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:29 [INFO] [enzo.engine] Scanned FART (HFENBT1Q...) -> DATA_ERROR (conf=53.6)
+2026-09-04 21:23:30 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:30 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:31 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:31 [INFO] [enzo.engine] Deployable capital: $3.90 (live wallet)
+2026-09-04 21:23:31 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:23:33 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:23:34 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:23:34 [INFO] [enzo.engine] Discovered 72 pre-screened candidate tokens.
+2026-09-04 21:23:34 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 72 candidates (depth cap: 12).
+2026-09-04 21:23:38 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:39 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:41 [INFO] [enzo.engine] Scanned BUFO (B6NkboQi...) -> IGNORE (conf=55.6)
+2026-09-04 21:23:47 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:49 [INFO] [enzo.engine] Scanned Q币 (B6ALuSPN...) -> WAIT (conf=53.6)
+2026-09-04 21:23:50 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.83, reserve 0.0200 SOL)
+2026-09-04 21:23:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:23:58 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:23:58 [INFO] [enzo.engine] Scanned Juror (4vUxZ5n5...) -> IGNORE (conf=36.8)
+2026-09-04 21:24:05 [INFO] [enzo.engine] Scanned CRC (6LK8p4sd...) -> DATA_ERROR (conf=51.8)
+2026-09-04 21:24:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:09 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:10 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:13 [INFO] [enzo.engine] Scanned LASTPONS (7pTFAhuQ...) -> DATA_ERROR (conf=66.8)
+2026-09-04 21:24:16 [ERROR] [enzo.executor] ✗ swap failed (UNKNOWN): {
+  "error": {
+    "message": "Transaction simulation failed: {\"InstructionError\":[1,\"IncorrectProgramId\"]}",
+    "code": 400
+  }
+}
+2026-09-04 21:24:16 [ERROR] [enzo.exit_monitor] ✗ REAL SELL FAILED: trollfone — UNKNOWN
+2026-09-04 21:24:16 [INFO] [enzo.exit_monitor] Position closed: trollfone (AujAMvjx) | PnL: $+0.01 (+0.5%) | Reason: TRAILING_STOP
+2026-09-04 21:24:17 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:20 [INFO] [enzo.engine] Scanned Bufo (B4bhFcqV...) -> DATA_ERROR (conf=52.8)
+2026-09-04 21:24:27 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:27 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:28 [INFO] [enzo.engine] Scanned CRC (2bs32SmD...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:24:37 [INFO] [enzo.engine] Scanned TIKTOK (13fNfZmX...) -> DATA_ERROR (conf=54.8)
+2026-09-04 21:24:37 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:45 [INFO] [enzo.engine] Scanned Redbull (EEvENJmY...) -> DATA_ERROR (conf=67.8)
+2026-09-04 21:24:47 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:48 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:24:53 [INFO] [enzo.engine] Scanned HOOD (G4q7NDeJ...) -> DATA_ERROR (conf=53.8)
+2026-09-04 21:24:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:24:57 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.72, reserve 0.0200 SOL)
+2026-09-04 21:25:01 [INFO] [enzo.engine] Scanned PUPS (8ir8mu3B...) -> DATA_ERROR (conf=45.8)
+2026-09-04 21:25:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:08 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:08 [INFO] [enzo.engine] Scanned BUFOCOIN (3794JYx2...) -> DATA_ERROR (conf=48.8)
+2026-09-04 21:25:10 [INFO] [enzo.engine] Deployable capital: $3.89 (live wallet)
+2026-09-04 21:25:11 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:25:11 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:12 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:25:12 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:13 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:25:13 [INFO] [enzo.engine] Discovered 76 pre-screened candidate tokens.
+2026-09-04 21:25:13 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 76 candidates (depth cap: 12).
+2026-09-04 21:25:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:17 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:20 [INFO] [enzo.engine] Scanned Q币 (Hfx46bSb...) -> IGNORE (conf=48.8)
+2026-09-04 21:25:22 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:22 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:23 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:28 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:33 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:33 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:36 [INFO] [enzo.engine] Scanned LASTPONS (H5Wttoqt...) -> IGNORE (conf=51.8)
+2026-09-04 21:25:43 [INFO] [enzo.engine] Scanned CRC (FacSteJw...) -> IGNORE (conf=35.8)
+2026-09-04 21:25:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:44 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:51 [INFO] [enzo.engine] Scanned CRC (56PPFxmd...) -> DATA_ERROR (conf=29.8)
+2026-09-04 21:25:52 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:25:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:25:59 [INFO] [enzo.engine] Scanned BUFO (B6NkboQi...) -> DATA_ERROR (conf=57.8)
+2026-09-04 21:26:03 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:04 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:26:06 [INFO] [enzo.engine] Scanned Tabby (GeeoNKBJ...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:26:14 [INFO] [enzo.engine] Scanned $1 (8xuoWSNp...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:26:14 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:16 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:21 [INFO] [enzo.engine] Scanned Q币 (B6ALuSPN...) -> DATA_ERROR (conf=56.8)
+2026-09-04 21:26:24 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:24 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:25 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:29 [INFO] [enzo.engine] Scanned Juror (4vUxZ5n5...) -> DATA_ERROR (conf=28.8)
+2026-09-04 21:26:33 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:36 [INFO] [enzo.engine] Scanned CRC (6LK8p4sd...) -> DATA_ERROR (conf=50.8)
+2026-09-04 21:26:37 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:38 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:26:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:45 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:49 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:50 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:54 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:26:55 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:26:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:01 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:04 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:05 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:08 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:09 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:14 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:16 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:24 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:24 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:34 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:34 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:27:42 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:27:42 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:42 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:27:43 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:27:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:45 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:27:46 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:27:46 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:27:46 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:27:49 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:27:49 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:27:49 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:27:52 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:27:53 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:27:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:27:54 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:27:54 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:28:03 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:28:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:28:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:28:53 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:29:31 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: The read operation timed out
+2026-09-04 21:29:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:29:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:29:53 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:30:38 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:30:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:30:56 [INFO] [enzo.executor] Wallet capital synced: $3.89 deployable (USDC $0.00 + 0.0383 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 21:31:16 [INFO] [enzo.engine] Received signal 15 — shutting down engine
+2026-09-04 21:31:17 [INFO] [enzo.engine] Stopping exit monitor (engine ran 15 cycles)
+2026-09-04 21:31:18 [INFO] [enzo.exit_monitor] Exit monitor background service stopped.
+2026-09-04 21:31:19 [INFO] [enzo.botctl] Telegram Interactive Bot Listener stopped.
+2026-09-04 21:41:43 [INFO] [enzo.botctl] Telegram Interactive Bot Listener started.
+2026-09-04 21:41:43 [INFO] [enzo.engine] Starting ENZO Engine loop (interval: 60.0s)...
+2026-09-04 21:41:43 [INFO] [enzo.engine] Mode: LIVE
+2026-09-04 21:41:43 [INFO] [enzo.exit_monitor] Exit monitor background service started.
+2026-09-04 21:41:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:41:43 [INFO] [enzo.serve] Dashboard server listening on http://0.0.0.0:8077/  (health: /health)
+2026-09-04 21:41:51 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:41:51 [INFO] [enzo.engine] Deployable capital: $3.90 (live wallet)
+2026-09-04 21:41:51 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:41:51 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:41:51 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:41:54 [INFO] [enzo.gmgn] GMGN CLI resolved: /home/openclaw/.npm-global/bin/gmgn-cli
+2026-09-04 21:41:54 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:41:57 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:41:57 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:41:57 [INFO] [enzo.engine] Discovered 65 pre-screened candidate tokens.
+2026-09-04 21:41:57 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 65 candidates (depth cap: 12).
+2026-09-04 21:42:05 [INFO] [enzo.pump] PumpDev WebSocket Streaming Client initialized.
+2026-09-04 21:42:05 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:42:05 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:42:05 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:42:05 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:42:05 [INFO] [enzo.engine] Scanned Qq币 (71L5jbUp...) -> BUY (conf=63.8)
+2026-09-04 21:42:08 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:42:08 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:42:11 [WARNING] [enzo.portfolio] Minimum-trade floor applied: 71L5jbUpdAUhJeCnWrBCmmx5uMZ6gXpLZoXVu7XRYhHM sized at $1.00 (risk model asked for $0.2053 on $3.90 capital). Effective risk is 9.7% of capital, not the configured 2.0%.
+2026-09-04 21:42:11 [INFO] [enzo.pump] Subscribed to 1 token trades on PumpDev WebSocket.
+2026-09-04 21:42:11 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'Qq币', 'mint': '71L5jbUpdAUhJeCnWrBCmmx5uMZ6gXpLZoXVu7XRYhHM', 'entry_price': 0.00030730916, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 357087.34, 'current_market_cap': 357087.34, 'stop_loss_mc': 221394.15, 'take_profit_mc': 892718.35, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 3.9, 'risk_pct_used': 2.0, 'min_floor_applied': True, 'effective_risk_pct': 9.744, 'amount': 3254.0520432257863, 'initial_amount': 3254.0520432257863, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:42:11.805616+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $46,053 >= min $5,000', 'Market cap $357,087 >= min $5,000', 'Volume24h $54,249 >= min $8,000', 'Holders 186.0 >= min 10.0', 'Buy pressure 60.8% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': '71L5jbUpdAUhJeCnWrBCmmx5uMZ6gXpLZoXVu7XRYhHM', 'token_type': 'STANDARD', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 73.5, 'holder_count': 186.0, 'liquidity': 46053.42333110784, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 42.0, 'available': True, 'dev_address': None, 'dev_share': None, 'events': ['DEV_UNKNOWN', 'DEV_FACTORY(1_created)'], 'flags': ['dev=unknown', 'dev_share=None%', 'DEV_UNKNOWN', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 186.0, 'liquidity': 46053.42333110784, 'creator_status': 'creator_hold', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 51, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=60.8%', 'buy_ratio=61%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 60.8, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 35, 'available': False, 'flags': ['insufficient_samples -> conservative'], 'detail': {'samples': 1, 'imbalance_score': 35.0}}, 'liquidity': {'score': 100, 'flags': ['liquidity=$46,053 (min $5,000)'], 'detail': {'liquidity': 46053.42333110784, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': False, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': False, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 63.8, 'peak_price': 0.00030730916, 'peak_market_cap': 357087.34, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:42:11 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:42:11 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:42:12 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:42:15 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:42:15 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:42:18 [INFO] [enzo.pump] Connecting to PumpDev WebSocket stream...
+2026-09-04 21:42:19 [INFO] [enzo.pump] [✓] Subscribed to PumpDev 'subscribeNewToken' stream.
+2026-09-04 21:42:19 [WARNING] [enzo.pump] PumpDev WebSocket disconnected (ConnectionClosedError: received 1013 (try again later) Too many connections from this IP; then sent 1013 (try again later) Too many connections from this IP). Retrying in 3s...
+2026-09-04 21:42:19 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.82, reserve 0.0200 SOL)
+2026-09-04 21:42:25 [INFO] [enzo.executor] Wallet capital synced: $3.90 deployable (USDC $0.00 + 0.0383 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:42:25 [INFO] [enzo.engine] Executing REAL swap: $1.00 into 71L5jbUp...
+2026-09-04 21:42:47 [INFO] [enzo.executor] ✓ swap executed: So1111 → 71L5jb | 0.009824147755 SOL | sig=ty5dwHZnohbFdESM
+2026-09-04 21:42:47 [INFO] [enzo.engine] ✓ REAL SWAP EXECUTED — tx: ty5dwHZnohbFdESMZtDMvDN5Ehxn6fri8RruvGuFWb3txtqPYZUwtd2uf54dWvMEhC412kAcx5c27M2cCQx24sQ
+2026-09-04 21:43:01 [INFO] [enzo.engine] Scanned LASTPONS (A1ebueWd...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:43:02 [INFO] [enzo.executor] ✓ swap executed: 71L5jb → EPjFWd | 3254.052043226 SOL | sig=4dMny8E1vHURJtEH
+2026-09-04 21:43:02 [INFO] [enzo.exit_monitor] ✓ REAL SELL: Qq币 tx=4dMny8E1vHURJtEHtaks5sPDGesCarP4VxGQvZpvi2SGTs1hvvs7GHk9LkFK7FrctDtQWdwrZH9ZvtmYH6EFX6Fx
+2026-09-04 21:43:02 [INFO] [enzo.exit_monitor] Position closed: Qq币 (71L5jbUp) | PnL: $-0.50 (-50.2%) | Reason: STOP_LOSS
+2026-09-04 21:43:09 [INFO] [enzo.engine] Scanned Redbull (GPHWt6U5...) -> DATA_ERROR (conf=70.8)
+2026-09-04 21:43:16 [INFO] [enzo.engine] Scanned HOPELESS (AakXjyF6...) -> DATA_ERROR (conf=70.8)
+2026-09-04 21:43:24 [INFO] [enzo.engine] Scanned PUPS (CvnYZmoJ...) -> DATA_ERROR (conf=70.8)
+2026-09-04 21:43:31 [INFO] [enzo.engine] Scanned Minecraft (HfvFWn66...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:43:39 [INFO] [enzo.engine] Scanned CRC (G2MuYmu7...) -> DATA_ERROR (conf=54.8)
+2026-09-04 21:43:48 [INFO] [enzo.engine] Scanned VAN TENEV (6nNm46Jn...) -> DATA_ERROR (conf=48.8)
+2026-09-04 21:43:58 [INFO] [enzo.engine] Scanned HOOD (ZEaeu9Ge...) -> DATA_ERROR (conf=70.8)
+2026-09-04 21:44:05 [INFO] [enzo.engine] Scanned AKA (E7VaYAsu...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:44:14 [INFO] [enzo.engine] Scanned Juror (BgsFETAj...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:44:22 [INFO] [enzo.engine] Scanned NVDA AI (G7EJW9X5...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:44:30 [INFO] [enzo.executor] Wallet capital synced: $2.52 deployable (USDC $0.58 + 0.0191 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:44:30 [WARNING] [enzo.portfolio] Only $1.95 of $2.52 wallet value can fund a buy: base_token=SOL. The rest is held in the other asset and cannot be swapped directly.
+2026-09-04 21:44:30 [INFO] [enzo.engine] Deployable capital: $2.52 (live wallet)
+2026-09-04 21:44:30 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:44:32 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:44:32 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:44:32 [INFO] [enzo.engine] Discovered 65 pre-screened candidate tokens.
+2026-09-04 21:44:32 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 65 candidates (depth cap: 12).
+2026-09-04 21:44:41 [INFO] [enzo.engine] Scanned BLOB (6LDmX9Sj...) -> IGNORE (conf=54.8)
+2026-09-04 21:44:49 [INFO] [enzo.engine] Scanned CAT (7k1JgSfA...) -> BUY (conf=55.8)
+2026-09-04 21:44:53 [WARNING] [enzo.portfolio] Minimum-trade floor applied: 7k1JgSfAasDo53uc7ntp6ZMDa48bEDbmUyzPuVKpegKS sized at $1.00 (risk model asked for $0.0513 on $1.95 capital). Effective risk is 19.5% of capital, not the configured 1.0%.
+2026-09-04 21:44:53 [INFO] [enzo.engine] Open position result: {'ok': True, 'reason': 'opened', 'position': {'symbol': 'CAT', 'mint': '7k1JgSfAasDo53uc7ntp6ZMDa48bEDbmUyzPuVKpegKS', 'entry_price': 4.5227813e-05, 'scam_score': 0, 'security_status': 'SAFE', 'entry_market_cap': 415628.38, 'current_market_cap': 415628.38, 'stop_loss_mc': 257689.6, 'take_profit_mc': 1039070.95, 'size_usd': 1.0, 'initial_size_usd': 1.0, 'capital_base_usd': 1.95, 'risk_pct_used': 1.0, 'min_floor_applied': True, 'effective_risk_pct': 19.487, 'amount': 22110.288640310773, 'initial_amount': 22110.288640310773, 'realized_pnl_total': 0.0, 'opened_at': '2026-09-04T20:44:53.773123+00:00', 'max_holding_hours': 48.0, 'unrealized_pnl': 0.0, 'signals': ['Liquidity $134,319 >= min $5,000', 'Market cap $415,628 >= min $5,000', 'Volume24h $41,473 >= min $8,000', 'Holders 113.0 >= min 10.0', 'Buy pressure 73.4% >= 30%', '1h momentum +0.00%'], 'axis_scores': {'security': {'mint_address': '7k1JgSfAasDo53uc7ntp6ZMDa48bEDbmUyzPuVKpegKS', 'token_type': 'STANDARD', 'security_status': 'SAFE', 'safety_score': 95, 'hard_reject': [], 'security_flags': [], 'mint_authority': None, 'freeze_authority': None, 'top10_holder_pct': 3.2, 'holder_count': 113.0, 'liquidity': 134319.0057071115, 'price': None, 'quality': {'top1_pct': None, 'creator_hold_pct': None, 'creator_created_count': 1.0, 'dev_events': []}, 'score': 95, 'flags': [], 'available': True}, 'wallet_behavior': {'score': 50.0, 'available': True, 'wallet_diversity_score': None, 'concentration_score': None, 'experienced_wallet_ratio': None, 'fresh_wallet_ratio': None, 'sniper_wallet_ratio': None, 'buyer_growth_5m_pct': None, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'classification': 'غير معروفة (Unknown)', 'flags': ['holder_distribution=UNAVAILABLE', 'identity=50', 'classification=غير معروفة (Unknown)'], 'detail': {'deep_ok': True, 'smart_count': 0, 'whale_count': 0, 'kol_count': 0, 'bundler_count': 0, 'sniper_count': 0, 'rat_count': 0, 'top10_dumping': 0, 'top10_accumulating': 0, 'top10_avg_profit_ratio': None, 'avg_wallet_age_days': None, 'identity_score': 50.0}}, 'dev_behavior': {'score': 0, 'available': True, 'dev_address': None, 'dev_share': None, 'events': ['DEV_SOLD_ALL', 'DEV_FACTORY(1_created)'], 'flags': ['dev=unknown', 'dev_share=None%', 'DEV_SOLD_ALL', 'DEV_FACTORY(1_created)', 'dev_factory_penalty=8 (created=1)'], 'detail': {'dev_share_pct': None, 'holder_count': 113.0, 'liquidity': 134319.0057071115, 'creator_status': 'creator_close', 'creator_created_count': 1.0, 'open_ratio': None}}, 'momentum': {'score': 61, 'flags': ['1h=+0.00% 24h=+0.00% buy_pressure=73.4%', 'buy_ratio=73%'], 'detail': {'pc1h': 0.0, 'pc24': 0.0, 'pc5m': None, 'buy_pressure': 73.4, 'smart_degen_count': 0.0, 'hot_level': None}}, 'market_structure': {'score': 35, 'available': False, 'flags': ['insufficient_samples -> conservative'], 'detail': {'samples': 1, 'imbalance_score': 35.0}}, 'liquidity': {'score': 100, 'flags': ['liquidity=$134,319 (min $5,000)'], 'detail': {'liquidity': 134319.0057071115, 'min_liquidity': 5000.0}}}, 'features': {'security_ok': True, 'bundle_risk': False, 'dev_holding': False, 'dev_selling': True, 'dev_buying': False, 'dev_factory': True, 'wallet_diversity_high': False, 'smart_money_in': False, 'whale_in': False, 'market_structure_growing': False, 'momentum_positive': True, 'liquidity_ok': True}, 'weighted_confidence': 55.8, 'peak_price': 4.5227813e-05, 'peak_market_cap': 415628.38, 'trailing_active': False, 'trailing_stop_mc': None, 'stages_hit': [False, False, False]}}
+2026-09-04 21:44:53 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:44:53 [INFO] [enzo.pump] Subscribed to 1 token trades on PumpDev WebSocket.
+2026-09-04 21:45:04 [INFO] [enzo.executor] Wallet capital synced: $2.52 deployable (USDC $0.58 + 0.0191 SOL @ $101.73, reserve 0.0200 SOL)
+2026-09-04 21:45:04 [INFO] [enzo.engine] Executing REAL swap: $1.00 into 7k1JgSfA...
+2026-09-04 21:45:29 [INFO] [enzo.executor] ✓ swap executed: So1111 → 7k1JgS | 0.009829942003 SOL | sig=3YQc1atqwHK7XrrA
+2026-09-04 21:45:29 [INFO] [enzo.engine] ✓ REAL SWAP EXECUTED — tx: 3YQc1atqwHK7XrrAB1Q8n8RB1MdGEzteAa8B9XH1r88yxaF3ZuSL9iPAEnGDAN9W8P7TbRE69qTMrBL76m1LUt5L
+2026-09-04 21:45:36 [INFO] [enzo.engine] Scanned Patrick (CTpvmAin...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:45:43 [INFO] [enzo.engine] Scanned Qq币 (71L5jbUp...) -> DATA_ERROR (conf=65.8)
+2026-09-04 21:45:48 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:45:52 [INFO] [enzo.engine] Scanned Redbull (GPHWt6U5...) -> DATA_ERROR (conf=67.8)
+2026-09-04 21:45:59 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:00 [INFO] [enzo.engine] Scanned HOPELESS (AakXjyF6...) -> DATA_ERROR (conf=68.8)
+2026-09-04 21:46:07 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:06 [INFO] [enzo.engine] Scanned PUPS (CvnYZmoJ...) -> DATA_ERROR (conf=67.8)
+2026-09-04 21:46:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:16 [INFO] [enzo.engine] Scanned Minecraft (HfvFWn66...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:46:16 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:19 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:21 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:22 [INFO] [enzo.engine] Scanned CRC (G2MuYmu7...) -> DATA_ERROR (conf=54.8)
+2026-09-04 21:46:29 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:31 [INFO] [enzo.engine] Scanned VAN TENEV (6nNm46Jn...) -> DATA_ERROR (conf=49.8)
+2026-09-04 21:46:31 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:35 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:38 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:39 [INFO] [enzo.engine] Scanned HOOD (ZEaeu9Ge...) -> DATA_ERROR (conf=67.8)
+2026-09-04 21:46:41 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:47 [INFO] [enzo.engine] Scanned AKA (E7VaYAsu...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:46:49 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:46:49 [WARNING] [enzo.portfolio] Only $0.54 of $1.12 wallet value can fund a buy: base_token=SOL. The rest is held in the other asset and cannot be swapped directly.
+2026-09-04 21:46:49 [INFO] [enzo.engine] Deployable capital: $1.12 (live wallet)
+2026-09-04 21:46:49 [WARNING] [enzo.gmgn] GMGN category 'trending' discovery failed — GMGNError: market/trending: rc=1 err=error: required option '--interval <interval>' not specified
+2026-09-04 21:46:52 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:52 [WARNING] [enzo.gmgn] GMGN category 'smartmoney' discovery failed — GMGNError: market/smartmoney: rc=1 err=error: unknown command 'smartmoney'
+2026-09-04 21:46:52 [WARNING] [enzo.gmgn] GMGN category 'kol' discovery failed — GMGNError: market/kol: rc=1 err=error: unknown command 'kol'
+2026-09-04 21:46:52 [INFO] [enzo.engine] Discovered 64 pre-screened candidate tokens.
+2026-09-04 21:46:52 [INFO] [enzo.engine] Proceeding to deep 6-axis analysis on top 12 / 64 candidates (depth cap: 12).
+2026-09-04 21:46:56 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:46:59 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:00 [INFO] [enzo.exit_monitor] Partial exit: CAT | PnL: $+0.13 | Reason: TP_STAGE_30%
+2026-09-04 21:47:02 [INFO] [enzo.engine] Scanned mert (6iymtCT9...) -> WAIT (conf=52.8)
+2026-09-04 21:47:04 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:47:06 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:47:08 [INFO] [enzo.engine] Scanned CAT (7k1JgSfA...) -> BUY (conf=56.8)
+2026-09-04 21:47:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:16 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:19 [INFO] [enzo.engine] Open position result: {'ok': False, 'reason': 'already open'}
+2026-09-04 21:47:19 [INFO] [enzo.engine] BUY skipped for CAT: already open
+2026-09-04 21:47:20 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:23 [INFO] [enzo.executor] Wallet capital synced: $1.12 deployable (USDC $0.58 + 0.0053 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:25 [INFO] [enzo.engine] Scanned Patrick (CTpvmAin...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:47:30 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:33 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:35 [INFO] [enzo.engine] Scanned Qq币 (71L5jbUp...) -> DATA_ERROR (conf=65.8)
+2026-09-04 21:47:37 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:40 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:43 [INFO] [enzo.engine] Scanned Redbull (GPHWt6U5...) -> DATA_ERROR (conf=67.8)
+2026-09-04 21:47:44 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:50 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:47:50 [INFO] [enzo.engine] Scanned HOPELESS (AakXjyF6...) -> DATA_ERROR (conf=69.8)
+2026-09-04 21:47:50 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:52 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:47:58 [INFO] [enzo.engine] Scanned PUPS (CvnYZmoJ...) -> DATA_ERROR (conf=54.8)
+2026-09-04 21:47:58 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:01 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:48:01 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:48:07 [INFO] [enzo.engine] Scanned Minecraft (HfvFWn66...) -> DATA_ERROR (conf=61.8)
+2026-09-04 21:48:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:09 [INFO] [enzo.executor] Wallet capital synced: $2.34 deployable (USDC $0.58 + 0.0173 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 21:48:15 [INFO] [enzo.engine] Scanned BLOB (AqEynwWQ...) -> DATA_ERROR (conf=63.8)
+2026-09-04 21:48:15 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:48:19 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:23 [INFO] [enzo.executor] Wallet capital synced: $3.08 deployable (USDC $0.58 + 0.0246 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:48:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:29 [INFO] [enzo.executor] Wallet capital synced: $3.08 deployable (USDC $0.58 + 0.0246 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:48:33 [INFO] [enzo.executor] Wallet capital synced: $3.08 deployable (USDC $0.58 + 0.0246 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:48:39 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:41 [INFO] [enzo.executor] Wallet capital synced: $3.08 deployable (USDC $0.58 + 0.0246 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:48:49 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:48:51 [INFO] [enzo.executor] Wallet capital synced: $3.08 deployable (USDC $0.58 + 0.0246 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:48:59 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:00 [INFO] [enzo.executor] Wallet capital synced: $3.25 deployable (USDC $0.58 + 0.0262 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:49:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:12 [INFO] [enzo.executor] Wallet capital synced: $3.25 deployable (USDC $0.58 + 0.0262 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:49:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:49:19 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:22 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 21:49:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:28 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:30 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:49:39 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:39 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:49:40 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:49:49 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:49:49 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "Invalid Solana wallet address: enzo-trading",
+    "code": 400
+  }
+} [UNKNOWN]
+2026-09-04 21:49:59 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:00 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:50:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:11 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:50:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:50:19 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:20 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:20 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.89, reserve 0.0200 SOL)
+2026-09-04 21:50:29 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:29 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:30 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:50:33 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:50:39 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:41 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:50:42 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:50:49 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:50:50 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:50:59 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:51:01 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:51:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:51:09 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:51:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:51:19 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:51:20 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.90, reserve 0.0200 SOL)
+2026-09-04 21:51:25 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "Invalid Solana wallet address: enzo-trading",
+    "code": 400
+  }
+} [UNKNOWN]
+2026-09-04 21:51:29 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:51:39 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.77, reserve 0.0200 SOL)
+2026-09-04 21:51:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:51:56 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.77, reserve 0.0200 SOL)
+2026-09-04 21:52:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:52:33 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:52:33 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:52:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:52:43 [WARNING] [enzo.exit_monitor] Price unavailable/stale for CAT (7k1JgSfA...) (3 consecutive failures). Holding position safely.
+2026-09-04 21:52:44 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:52:44 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:52:55 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:53:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:53:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:53:55 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.69, reserve 0.0200 SOL)
+2026-09-04 21:54:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:54:30 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 21:54:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:54:55 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:55:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:55:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:55:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 21:56:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:56:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:56:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:56:56 [WARNING] [enzo.exit_monitor] Price unavailable/stale for CAT (7k1JgSfA...) (3 consecutive failures). Holding position safely.
+2026-09-04 21:57:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:57:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:57:54 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "Invalid Solana wallet address: enzo-trading",
+    "code": 400
+  }
+} [UNKNOWN]
+2026-09-04 21:58:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:58:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:58:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:09 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:13 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 21:59:21 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:22 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:23 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:25 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:33 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:35 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:44 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:44 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 21:59:54 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 21:59:55 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:00:04 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:00:06 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:00:14 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:00:16 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:00:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:00:24 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:00:27 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:00:34 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:00:35 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:00:46 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.76, reserve 0.0200 SOL)
+2026-09-04 22:01:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:01:42 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:01:42 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:01:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 22:01:55 [WARNING] [enzo.botctl] Telegram network retry (2/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:02:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:02:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:02:53 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.84, reserve 0.0200 SOL)
+2026-09-04 22:03:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:03:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:03:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 22:04:07 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: The read operation timed out
+2026-09-04 22:04:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:04:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:04:53 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.78, reserve 0.0200 SOL)
+2026-09-04 22:05:14 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:05:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:05:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:05:53 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.88, reserve 0.0200 SOL)
+2026-09-04 22:06:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:06:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:06:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.86, reserve 0.0200 SOL)
+2026-09-04 22:07:02 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:07:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:07:25 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:07:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:07:54 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.79, reserve 0.0200 SOL)
+2026-09-04 22:08:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:08:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:08:57 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 22:09:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:09:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:09:43 [WARNING] [enzo.exit_monitor] Price unavailable/stale for CAT (7k1JgSfA...) (3 consecutive failures). Holding position safely.
+2026-09-04 22:09:56 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.87, reserve 0.0200 SOL)
+2026-09-04 22:10:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:10:31 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:10:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:10:57 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:11:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:11:41 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:11:41 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:11:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:11:46 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:11:54 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "fetch failed"
+  }
+} [UNKNOWN]
+2026-09-04 22:11:57 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:11:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:11:58 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:03 [WARNING] [enzo.exit_monitor] Price unavailable/stale for CAT (7k1JgSfA...) (3 consecutive failures). Holding position safely.
+2026-09-04 22:12:06 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:08 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:08 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:10 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:16 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:12:18 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:19 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:27 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:29 [WARNING] [enzo.executor] balance list failed (rc=1): {
+  "error": {
+    "message": "Invalid Solana wallet address: enzo-trading",
+    "code": 400
+  }
+} [UNKNOWN]
+2026-09-04 22:12:36 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:38 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:43 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: The read operation timed out
+2026-09-04 22:12:47 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:48 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.71, reserve 0.0200 SOL)
+2026-09-04 22:12:57 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:12:57 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 22:13:07 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:13:08 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 22:13:17 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:13:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:13:19 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 22:13:29 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 22:13:43 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:13:53 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.70, reserve 0.0200 SOL)
+2026-09-04 22:14:01 [WARNING] [enzo.botctl] Telegram network retry (1/3) on getUpdates: <urlopen error [Errno 101] Network is unreachable>
+2026-09-04 22:14:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.
+2026-09-04 22:14:42 [INFO] [enzo.executor] MoonPay CLI resolved: /home/openclaw/.npm-global/bin/mp
+2026-09-04 22:14:52 [INFO] [enzo.executor] Wallet capital synced: $3.43 deployable (USDC $0.58 + 0.0280 SOL @ $101.69, reserve 0.0200 SOL)
+2026-09-04 22:15:17 [INFO] [enzo.engine] ENZO is paused via botctl — skipping scan.

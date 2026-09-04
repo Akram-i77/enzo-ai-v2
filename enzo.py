@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/linuxbrew/.linuxbrew/bin/python3.14
 """
 ENZO - Unified Trading System CLI Controller
 Provides command-line interface for autonomous memecoin trading, analysis, and portfolio operations.

@@ -1,0 +1,17 @@
+{
+  "source": "wallet",
+  "usd": 1.12,
+  "ok": true,
+  "detail": "",
+  "wallet": "enzo-trading",
+  "usdc": 0.578038,
+  "sol": 0.025326465,
+  "sol_price": 101.87,
+  "deployable_sol": 0.005326465,
+  "sol_reserve": 0.02,
+  "spendable_usd": 0.54,
+  "base_token": "SOL",
+  "total_usd": 1.12,
+  "ts": 1788554809.3250053,
+  "iso": "2026-09-04T20:46:49.325008+00:00"
+}

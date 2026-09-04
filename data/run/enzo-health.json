@@ -1,0 +1,70 @@
+{
+  "status": "degraded",
+  "ts": 1788556482.9710195,
+  "iso": "2026-09-04T21:14:52.640391+00:00",
+  "uptime_sec": 1979.3,
+  "requests": {
+    "total": 4,
+    "errors": 0
+  },
+  "mode": "LIVE",
+  "paused": true,
+  "halted": null,
+  "equity": 1.89,
+  "initial_capital": 2.06,
+  "realized_pnl": -0.37,
+  "open_positions": 1,
+  "closed_trades": 5,
+  "engine": {
+    "cycles": 33,
+    "last_scan_status": "paused",
+    "last_candidates": 64,
+    "last_scan_age_sec": 25.6,
+    "interval_sec": 60.0,
+    "stale": false
+  },
+  "exit_monitor": {
+    "running": true,
+    "needed": true
+  },
+  "gmgn": {
+    "ban_remaining_sec": 0.0,
+    "categories_failed": [
+      "trending",
+      "smartmoney",
+      "kol"
+    ],
+    "consecutive_empty_cycles": 0,
+    "last_count": 175,
+    "last_ok_age_sec": 1679.8,
+    "last_error": "kol: GMGNError: market/kol: rc=1 err=error: unknown command 'kol'"
+  },
+  "capital": {
+    "usd": 1.12,
+    "source": "wallet",
+    "ok": true,
+    "blocked": false,
+    "age_sec": 1673.6,
+    "detail": ""
+  },
+  "pumpdev": {
+    "state": "STREAMING",
+    "buffered_tokens": 150,
+    "tokens_seen": 1030,
+    "messages": 1060,
+    "last_message_age_sec": 0.0,
+    "last_error": null
+  },
+  "executor": {
+    "ready": true,
+    "detail": "Ready \u2014 wallet 'enzo-trading', deployable $3.43 (USDC $0.58 + 0.0280 SOL), fee reserve 0.0480 SOL, CLI /home/openclaw/.npm-global/bin/mp"
+  },
+  "dashboard": {
+    "last_render_age_sec": 25.6,
+    "last_error": null
+  },
+  "problems": [
+    "TRADING_PAUSED",
+    "GMGN_DISCOVERY_FAILED: trending,smartmoney,kol \u2014 kol: GMGNError: market/kol: rc=1 err=error: unknown command 'kol'"
+  ]
+}

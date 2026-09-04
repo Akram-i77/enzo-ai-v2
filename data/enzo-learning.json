@@ -3941,6 +3941,91 @@
         "1h momentum +0.00%"
       ],
       "at": "2026-08-26T18:57:28.942675+00:00"
+    },
+    {
+      "symbol": "CAB",
+      "mint": "6AUpzASW3z5wS3Legk1F5rwwEwjKyXFx36Sqqwhfpump",
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "reason": "SWAP_FAILED:UNKNOWN",
+      "win": false,
+      "signals": [
+        "Liquidity $18,617 >= min $5,000",
+        "Market cap $59,514 >= min $5,000",
+        "Volume24h $125,898 >= min $8,000",
+        "Holders 395.0 >= min 10.0",
+        "Buy pressure 64.1% >= 30%",
+        "1h momentum +0.00%"
+      ],
+      "at": "2026-09-04T20:10:14.445848+00:00"
+    },
+    {
+      "symbol": "ELON💤",
+      "mint": "Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ",
+      "pnl": 0.5375,
+      "pnl_pct": 53.75,
+      "reason": "TRAILING_STOP",
+      "win": true,
+      "signals": [
+        "Liquidity $33,125 >= min $5,000",
+        "Market cap $175,802 >= min $5,000",
+        "Volume24h $60,812 >= min $8,000",
+        "Holders 215.0 >= min 10.0",
+        "Buy pressure 47.3% >= 30%",
+        "1h momentum +0.00%"
+      ],
+      "at": "2026-09-04T20:15:21.564947+00:00"
+    },
+    {
+      "symbol": "ELON💤",
+      "mint": "Hs3mqGYEcJVFSUE4knARBJ8kRKpfyzWpbyWUztF5sBuQ",
+      "pnl": -0.4432,
+      "pnl_pct": -44.32,
+      "reason": "STOP_LOSS",
+      "win": false,
+      "signals": [
+        "Liquidity $48,298 >= min $5,000",
+        "Market cap $329,370 >= min $5,000",
+        "Volume24h $124,266 >= min $8,000",
+        "Holders 211.0 >= min 10.0",
+        "Buy pressure 46.9% >= 30%",
+        "1h momentum +0.00%"
+      ],
+      "at": "2026-09-04T20:16:49.101134+00:00"
+    },
+    {
+      "symbol": "trollfone",
+      "mint": "AujAMvjxukHe2rBeEWbeVEGSi1Kji5hnYB77qGPxpump",
+      "pnl": 0.0052,
+      "pnl_pct": 0.52,
+      "reason": "TRAILING_STOP",
+      "win": true,
+      "signals": [
+        "Liquidity $25,865 >= min $5,000",
+        "Market cap $117,831 >= min $5,000",
+        "Volume24h $30,721 >= min $8,000",
+        "Holders 99.0 >= min 10.0",
+        "Buy pressure 73.4% >= 30%",
+        "1h momentum +0.00%"
+      ],
+      "at": "2026-09-04T20:23:54.185608+00:00"
+    },
+    {
+      "symbol": "Qq币",
+      "mint": "71L5jbUpdAUhJeCnWrBCmmx5uMZ6gXpLZoXVu7XRYhHM",
+      "pnl": -0.5018,
+      "pnl_pct": -50.18,
+      "reason": "STOP_LOSS",
+      "win": false,
+      "signals": [
+        "Liquidity $46,053 >= min $5,000",
+        "Market cap $357,087 >= min $5,000",
+        "Volume24h $54,249 >= min $8,000",
+        "Holders 186.0 >= min 10.0",
+        "Buy pressure 60.8% >= 30%",
+        "1h momentum +0.00%"
+      ],
+      "at": "2026-09-04T20:42:35.584104+00:00"
     }
   ],
   "signal_effectiveness": {
@@ -8930,9 +9015,9 @@
       "n": 1
     },
     "1h momentum +0.00%": {
-      "wins": 2,
-      "losses": 7,
-      "n": 9
+      "wins": 4,
+      "losses": 10,
+      "n": 14
     },
     "Liquidity $23,303 >= min $150": {
       "wins": 1,
@@ -9093,15 +9178,140 @@
       "wins": 0,
       "losses": 1,
       "n": 1
+    },
+    "Liquidity $18,617 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Market cap $59,514 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Volume24h $125,898 >= min $8,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Holders 395.0 >= min 10.0": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Buy pressure 64.1% >= 30%": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Liquidity $33,125 >= min $5,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Market cap $175,802 >= min $5,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Volume24h $60,812 >= min $8,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Holders 215.0 >= min 10.0": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Buy pressure 47.3% >= 30%": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Liquidity $48,298 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Market cap $329,370 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Volume24h $124,266 >= min $8,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Holders 211.0 >= min 10.0": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Buy pressure 46.9% >= 30%": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Liquidity $25,865 >= min $5,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Market cap $117,831 >= min $5,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Volume24h $30,721 >= min $8,000": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Holders 99.0 >= min 10.0": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Buy pressure 73.4% >= 30%": {
+      "wins": 1,
+      "losses": 0,
+      "n": 1
+    },
+    "Liquidity $46,053 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Market cap $357,087 >= min $5,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Volume24h $54,249 >= min $8,000": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Holders 186.0 >= min 10.0": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
+    },
+    "Buy pressure 60.8% >= 30%": {
+      "wins": 0,
+      "losses": 1,
+      "n": 1
     }
   },
-  "confidence_bias": -2.6,
-  "updated_at": "2026-08-26T18:57:28.942736+00:00",
+  "confidence_bias": -2.2,
+  "updated_at": "2026-09-04T20:42:35.584157+00:00",
   "feature_outcomes": {
     "security_ok": {
-      "wins": 53,
-      "losses": 97,
-      "n": 150
+      "wins": 55,
+      "losses": 100,
+      "n": 155
     },
     "dev_holding": {
       "wins": 64,
@@ -9114,14 +9324,14 @@
       "n": 22
     },
     "liquidity_ok": {
-      "wins": 68,
-      "losses": 134,
-      "n": 202
+      "wins": 70,
+      "losses": 137,
+      "n": 207
     },
     "momentum_positive": {
-      "wins": 63,
-      "losses": 130,
-      "n": 193
+      "wins": 65,
+      "losses": 133,
+      "n": 198
     },
     "bundle_risk": {
       "wins": 37,
@@ -9135,8 +9345,8 @@
     },
     "market_structure_growing": {
       "wins": 16,
-      "losses": 42,
-      "n": 58
+      "losses": 43,
+      "n": 59
     },
     "dev_selling": {
       "wins": 1,
@@ -9144,9 +9354,9 @@
       "n": 6
     },
     "dev_factory": {
-      "wins": 7,
-      "losses": 37,
-      "n": 44
+      "wins": 9,
+      "losses": 40,
+      "n": 49
     },
     "bundler_in": {
       "wins": 0,
@@ -9176,46 +9386,46 @@
   },
   "axis_outcomes": {
     "security": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 4802.0,
-      "sum_score_loss": 9109.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 4992.0,
+      "sum_score_loss": 9394.0,
+      "n": 209
     },
     "wallet_behavior": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 3442.0,
-      "sum_score_loss": 6113.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 3542.0,
+      "sum_score_loss": 6263.0,
+      "n": 209
     },
     "dev_behavior": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 4019.0,
-      "sum_score_loss": 7215.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 4103.0,
+      "sum_score_loss": 7341.0,
+      "n": 209
     },
     "momentum": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 5260.0,
-      "sum_score_loss": 10354.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 5356.0,
+      "sum_score_loss": 10494.0,
+      "n": 209
     },
     "market_structure": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 4016.0,
-      "sum_score_loss": 8195.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 4086.0,
+      "sum_score_loss": 8354.0,
+      "n": 209
     },
     "liquidity": {
-      "wins": 70,
-      "losses": 134,
-      "sum_score_win": 6980.0,
-      "sum_score_loss": 13196.0,
-      "n": 204
+      "wins": 72,
+      "losses": 137,
+      "sum_score_win": 7180.0,
+      "sum_score_loss": 13470.0,
+      "n": 209
     }
   },
   "win_rate": 35.6
