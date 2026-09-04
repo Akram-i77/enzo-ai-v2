@@ -270,6 +270,72 @@ def analyze(merged: dict, config: dict = None) -> dict:
         except Exception:
             pass
 
+def fingerprint_signals(wal_axis: dict, dev_axis: dict, cfg: dict) -> dict:
+    """Absolute rug fingerprints observable at FIRST look - layer 1.
+
+    Delta-based dev analysis is blind at first observation (there is nothing to
+    compare against yet), which is exactly when memecoin buys happen. These
+    signals need no history: bundled buys, freshly created sybil wallets,
+    insiders selling right now, and serial-rugger factories are all readable
+    from the very first snapshot. An organic community launch does not carry
+    them, so vetoing on them costs no legitimate entry.
+
+    Returns {"vetoes": [...], "flags": [...], "stats": {...}} where `flags` are
+    the same signals at `soft_flag_ratio` of their veto threshold - not enough
+    to refuse the trade, but enough to put it on the tighter early stop (layer 3).
+    """
+    rp = cfg.get("rug_protection") or {}
+    out = {"vetoes": [], "flags": [], "stats": {}}
+    if not bool(rp.get("fingerprints_enabled", True)):
+        return out
+    w = wal_axis or {}
+    detail = w.get("detail") or {}
+    stats = {
+        "bundlers_top20": w.get("bundler_count"),
+        "snipers_top20": w.get("sniper_count"),
+        "rats_top20": w.get("rat_count"),
+        "avg_wallet_age_days": detail.get("avg_wallet_age_days"),
+        "top10_cur_sells": detail.get("top10_cur_sells"),
+    }
+    out["stats"] = {k: v for k, v in stats.items() if v is not None}
+    ratio = float(rp.get("soft_flag_ratio", 0.5))
+
+    for name, val, veto_at in (
+        ("bundlers_top20", stats["bundlers_top20"], float(rp.get("veto_bundlers_top20", 6))),
+        ("snipers_top20", stats["snipers_top20"], float(rp.get("veto_snipers_top20", 8))),
+        ("rats_top20", stats["rats_top20"], float(rp.get("veto_rats_top20", 5))),
+        ("top10_cur_sells", stats["top10_cur_sells"], float(rp.get("veto_top10_cur_sells", 25))),
+    ):
+        if val is None or veto_at <= 0:
+            continue
+        if float(val) >= veto_at:
+            out["vetoes"].append(
+                f"RUG-FINGERPRINT: {name}={int(val)} >= {int(veto_at)} "
+                f"(coordinated/bundled buying fingerprint)")
+        elif float(val) >= veto_at * ratio:
+            out["flags"].append(f"{name}={int(val)}")
+
+    age, age_veto = stats["avg_wallet_age_days"], float(rp.get("veto_avg_wallet_age_days", 3.0))
+    if age is not None and age_veto > 0:
+        if float(age) < age_veto:
+            out["vetoes"].append(
+                f"RUG-FINGERPRINT: avg top-holder wallet age {float(age):.1f}d < "
+                f"{age_veto:.0f}d (freshly created sybil wallets)")
+        elif float(age) < age_veto * 2:
+            out["flags"].append(f"avg_wallet_age={float(age):.1f}d")
+
+    dd = (dev_axis or {}).get("detail") or {}
+    created, open_ratio = dd.get("creator_created_count"), dd.get("open_ratio")
+    c_veto = float(rp.get("veto_factory_created", 50))
+    o_veto = float(rp.get("veto_factory_open_ratio", 0.03))
+    if created is not None and open_ratio is not None and c_veto > 0:
+        if float(created) >= c_veto and float(open_ratio) < o_veto:
+            out["vetoes"].append(
+                f"RUG-FINGERPRINT: serial factory - created {int(created)} tokens, "
+                f"only {float(open_ratio) * 100:.1f}% still open")
+    return out
+
+
 def rug_rejection(dev_axis: dict) -> str | None:
     """Return a rejection reason when the developer's behaviour IS the rug.
 
@@ -315,6 +381,10 @@ def rug_rejection(dev_axis: dict) -> str | None:
     _rug = rug_rejection(dev_axis)
     if _rug:
         rejected.append(_rug)
+
+    # ── Layer 1: absolute fingerprints, readable at first look ───────────
+    _fp = fingerprint_signals(wal_axis, dev_axis, cfg)
+    rejected.extend(_fp["vetoes"])
 
     # Decision Logic
     hard_fail = bool(rejected)
@@ -389,6 +459,8 @@ def rug_rejection(dev_axis: dict) -> str | None:
         "estimated_holding_time": f"{xs.get('max_holding_time_hours', 48)}h",
         "decision_reason": reason,
         "supporting_signals": supporting,
+        "rug_flags": _fp["flags"],
+        "rug_fingerprints": _fp["stats"],
         "rejected_signals": rejected,
         "security_status": security_status,
         "token_type": sec_axis.get("token_type"),

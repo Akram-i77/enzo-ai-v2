@@ -105,6 +105,33 @@ exit_strategy:
   stall_min_gain_pct: 15.0
   stall_seconds: 30.0
   max_holding_time_hours: 48
+# ── حماية الرغ: ثلاث طبقات أضافها المالك في 2026-09-05 ────────────────────
+# طبقة 1: بصمات مطلقة تُرفض عند الدخول (تجميع/محافظ وليدة/مصنع серийный).
+#   العملة العضوية لا تحمل هذه البصمات، فالرفض لا يؤجّل دخولاً شرعياً.
+# طبقة 3: وقف أضيق (-12%) لأول 10 دقائق، يُطبَّق فقط على دخول حمل أعلاماً؛
+#   الدخول النظيف يحتفظ بوقفك -38% ومتحركك -40% بلا أي تغيير.
+# طبقة 4: كاشف الرغّ أثناء حدوثه (سحب سيولة/انهيار حاملين/بيع العشرة الكبار)
+#   → خروج فوري بغض النظر عن الربح أو الخسارة.
+rug_protection:
+  fingerprints_enabled: true
+  veto_bundlers_top20: 6        # ≥ هذا العدد من الـ bundlers ضمن أعلى 20 = رفض
+  veto_snipers_top20: 8
+  veto_rats_top20: 5
+  veto_avg_wallet_age_days: 3.0 # متوسط عمر محافظ القمة أقل من هذا = رفض
+  veto_top10_cur_sells: 25      # العشرة الكبار يبيعون الآن بهذا العدد = رفض
+  veto_factory_created: 50      # مع السطر التالي: منشئ серийный ماتت معظم عملاته
+  veto_factory_open_ratio: 0.03
+  soft_flag_ratio: 0.5          # نصف عتبات الرفض = «علم» يشغّل الطبقة 3
+  early_stop_enabled: true
+  early_stop_pct: 12.0
+  early_stop_window_min: 10.0
+  tripwire_enabled: true
+  tripwire_poll_sec: 20.0       # كل كم ثانية تُقرأ بصمات المحفظة للمركز المفتوح
+  tripwire_liq_pull_pct: 40.0   # سحب ≥40% من سيولة الدخول = صوت
+  tripwire_holder_drop_pct: 15.0
+  tripwire_top10_sells_jump: 15
+  tripwire_min_votes: 2         # صوتان من ثلاثة = خروج فوري
+
 scoring_weights:
   price_action: 0.15
   volume: 0.1

@@ -603,6 +603,14 @@ def open_position(decision: dict, cfg: dict = None) -> dict:
         "initial_amount": amount,
         "realized_pnl_total": 0.0,
         "opened_at": _now_iso(),
+        # Layer 3: soft fingerprints observed at entry put this position on the
+        # tighter early stop for its first minutes. Clean entries stay on the
+        # owner's configured stop/trailing, untouched.
+        "rug_flags": list(decision.get("rug_flags") or []),
+        # Layer 4 entry snapshot: the tripwire compares the live wallet picture
+        # against how the token looked when we bought it.
+        "entry_liq": None, "entry_holders": None,
+        "entry_top10_sells": None, "entry_top10_dumping": None,
         "max_holding_hours": max_hours,
         "unrealized_pnl": 0.0,
         "signals": decision.get("supporting_signals", []),
@@ -615,6 +623,20 @@ def open_position(decision: dict, cfg: dict = None) -> dict:
         "trailing_stop_mc": None,
         "stages_hit": [False] * len(stages) if stages else [],
     }
+    # One extra provider read per BUY (buys are rare; the tripwire needs a
+    # baseline). Failure here degrades gracefully: no snapshot, no tripwire.
+    try:
+        from enzo.providers import gmgn as _gmgn
+        _dist = _gmgn.holder_distribution(mint) or {}
+        _st = _dist.get("stats") or {}
+        _info = _gmgn.token_info(mint) or {}
+        pos["entry_liq"] = float(_info.get("liquidity") or _info.get("usd_liquidity") or 0.0) or None
+        pos["entry_holders"] = float(_st.get("holder_count") or 0.0) or None
+        pos["entry_top10_sells"] = float(_st.get("top10_cur_sells") or 0.0)
+        pos["entry_top10_dumping"] = bool(_st.get("top10_dumping"))
+    except Exception:
+        pass
+
 
     # Subscribe to live PumpDev WebSocket trades
     try:
@@ -703,7 +725,42 @@ def _partial_exit(state: dict, mint: str, pos: dict, frac: float, market_cap: fl
     }
 
 
-def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
+def _tripwire_votes(pos: dict, trip: dict, rp: dict) -> List[str]:
+    """Layer 4: votes that the rug is in motion RIGHT NOW, vs the entry snapshot.
+
+    No prediction involved - these read the dump as it happens: liquidity being
+    pulled, holders collapsing, the top10 flipping from holding to selling. Two
+    of three (configurable) close the position at whatever the price is, because
+    a rug in motion has no technical level left to respect.
+    """
+    votes: List[str] = []
+    if not trip:
+        return votes
+    el = float(pos.get("entry_liq") or 0.0)
+    liq = trip.get("liq")
+    if el > 0 and liq is not None and \
+            float(liq) <= el * (1 - float(rp.get("tripwire_liq_pull_pct", 40.0)) / 100.0):
+        votes.append(f"liquidity pulled {el:,.0f} -> {float(liq):,.0f}")
+    eh = float(pos.get("entry_holders") or 0.0)
+    h = trip.get("holders")
+    if eh > 0 and h is not None and \
+            float(h) <= eh * (1 - float(rp.get("tripwire_holder_drop_pct", 15.0)) / 100.0):
+        votes.append(f"holders collapsed {eh:,.0f} -> {float(h):,.0f}")
+    es = float(pos.get("entry_top10_sells") or 0.0)
+    sells = trip.get("top10_sells")
+    jump = float(rp.get("tripwire_top10_sells_jump", 15))
+    # Independent votes, not elif: a jump in sell count AND a flip of the
+    # top10 into dumping are two separate observations and must be able to
+    # corroborate each other (an elif made the pair mutually exclusive, so the
+    # strongest possible insider-dump signal could never reach two votes).
+    if sells is not None and (float(sells) - es) >= jump:
+        votes.append(f"top10 selling jumped {es:.0f} -> {float(sells):.0f}")
+    if trip.get("top10_dumping") and not pos.get("entry_top10_dumping"):
+        votes.append("top10 flipped from holding to dumping")
+    return votes
+
+
+def check_exits(current_mcaps: dict, tripwire_stats: dict = None) -> Tuple[List[dict], List[dict]]:
     cfg = load_config()
     paper = bool(cfg.get("paper_mode", True))
     xs = cfg.get("exit_strategy", {})
@@ -825,7 +882,24 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
         stalled = (stall_on and pct >= stall_gain and peak_at > 0.0
                    and (now - peak_at) >= stall_secs)
 
-        if pos.get("trailing_active") and pos.get("trailing_stop_mc") and mcap <= float(pos["trailing_stop_mc"]):
+        # ── Layer 4: rug in motion beats every technical level ──────────────
+        rp = cfg.get("rug_protection") or {}
+        trip_reason = None
+        if bool(rp.get("tripwire_enabled", True)):
+            votes = _tripwire_votes(pos, (tripwire_stats or {}).get(mint) or {}, rp)
+            if len(votes) >= int(rp.get("tripwire_min_votes", 2)):
+                trip_reason = "RUG_TRIPWIRE(" + "; ".join(votes) + ")"
+
+        # ── Layer 3: tighter stop, ONLY for flagged entries, ONLY early ─────
+        early_stop = None
+        if bool(rp.get("early_stop_enabled", True)) and (pos.get("rug_flags") or []):
+            if (now - opened) <= float(rp.get("early_stop_window_min", 10.0)) * 60.0:
+                early_stop = float(rp.get("early_stop_pct", 12.0))
+
+        if trip_reason:
+            # Urgent and unconditional: a rug in motion has no level to respect.
+            r = close_position(state, mint, mcap, trip_reason)
+        elif pos.get("trailing_active") and pos.get("trailing_stop_mc") and mcap <= float(pos["trailing_stop_mc"]):
             r = close_position(state, mint, mcap, "TRAILING_STOP")
         elif stalled:
             # Deliberately ahead of STOP_LOSS: a stalled winner should be taken
@@ -834,6 +908,10 @@ def check_exits(current_mcaps: dict) -> Tuple[List[dict], List[dict]]:
                                f"STALL_EXIT(+{pct:.0f}%, flat {int(now - peak_at)}s)")
         elif (not stages) and pos.get("take_profit_mc") and mcap >= float(pos["take_profit_mc"]):
             r = close_position(state, mint, mcap, "TAKE_PROFIT")
+        elif early_stop is not None and mcap <= entry_mc * (1 - early_stop / 100.0):
+            r = close_position(state, mint, mcap,
+                               f"EARLY_STOP(-{early_stop:.0f}%, flagged entry, "
+                               f"{int(now - opened)}s old)")
         elif mcap <= entry_mc * (1 - stop_pct / 100.0):
             r = close_position(state, mint, mcap, "STOP_LOSS")
         elif held_hours >= float(pos.get("max_holding_hours", 48)):

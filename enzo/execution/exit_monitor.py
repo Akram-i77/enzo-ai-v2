@@ -184,12 +184,42 @@ class ExitMonitor:
                                     except Exception:
                                         pass
 
+                    # ── Layer 4 feed: throttled wallet picture per open position
+                    tripwire = {}
+                    _rp = (cfg.get("rug_protection") or {})
+                    if bool(_rp.get("tripwire_enabled", True)) and \
+                            (time.time() - getattr(self, "_trip_ts", 0.0)) >= \
+                            float(_rp.get("tripwire_poll_sec", 20.0)):
+                        self._trip_ts = time.time()
+                        for _m in list(open_pos.keys()):
+                            try:
+                                _d = gmgn.holder_distribution(_m) or {}
+                                _st = _d.get("stats") or {}
+                                _liq = None
+                                try:
+                                    _liq = float((gmgn.token_info(_m) or {}).get("liquidity")
+                                                 or 0.0) or None
+                                except Exception:
+                                    _liq = None
+                                tripwire[_m] = {
+                                    "liq": _liq,
+                                    "holders": float(_st.get("holder_count") or 0.0) or None,
+                                    "top10_sells": float(_st.get("top10_cur_sells") or 0.0),
+                                    "top10_dumping": bool(_st.get("top10_dumping")),
+                                }
+                            except Exception:
+                                continue
+                        self._last_tripwire = tripwire
+                    else:
+                        tripwire = getattr(self, "_last_tripwire", {}) or {}
+
                     if valid_mcaps:
                         # ── Capture position data BEFORE check_exits removes it from state ──
                         # check_exits calls atomic_close_position which removes pos from open_positions
                         pos_amounts = {mint: float(open_pos[mint].get("amount", 0)) for mint in list(open_pos.keys())}
 
-                        closed, partials = portfolio.check_exits(valid_mcaps)
+                        closed, partials = portfolio.check_exits(valid_mcaps,
+                                                                 tripwire_stats=tripwire)
                         self.exits_triggered += len(closed or []) + len(partials or [])
 
                         # ── LIVE TRADING: execute real sells on-chain via MoonPay CLI ──

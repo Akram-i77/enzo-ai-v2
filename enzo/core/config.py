@@ -169,6 +169,34 @@ DEFAULTS = {
         "stall_seconds": 30.0,
         "max_holding_time_hours": 48,
     },
+    # ── rug protection layers (owner-approved 2026-09-05) ──────────────────
+    # Layer 1: absolute fingerprint VETOES at entry (bundled wallets, fresh
+    #   sybil holders, serial factory). Organic launches do not carry these,
+    #   so vetoing them costs no legitimate entry.
+    # Layer 3: a TIGHTER stop for the first minutes, applied ONLY to entries
+    #   that carried soft flags. Clean entries keep the owner's -38%/-40%.
+    # Layer 4: a post-entry TRIPWIRE on the rug in motion (liquidity pulled,
+    #   holders collapsing, top10 flipping to selling). Exits at any PnL.
+    "rug_protection": {
+        "fingerprints_enabled": True,
+        "veto_bundlers_top20": 6,
+        "veto_snipers_top20": 8,
+        "veto_rats_top20": 5,
+        "veto_avg_wallet_age_days": 3.0,
+        "veto_top10_cur_sells": 25,
+        "veto_factory_created": 50,
+        "veto_factory_open_ratio": 0.03,
+        "soft_flag_ratio": 0.5,
+        "early_stop_enabled": True,
+        "early_stop_pct": 12.0,
+        "early_stop_window_min": 10.0,
+        "tripwire_enabled": True,
+        "tripwire_poll_sec": 20.0,
+        "tripwire_liq_pull_pct": 40.0,
+        "tripwire_holder_drop_pct": 15.0,
+        "tripwire_top10_sells_jump": 15,
+        "tripwire_min_votes": 2,
+    },
     "scoring_weights": {
         "price_action": 0.15,
         "volume": 0.1,
