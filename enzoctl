@@ -541,6 +541,52 @@ def cmd_doctor(args):
         add("mode", True, "PAPER (simulated)" if paper else "LIVE (real money)",
             "./enzoctl mode live", critical=False)
 
+    # 3b. Which code is actually running — remote diagnosis in one command.
+    # A bot started from a stale checkout behaves like an old bug that was
+    # already fixed; without the revision this is impossible to tell apart.
+    try:
+        import subprocess as _sp
+        _cwd = os.path.dirname(os.path.abspath(__file__))
+        rev = _sp.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
+                      text=True, timeout=5, cwd=_cwd)
+        rev = (rev.stdout or "").strip() or "unknown"
+        dirty = _sp.run(["git", "status", "--porcelain", "--",
+                         "enzo", "enzoctl", "enzo.py", "config"],
+                        capture_output=True, text=True, timeout=5, cwd=_cwd)
+        note = f"commit {rev}"
+        if (dirty.stdout or "").strip():
+            note += " (working tree has uncommitted source/config changes)"
+        add("code_revision", True, note, critical=False)
+    except Exception as e:
+        add("code_revision", True,
+            f"git unavailable here ({type(e).__name__}) - run: git log --oneline -1",
+            critical=False)
+
+    # 3c. Can the configured base token actually fund a trade? The single most
+    # common real-money misconfiguration: wallet holds SOL while base_token is
+    # USDC, so spendable capital is dust and every buy is refused.
+    try:
+        from enzo.execution import portfolio as _pf
+        snap = _pf._read_capital_file()
+        tot = float(snap.get("total_usd", snap.get("usd")) or 0.0)
+        spd = float(snap.get("spendable_usd") or 0.0)
+        base = str(snap.get("base_token")
+                   or ((cfg or {}).get("execution") or {}).get("base_token", "USDC"))
+        min_trade = float(((cfg or {}).get("execution") or {}).get("min_trade_usd", 1.0))
+        if snap.get("ok") and tot >= min_trade and spd + 0.01 < min_trade:
+            add("base_token_funding", False,
+                f"wallet holds ${tot:,.2f} but only ${spd:,.2f} of it is {base} - "
+                f"no buy can ever be funded",
+                f"set execution.base_token to the asset the wallet actually holds "
+                f"(or fund the wallet with {base})")
+        else:
+            add("base_token_funding", True,
+                f"${spd:,.2f} of ${tot:,.2f} wallet value is spendable as {base}",
+                critical=False)
+    except Exception as e:
+        add("base_token_funding", True,
+            f"no wallet snapshot yet ({type(e).__name__})", critical=False)
+
     # 4. Watchlist
     try:
         from enzo.core import engine

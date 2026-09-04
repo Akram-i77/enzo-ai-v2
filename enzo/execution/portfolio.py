@@ -83,6 +83,35 @@ def _spendable_usd(cap: dict, cfg: dict) -> float:
     return max(0.0, usdc)
 
 
+
+def live_wallet_usd(cfg: dict = None, max_age_sec: float = None) -> float | None:
+    """Live total wallet value in USD, or None when no fresh reading exists.
+
+    The dashboard's Balance card used to show only the ledger equity figure
+    (initial_capital + realized PnL + uPnL). With capital_source=wallet that
+    number can lag the real wallet for a long time - an operator holding $7 of
+    SOL saw "$2.06" and rightly called it wrong. The wallet snapshot written by
+    sync_capital_base() is the truthful figure; expose it read-only so the UI
+    can show it without changing any risk math (drawdown/ROI still use the
+    ledger baseline, which is what makes them meaningful).
+    """
+    try:
+        cfg = cfg or load_config()
+        ex = cfg.get("execution") or {}
+        ttl = float(max_age_sec if max_age_sec is not None
+                    else ex.get("capital_sync_ttl_sec", 60) or 60)
+        snap = _read_capital_file()
+        if not snap.get("ok"):
+            return None
+        age = time.time() - float(snap.get("ts") or 0.0)
+        if age > ttl:
+            return None
+        usd = float(snap.get("total_usd", snap.get("usd")) or 0.0)
+        return usd if usd > 0 else None
+    except Exception:
+        return None
+
+
 def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = False) -> dict:
     """Refresh deployable capital from the real wallet (live + capital_source=wallet).
 

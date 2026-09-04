@@ -389,6 +389,7 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                 max_dd = float(rm.get("max_drawdown", 25.0))
                 eq = float(state.get("equity", init_cap))
                 peak = float(state.get("peak_equity", eq))
+                _wallet_live = pf.live_wallet_usd()
                 current_dd = round(((peak - eq) / peak * 100.0) if peak > 0 else 0.0, 2)
                 daily_loss = float(state.get("daily_loss", 0.0))
                 current_dl_pct = round(abs(daily_loss) / eq * 100.0 if (daily_loss < 0 and eq > 0) else 0.0, 2)
@@ -405,6 +406,7 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                     },
                     "portfolio": {
                         "equity": eq,
+                        "wallet_usd": round(float(_wallet_live), 2) if _wallet_live else None,
                         "initial_capital": init_cap,
                         "realized_pnl": float(state.get("realized_pnl", 0.0)),
                         "peak_equity": peak,

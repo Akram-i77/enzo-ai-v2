@@ -107,6 +107,13 @@ def generate() -> str:
 
     init_cap = float(state.get("initial_capital", 10000.0))
     eq = float(state.get("equity", init_cap))
+    # Live wallet value (fresh snapshot from sync_capital_base). The ledger
+    # equity is the ROI/drawdown baseline and can lag the real wallet for a
+    # long time; an operator holding $7 of SOL was shown "$2.06" and rightly
+    # called it wrong. Show the wallet when we have a fresh reading, and keep
+    # the ledger figure visible in the sub-line so nothing is hidden.
+    wallet_usd = pf.live_wallet_usd()
+    eq_display = float(wallet_usd) if wallet_usd else eq
     rp = float(state.get("realized_pnl", 0.0))
     closed = state.get("closed_positions", [])
     wins = [c for c in closed if float(c.get("pnl", 0)) > 0]
@@ -582,12 +589,12 @@ def generate() -> str:
     <!-- Card 1: Equity -->
     <div class="kpi-card cyan">
       <div class="kpi-title">
-        <span>Total Equity</span>
+        <span>{'Wallet Balance (live)' if wallet_usd else 'Total Equity (ledger)'}</span>
         <span>💵 USD</span>
       </div>
-      <div class="kpi-value" id="kpiEquity">${eq:,.2f}</div>
+      <div class="kpi-value" id="kpiEquity">${eq_display:,.2f}</div>
       <div class="kpi-subtext">
-        <span>Init: ${init_cap:,.0f}</span> • <span id="kpiPeakEquity">Peak: ${float(state.get('peak_equity', eq)):,.0f}</span>
+        <span>Init: ${init_cap:,.0f}</span> • <span id="kpiPeakEquity">Peak: ${float(state.get('peak_equity', eq)):,.0f}</span>{f" • <span>Ledger: ${eq:,.2f}</span>" if wallet_usd else ""}
       </div>
     </div>
 
@@ -1196,7 +1203,8 @@ def generate() -> str:
     }}
 
     // KPIs
-    document.getElementById('kpiEquity').textContent = '$' + pf.equity.toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
+    var eqShow = (typeof pf.wallet_usd === 'number' && pf.wallet_usd > 0) ? pf.wallet_usd : pf.equity;
+    document.getElementById('kpiEquity').textContent = '$' + eqShow.toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
     document.getElementById('kpiPeakEquity').textContent = 'Peak: $' + pf.peak_equity.toLocaleString('en-US', {{ maximumFractionDigits: 0 }});
     
     var rpEl = document.getElementById('kpiRealizedPnL');

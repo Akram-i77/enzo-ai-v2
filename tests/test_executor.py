@@ -100,8 +100,22 @@ os.environ["MOCK_STATE"] = "{}"
 
 print("\n=== 9. min/max trade guards ===")
 reset()
+# The floor rule is the owner's: min_trade_usd clamps UP when the wallet can
+# fund it, and only refuses when it cannot. Both halves are asserted, with the
+# capital reading pinned so the test cannot depend on a stale snapshot file.
+from enzo.execution import portfolio as _PF
+_real_dep = _PF.deployable_capital
+_PF.deployable_capital = lambda cfg=None, state=None, force=False: 0.0
 r = X.buy_token(MINT, 0.04, cfg=LIVE)
-check("$0.04 rejected as BELOW_MINIMUM_TRADE", r.get("ok") is False and r.get("reason") == X.E_BELOW_MIN, str(r.get("detail",""))[:90])
+check("$0.04 with an EMPTY wallet rejected as BELOW_MINIMUM_TRADE",
+      r.get("ok") is False and r.get("reason") == X.E_BELOW_MIN,
+      str(r.get("detail", ""))[:90])
+_PF.deployable_capital = lambda cfg=None, state=None, force=False: 9.0
+r = X.buy_token(MINT, 0.04, cfg=LIVE)
+check("$0.04 with a FUNDED wallet clamped up to the $1 floor (owner rule)",
+      r.get("ok") is True and float(r.get("amount_usd", 0)) == 1.0,
+      str(r.get("amount_usd")))
+_PF.deployable_capital = _real_dep
 r = X.buy_token(MINT, 9000.0, cfg=LIVE)
 check("$9000 rejected as ABOVE_MAXIMUM_TRADE", r.get("ok") is False and r.get("reason") == X.E_ABOVE_MAX, str(r.get("reason")))
 

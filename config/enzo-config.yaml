@@ -277,7 +277,10 @@ execution:
   # position sizing is now bounded by the base token's own balance
   # (spendable_usd), not by total wallet wealth.
   # base_token: USDC = تشتري بـ USDC | SOL = تشتري بـ SOL (ما توثّقه MoonPay)
-  base_token: USDC
+  # ⚠ غيّره المالك في 2026-09-04: المحفظة الحقيقية تحمل SOL وليس USDC.
+  # مع USDC كان رأس المال القابل للصرف ≈ 0 فرفض البوت كل صفقة.
+  # تدفق MoonPay الرسمي لـ pump.fun يموّل الشراء من SOL.
+  base_token: SOL
   slippage_bps: 50
   # أصغر صفقة يُسمح بإرسالها. أي حجم أقل من هذا يُرفض قبل التنفيذ.
   # Smallest order allowed; anything below is rejected before it is sent.

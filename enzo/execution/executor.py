@@ -1047,18 +1047,45 @@ def buy_token(mint: str, amount_usd: float, wallet: str = None,
 
     min_trade = float(ex.get("min_trade_usd", 1.0))
     if float(amount_usd) < min_trade:
-        return {"ok": False, "reason": E_BELOW_MIN, "reason_code": E_BELOW_MIN,
-                "tx_hash": None,
-                "detail": f"Position size ${float(amount_usd):.2f} below execution.min_trade_usd ${min_trade:.2f}. "
-                          f"Equity is too small for the configured risk band.",
-                "amount_usd": amount_usd, "base_token": base}
+        # The owner's rule: min_trade_usd is a FLOOR, not a rejection threshold.
+        # Sizing normally clamps up already; this is the last gate, so enforce
+        # the same rule HERE too instead of contradicting it. Clamp up only when
+        # the wallet can actually fund the floor - sending money it does not
+        # have would fail mid-swap.
+        from enzo.execution import portfolio as _pf
+        avail = 0.0
+        try:
+            avail = float(_pf.deployable_capital(cfg=cfg) or 0.0)
+        except Exception:
+            avail = 0.0
+        if min_trade > 0 and avail >= min_trade - 1e-9:
+            _LOGGER.warning(
+                "buy_token: raising sub-floor size $%.2f to the $%.2f floor "
+                "(wallet can fund it: $%.2f spendable).",
+                float(amount_usd), min_trade, avail)
+            amount_usd = min_trade
+        else:
+            return {"ok": False, "reason": E_BELOW_MIN, "reason_code": E_BELOW_MIN,
+                    "tx_hash": None,
+                    "detail": f"Position size ${float(amount_usd):.2f} below execution.min_trade_usd "
+                              f"${min_trade:.2f} and only ${avail:,.2f} of spendable "
+                              f"{base} is in the wallet - the floor cannot be raised "
+                              f"above real holdings. Fund the wallet or set "
+                              f"execution.base_token to the asset you actually hold.",
+                    "amount_usd": amount_usd, "base_token": base}
 
     if base == "USDC":
         from_token = USDC_MAINNET
         from_amount = float(amount_usd)          # USDC ≈ 1 USD, human units
     else:
         from_token = MOONPAY_NATIVE_SOL
-        px = float(entry_price) if entry_price and float(entry_price) > 0 else _sol_price(cfg)
+        # The from-side is SOL, so the divisor must be the SOL price. `entry_price`
+        # is the price of the token being BOUGHT; dividing dollars by it produced
+        # an absurd SOL amount (a $1 buy at a $0.000012 entry price became
+        # ~83,000 SOL), which the max_trade gate then refused as
+        # ABOVE_MAXIMUM_TRADE. Latent while base_token was USDC - this branch
+        # never ran - and live the moment the base token became SOL.
+        px = _sol_price(cfg)
         from_amount = float(amount_usd) / px if px > 0 else 0.0
 
     explanation = explanation or f"Enzo BUY {str(mint)[:8]} on Solana (${float(amount_usd):.2f})"
