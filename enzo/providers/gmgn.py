@@ -1134,6 +1134,18 @@ def read_bonding_curve(mint: str) -> dict:
     }
 
 
+# Provenance of the last SOL/USD reading, so a money-path caller can tell a live
+# price from a guess. With execution.base_token=SOL EVERY order size is derived
+# from this number, so a silent guess mis-sizes real orders.
+SOL_PRICE_FALLBACK = 180.0
+_SOL_PRICE_STATE = {"source": None, "price": 0.0, "ts": 0.0}
+
+
+def sol_price_source() -> str:
+    """'dexscreener' for a live read, 'fallback' for the guessed 180.0."""
+    return str(_SOL_PRICE_STATE.get("source") or "unknown")
+
+
 def sol_price_usd() -> float:
     """Live SOL/USD price via DexScreener, cached 60s, conservative fallback 180.0."""
     ckey = "sol_price:usd"
@@ -1159,7 +1171,20 @@ def sol_price_usd() -> float:
         pass
 
     if not price:
-        price = 180.0  # conservative fallback only
+        price = SOL_PRICE_FALLBACK
+        _SOL_PRICE_STATE.update({"source": "fallback", "price": price, "ts": time.time()})
+        # Do NOT cache a guess for the full 60s: with base_token=SOL that is a
+        # minute of mis-sized orders (at a real $203 SOL, $1.00 sized through
+        # $180 sends 13% more SOL than intended). Cache it just long enough to
+        # avoid hammering DexScreener inside one scan loop, then retry.
+        _cache_set(ckey, price, ttl=5)
+        _LOGGER.warning(
+            "SOL/USD unreadable from DexScreener - falling back to the GUESSED "
+            "$%.2f for up to 5s. Order sizes in SOL are derived from this "
+            "number; check outbound HTTPS to api.dexscreener.com.", price)
+        return price
+
+    _SOL_PRICE_STATE.update({"source": "dexscreener", "price": price, "ts": time.time()})
     _cache_set(ckey, price, ttl=_CACHE_TTL["sol_price"])
     return price
 

@@ -204,6 +204,11 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
            "wallet": cap.get("wallet"), "usdc": cap.get("usdc"), "sol": cap.get("sol"),
            "sol_price": cap.get("sol_price"), "deployable_sol": cap.get("deployable_sol"),
            "sol_reserve": cap.get("sol_reserve"),
+           # Provenance of the SOL/USD behind `deployable_sol` and every order
+           # size. "fallback" means DexScreener was unreachable and the number is
+           # the hardcoded guess, so the wallet value AND the amounts sent are
+           # only approximate - visible without reading the log.
+           "sol_price_source": cap.get("sol_price_source") or executor.sol_price_source(),
            # `usd` is total wallet wealth (equity/drawdown baseline); `spendable_usd`
            # is what the configured base token can actually fund (position sizing).
            "spendable_usd": round(spendable, 2), "base_token": base,

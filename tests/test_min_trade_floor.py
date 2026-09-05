@@ -13,6 +13,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -195,6 +196,161 @@ r2 = executor.execute_swap(
     wallet="enzo-trading", cfg=BASE_CFG, direction="buy")
 ok(r2.get("ok") is False and r2.get("reason_code") == "BELOW_MINIMUM_TRADE",
    "$0.99 is still rejected", str(r2.get("reason_code")))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The reported live failure: "the bot tried to buy $1.00 of PVP but it was
+# rejected as BELOW_MINIMUM_TRADE". That code is ENZO's own - classify_error()
+# can never produce it from a MoonPay message - and the guard that raised it
+# RE-DERIVED the dollar size from the SOL amount: dollars -> SOL (/px) -> dollars
+# (*px). In binary floating point (1.0/px)*px is 0.9999999999999999 for many
+# prices, and `usd_equiv < min_trade` had no tolerance, so a $1.00 order sized
+# exactly at the $1.00 floor was rejected with the detail
+# "$1.0000 < execution.min_trade_usd $1.00". Section 5 above did not catch it
+# because it drives the USDC path, where no conversion happens - and the
+# operator's base_token is SOL.
+section("5a. base_token=SOL: the floor survives the USD->SOL->USD round trip")
+reset()
+from enzo.providers import gmgn as _gmgn
+
+SOL_CFG = json.loads(json.dumps(BASE_CFG))
+SOL_CFG["execution"]["base_token"] = "SOL"
+_real_sol_price = _gmgn.sol_price_usd
+_real_sol_source = getattr(_gmgn, "sol_price_source", None)
+
+# Prices around today's SOL at which the naive round trip loses a bit.
+LOSSY = [c / 100.0 for c in range(19000, 21501)
+         if (1.0 / (c / 100.0)) * (c / 100.0) < 1.0]
+ok(len(LOSSY) > 100, "the round trip really is lossy at many live SOL prices",
+   f"{len(LOSSY)} of 2501 prices in $190-$215 (e.g. ${LOSSY[0]:.2f})")
+
+rejected = []
+for px in LOSSY[:45]:
+    executor._SOL_PRICE_CACHE.update({"price": 0.0, "ts": 0.0, "source": "unknown"})
+    _gmgn.sol_price_usd = lambda _p=px: _p
+    _gmgn.sol_price_source = lambda: "dexscreener"
+    r = executor.buy_token(mint=GOOD_MINT, amount_usd=1.0, cfg=SOL_CFG)
+    if r.get("reason_code") == "BELOW_MINIMUM_TRADE":
+        rejected.append((px, str(r.get("detail"))[:80]))
+ok(not rejected, "a $1.00 floor order is NEVER rejected at those 45 prices",
+   str(rejected[:2])[:160])
+
+executor._SOL_PRICE_CACHE.update({"price": 0.0, "ts": 0.0, "source": "unknown"})
+_gmgn.sol_price_usd = lambda: LOSSY[0]
+_gmgn.sol_price_source = lambda: "dexscreener"
+rb = executor.buy_token(mint=GOOD_MINT, amount_usd=1.0, cfg=SOL_CFG)
+ok(rb.get("ok") is True and bool(rb.get("tx_hash")),
+   "and it executes end-to-end through the mock CLI at a lossy price",
+   str(rb.get("reason") or rb.get("tx_hash") or "")[:60])
+ok(abs(float(rb.get("sol_price") or 0) - LOSSY[0]) < 0.01
+   and rb.get("sol_price_source") == "dexscreener",
+   "the result records which SOL price and which source produced the amount",
+   f"sol_price={rb.get('sol_price')} source={rb.get('sol_price_source')}")
+
+section("5a-2. the gate still fires for a REAL shortfall, and names itself")
+executor._SOL_PRICE_CACHE.update({"price": 0.0, "ts": 0.0, "source": "unknown"})
+_gmgn.sol_price_usd = lambda: 200.0
+_gmgn.sol_price_source = lambda: "dexscreener"
+r = executor.execute_swap(from_token=executor.MOONPAY_NATIVE_SOL, to_token=GOOD_MINT,
+                          from_amount=0.0025, wallet="enzo-trading", cfg=SOL_CFG,
+                          direction="buy")                    # = $0.50, genuinely short
+d = str(r.get("detail") or "")
+ok(r.get("reason_code") == "BELOW_MINIMUM_TRADE", "$0.50 against a $1.00 floor is still rejected")
+ok("NOT a MoonPay rejection" in d and "never called" in d,
+   "and the detail says the exchange was never called (this is our gate)", d[:100])
+ok("$1.0000 <" not in d and "SOL=$200.00" in d,
+   "no self-contradictory '$1.0000 < $1.00'; the price used is shown", d[:120])
+ok(abs(float(r.get("usd_equiv") or 0) - 0.5) < 1e-9
+   and float(r.get("min_trade_usd") or 0) == 1.0,
+   "the rejection carries the numbers (usd_equiv, min_trade_usd) for diagnosis",
+   str({k: r.get(k) for k in ("usd_equiv", "min_trade_usd", "sol_price")}))
+
+r2 = executor.execute_swap(from_token=executor.MOONPAY_NATIVE_SOL, to_token=GOOD_MINT,
+                           from_amount=0.005, wallet="enzo-trading", cfg=SOL_CFG,
+                           direction="buy", usd_notional=1.0)
+ok(r2.get("reason_code") != "BELOW_MINIMUM_TRADE",
+   "when the caller states the notional, THAT is what the guard compares",
+   str(r2.get("reason_code")))
+
+r3 = executor.execute_swap(from_token=executor.USDC_MAINNET, to_token=GOOD_MINT,
+                           from_amount=0.999, wallet="enzo-trading", cfg=BASE_CFG,
+                           direction="buy")
+ok(r3.get("reason_code") == "BELOW_MINIMUM_TRADE",
+   "$0.999 is still rejected: the tolerance is a millionth of a dollar, not a percent")
+
+section("5a-3. a GUESSED SOL price is announced, and not cached as if it were real")
+executor._SOL_PRICE_CACHE.update({"price": 0.0, "ts": 0.0, "source": "unknown"})
+_gmgn.sol_price_usd = lambda: 0.0            # provider dead -> executor falls back
+_gmgn.sol_price_source = lambda: "fallback"
+px_guess = executor._sol_price(SOL_CFG)
+ok(abs(px_guess - 180.0) < 1e-9 and executor.sol_price_source() == "fallback",
+   "the fallback is 180.0 and sol_price_source() says 'fallback'",
+   f"{px_guess} / {executor.sol_price_source()}")
+
+try:
+    db.cache_delete("sol_price:usd")
+except Exception:
+    pass
+import urllib.request as _url
+
+
+class _DeadNet:
+    def __init__(self, *a, **k): pass
+    def __enter__(self): raise OSError("no route to host (test)")
+    def __exit__(self, *a): return False
+
+
+_real_urlopen = _url.urlopen
+_url.urlopen = _DeadNet
+try:
+    _p = _gmgn.__dict__.pop("sol_price_usd", None)      # restore the real function
+    _gmgn.sol_price_usd = _real_sol_price
+    got = _gmgn.sol_price_usd()
+    ok(abs(got - 180.0) < 1e-9 and _gmgn.sol_price_source() == "fallback",
+       "gmgn.sol_price_usd() reports a guess as a guess", f"{got} / {_gmgn.sol_price_source()}")
+    ent = _gmgn._CACHE.get("sol_price:usd")
+    ttl_left = (ent[1] - time.time()) if ent else -1
+    ok(0 < ttl_left <= 5.5,
+       "and caches it for ~5s, NOT the 60s of a live price (a guess must not "
+       "size real orders for a minute)", f"{ttl_left:.1f}s left")
+finally:
+    _url.urlopen = _real_urlopen
+    _gmgn.sol_price_usd = _real_sol_price
+    if _real_sol_source is not None:
+        _gmgn.sol_price_source = _real_sol_source
+
+section("5a-4. base_token=SOL: the wallet must fund the ORDER *and* the fee reserve")
+# The reserve check used to look at the fee reserve alone. Since the order is
+# paid in SOL too, a wallet just above the reserve could open a position and be
+# left with less than the reserve - i.e. unable to pay the fee of its own EXIT.
+reset()
+executor._SOL_PRICE_CACHE.update({"price": 0.0, "ts": 0.0, "source": "unknown"})
+_gmgn.sol_price_usd = lambda: 200.0
+_gmgn.sol_price_source = lambda: "dexscreener"
+_reserve = float(SOL_CFG["execution"].get("sol_fee_reserve", 0.02))
+os.environ["MOCK_STATE"] = json.dumps({"sol": round(_reserve + 0.001, 6), "usdc": 0.0})
+r = executor.execute_swap(from_token=executor.MOONPAY_NATIVE_SOL, to_token=GOOD_MINT,
+                          from_amount=0.005, wallet="enzo-trading", cfg=SOL_CFG,
+                          direction="buy", usd_notional=1.0)
+ok(r.get("reason_code") == "INSUFFICIENT_SOL_FOR_FEES",
+   "a wallet holding only reserve+$0.20 cannot open a $1 position (it could not close it)",
+   str(r.get("reason_code")))
+d = str(r.get("detail") or "")
+ok("this order" in d and "fee reserve" in d and "short by" in d,
+   "and the message itemises order + reserve + shortfall", d[:150])
+os.environ["MOCK_STATE"] = json.dumps({"sol": round(_reserve + 0.001, 6), "usdc": 0.0})
+rs = executor.execute_swap(from_token=GOOD_MINT, to_token=executor.MOONPAY_NATIVE_SOL,
+                           from_amount=1000.0, wallet="enzo-trading", cfg=SOL_CFG,
+                           direction="sell")
+ok(rs.get("reason_code") != "INSUFFICIENT_SOL_FOR_FEES",
+   "the same wallet is still allowed to SELL - an exit is never blocked by the order side",
+   str(rs.get("reason_code")))
+os.environ["MOCK_STATE"] = json.dumps({"sol": round(_reserve + 0.006, 6), "usdc": 0.0})
+r2 = executor.execute_swap(from_token=executor.MOONPAY_NATIVE_SOL, to_token=GOOD_MINT,
+                           from_amount=0.005, wallet="enzo-trading", cfg=SOL_CFG,
+                           direction="buy", usd_notional=1.0)
+ok(r2.get("reason_code") != "INSUFFICIENT_SOL_FOR_FEES",
+   "with order+reserve actually covered, the buy proceeds", str(r2.get("reason_code")))
+os.environ["MOCK_STATE"] = "{}"
 
 section("5b. a $1 buy executes end-to-end through the mock CLI")
 reset()

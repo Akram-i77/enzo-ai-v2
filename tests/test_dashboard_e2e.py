@@ -334,6 +334,42 @@ def seed_db():
         if _saved_home is not None:
             os.environ["HOME"] = _saved_home
 
+    # ── a GUESSED SOL price belongs next to the money, not only in the log:
+    #    with base_token=SOL every order size is derived from it, so a fallback
+    #    reading means the SOL actually sent is worth more or less than intended.
+    from enzo.execution import portfolio as _pf
+    _snap_path = _pf.CAPITAL_PATH
+    _saved_snap = (open(_snap_path, encoding="utf-8").read()
+                   if os.path.exists(_snap_path) else None)
+
+    def _write_snap(src, price):
+        os.makedirs(os.path.dirname(_snap_path), exist_ok=True)
+        with open(_snap_path, "w", encoding="utf-8") as _sf:
+            json.dump({"ok": True, "source": "wallet", "usd": 7.0, "total_usd": 7.0,
+                       "spendable_usd": 6.6, "base_token": "SOL", "sol": 0.035,
+                       "sol_price": price, "sol_price_source": src,
+                       "ts": time.time()}, _sf)
+
+    try:
+        _write_snap("fallback", 180.0)
+        _h5 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="solPriceFault"' in _h5,
+           "لقطة بسعر SOL مخمَّن ⇒ لافتة صريحة على اللوحة (لا حجم خاطئ بصمت)")
+        ok("DexScreener" in _h5 and "base_token=SOL" in _h5,
+           "واللافتة تسمّي المصدر والسبب وأثره على حجم الأمر")
+        _write_snap("dexscreener", 203.4)
+        _h6 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="solPriceFault"' not in _h6,
+           "وبعودة القراءة الحيّة تختفي اللافتة (لا إنذار دائم)")
+    finally:
+        try:
+            if _saved_snap is not None:
+                open(_snap_path, "w", encoding="utf-8").write(_saved_snap)
+            elif os.path.exists(_snap_path):
+                os.remove(_snap_path)
+        except Exception:
+            pass
+
     # ...and the warning must disappear once the ledger is real (there is now a
     # closed trade), otherwise it would cry forever on a working bot.
     _h = open(dashboard.generate(), encoding="utf-8").read()

@@ -217,7 +217,10 @@ def health_snapshot() -> dict:
         "gmgn": {"ban_remaining_sec": round(ban, 1), **_gmgn_discovery()},
         "capital": {"usd": round(cap_usd, 2), "source": cap.get("source"),
                     "ok": cap_ok, "blocked": bool(cap.get("blocked")),
-                    "age_sec": cap.get("age_sec"), "detail": cap.get("detail")},
+                    "age_sec": cap.get("age_sec"), "detail": cap.get("detail"),
+                    # A guessed SOL price mis-sizes every SOL-denominated order.
+                    "sol_price": cap.get("sol_price"),
+                    "sol_price_source": cap.get("sol_price_source")},
         "pumpdev": {"state": pstate, "buffered_tokens": pump_state.get("buffered_tokens"),
                     "tokens_seen": pump_state.get("tokens_seen"),
                     "messages": pump_state.get("messages"),

@@ -852,7 +852,8 @@ def _local_api_call(tool: str, payload: dict, cfg: dict = None) -> Optional[Any]
 def execute_swap(from_token: str, to_token: str, from_amount: float,
                  wallet: str = None, explanation: str = None,
                  chain: str = "solana", timeout: int = 180,
-                 cfg: dict = None, direction: str = "buy") -> Dict[str, Any]:
+                 cfg: dict = None, direction: str = "buy",
+                 usd_notional: float = None) -> Dict[str, Any]:
     """Execute a token swap via the MoonPay CLI.
 
     `from_amount` is in HUMAN token units (5.0 = five USDC, 0.1 = 0.1 SOL).
@@ -890,19 +891,58 @@ def execute_swap(from_token: str, to_token: str, from_amount: float,
     if str(direction).lower() == "buy":
         min_trade = float(ex.get("min_trade_usd", 1.0))
         max_trade = float(ex.get("max_trade_usd", 0.0) or 0.0)
-        usd_equiv = float(from_amount) if from_token == USDC_MAINNET else float(from_amount) * _sol_price(cfg)
-        if usd_equiv < min_trade:
-            return fail(E_BELOW_MIN, f"${usd_equiv:.4f} < execution.min_trade_usd ${min_trade:.2f}")
-        if max_trade and usd_equiv > max_trade:
+        sol_px = _sol_price(cfg)
+        derived = (float(from_amount) if from_token == USDC_MAINNET
+                   else float(from_amount) * sol_px)
+        # The dollar size of an order is a DECISION taken by position sizing.
+        # Re-deriving it from the base-token amount is lossy (see the tolerance
+        # note above), so when the caller states the notional, that is what the
+        # guards compare. The derived figure is kept for callers that invoke
+        # execute_swap() directly with only a token amount.
+        usd_equiv = (float(usd_notional)
+                     if usd_notional is not None and float(usd_notional) > 0
+                     else derived)
+        tol = max(_USD_DERIVED_TOL, min_trade * 1e-9)
+        if usd_equiv + tol < min_trade:
+            how = (f"USDC amount {float(from_amount):.6f}"
+                   if from_token == USDC_MAINNET else
+                   f"derived ${derived:.10f} from {float(from_amount):.9f} SOL "
+                   f"at SOL=${sol_px:.2f} ({sol_price_source()})")
+            return fail(E_BELOW_MIN,
+                        f"ENZO pre-flight gate - NOT a MoonPay rejection, the CLI "
+                        f"was never called: this order is ${usd_equiv:.6f}, below "
+                        f"execution.min_trade_usd ${min_trade:.2f} ({how}). Either "
+                        f"the wallet cannot fund the floor or sizing produced a "
+                        f"smaller amount; see ./enzoctl wallet and "
+                        f"position_sizing.min_position_usd.",
+                        usd_equiv=round(float(usd_equiv), 8),
+                        min_trade_usd=min_trade,
+                        sol_price=round(float(sol_px), 4),
+                        sol_price_source=sol_price_source())
+        if max_trade and usd_equiv - tol > max_trade:
             return fail(E_ABOVE_MAX, f"${usd_equiv:.2f} > execution.max_trade_usd ${max_trade:.2f}")
 
     # ── Pre-flight: fee reserve ────────────────────────────────────────────
+    # With execution.base_token=SOL the order itself is paid in SOL, so the
+    # wallet has to hold the ORDER plus the RESERVE. Checking the reserve alone
+    # let a buy through that drained the wallet below its own fee floor: the
+    # swap could still succeed, and the bot would then be holding a position it
+    # could not close, because the exit sell also needs SOL for its fee. A sell
+    # is never held to the order side - blocking an exit would trap a position.
     sol_bal = get_sol_balance(wallet)
     reserve = float(ex.get("sol_fee_reserve", 0.02))
-    if sol_bal < reserve:
+    funds_order = (str(direction).lower() == "buy" and from_token == MOONPAY_NATIVE_SOL)
+    need = float(from_amount) + reserve if funds_order else reserve
+    if sol_bal + 1e-12 < need:
         return fail(E_INSUFFICIENT_FEE,
-                    f"have {sol_bal:.6f} SOL, need ≥{reserve:.4f} SOL for fees",
-                    sol_balance=sol_bal)
+                    (f"have {sol_bal:.6f} SOL, need ≥{need:.6f} SOL"
+                     + (f" = this order {float(from_amount):.6f} SOL + fee reserve "
+                        f"{reserve:.4f} SOL" if funds_order else " for fees")
+                     + f" (short by {max(0.0, need - sol_bal):.6f} SOL). Top up the "
+                       f"wallet, or lower execution.min_trade_usd / "
+                       f"execution.sol_fee_reserve - never below the real fee cost."),
+                    sol_balance=sol_bal, sol_needed=round(need, 9),
+                    sol_fee_reserve=reserve)
 
     # ── Pre-flight: is this pair routable at this size? ────────────────────
     quote = get_quote(from_token, to_token, from_amount, chain, cfg)
@@ -1006,7 +1046,20 @@ def _message_of(payload: Any) -> str:
     return ""
 
 
-_SOL_PRICE_CACHE = {"price": 0.0, "ts": 0.0}
+_SOL_PRICE_CACHE = {"price": 0.0, "ts": 0.0, "source": "unknown"}
+
+# USD comparisons on the order path need a tolerance, because the size makes a
+# round trip: sizing decides dollars, buy_token converts to SOL by dividing by
+# the SOL price, and this module used to convert BACK by multiplying. In binary
+# floating point (1.0/px)*px is not always exactly 1.0 - for 464 of 2,501
+# realistic SOL prices around $200 it evaluates to 0.9999999999999999. With no
+# tolerance that read as "below the $1.00 floor", so the bot rejected its OWN
+# floor-sized order and printed the self-contradictory detail
+# "$1.0000 < execution.min_trade_usd $1.00", which in a log looks exactly like
+# an exchange rejection. Both tolerances are far below anything economically
+# meaningful (a millionth of a dollar) and far above float noise.
+_USD_DECISION_TOL = 1e-9   # a decision already rounded to 6 dp by sizing
+_USD_DERIVED_TOL = 1e-6    # a figure re-derived through the SOL price
 
 
 def _sol_price(cfg: dict = None) -> float:
@@ -1014,15 +1067,33 @@ def _sol_price(cfg: dict = None) -> float:
     if time.time() - _SOL_PRICE_CACHE["ts"] < 60 and _SOL_PRICE_CACHE["price"] > 0:
         return _SOL_PRICE_CACHE["price"]
     price = 0.0
+    source = "dexscreener"
     try:
         from enzo.providers import gmgn
         price = float(gmgn.sol_price_usd() or 0.0)
+        try:
+            if gmgn.sol_price_source() == "fallback":
+                source = "fallback"
+        except Exception:
+            pass
     except Exception:
         price = 0.0
     if price <= 0:
         price = 180.0  # conservative fallback, matches gmgn.sol_price_usd()
-    _SOL_PRICE_CACHE.update({"price": price, "ts": time.time()})
+        source = "fallback"
+    if source == "fallback":
+        _LOGGER.warning(
+            "SOL/USD is a GUESSED $%.2f, not a live reading. With "
+            "execution.base_token=SOL every order amount is derived from it, so "
+            "the SOL sent can be worth more or less than the intended dollars.",
+            price)
+    _SOL_PRICE_CACHE.update({"price": price, "ts": time.time(), "source": source})
     return price
+
+
+def sol_price_source() -> str:
+    """'dexscreener' (live) or 'fallback' (guessed) for the SOL/USD in use."""
+    return str(_SOL_PRICE_CACHE.get("source") or "unknown")
 
 
 def sol_price_usd() -> float:
@@ -1046,7 +1117,14 @@ def buy_token(mint: str, amount_usd: float, wallet: str = None,
     base = get_base_token(cfg)
 
     min_trade = float(ex.get("min_trade_usd", 1.0))
-    if float(amount_usd) < min_trade:
+    if min_trade > 0 and min_trade - _USD_DECISION_TOL <= float(amount_usd) < min_trade:
+        # A float hair under the floor IS the floor: sizing rounds to 6 dp and
+        # the USD->SOL->USD round trip loses the last bit. Snap it up instead of
+        # sending 0.9999999999 dollars' worth of SOL (or rejecting the order).
+        _LOGGER.debug("buy_token: snapping $%.12f to the $%.2f floor (float noise)",
+                      float(amount_usd), min_trade)
+        amount_usd = min_trade
+    if float(amount_usd) < min_trade - _USD_DECISION_TOL:
         # The owner's rule: min_trade_usd is a FLOOR, not a rejection threshold.
         # Sizing normally clamps up already; this is the last gate, so enforce
         # the same rule HERE too instead of contradicting it. Clamp up only when
@@ -1092,7 +1170,18 @@ def buy_token(mint: str, amount_usd: float, wallet: str = None,
     result = execute_swap(from_token=from_token, to_token=mint, from_amount=from_amount,
                           wallet=wallet, explanation=explanation,
                           chain=moonpay_chain(cfg), cfg=cfg,
-                          direction="buy")
+                          direction="buy", usd_notional=float(amount_usd))
+    # Provenance travels with the result: if the SOL price was a guess, the
+    # amount actually sent is only approximately the dollars intended, and that
+    # must be readable afterwards from the ledger, the log and Telegram.
+    result["sol_price"] = round(_sol_price(cfg), 4)
+    result["sol_price_source"] = sol_price_source()
+    if sol_price_source() == "fallback" and base != "USDC":
+        _LOGGER.warning(
+            "BUY %s sized with a GUESSED SOL price ($%.2f): sent %.9f SOL for an "
+            "intended $%.2f. The real value of that amount can differ by the "
+            "whole error of the guess.",
+            str(mint)[:8], result["sol_price"], float(from_amount), float(amount_usd))
     result["amount_usd"] = float(amount_usd)
     result["base_token"] = base
     result["mint"] = mint
@@ -1186,6 +1275,7 @@ def sync_wallet_capital(force: bool = False, cfg: dict = None) -> Dict[str, Any]
         "usdc": round(float(snap["usdc"]), 6),
         "sol": round(float(snap["sol"]), 9),
         "sol_price": round(sol_px, 2),
+        "sol_price_source": sol_price_source(),
         "sol_reserve": reserve,
         "deployable_sol": round(deployable_sol, 9),
         "total_usd": round(total, 2),

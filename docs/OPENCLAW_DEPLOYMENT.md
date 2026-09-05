@@ -117,6 +117,9 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 | `CAPITAL_SYNC_FAILED` | قراءة المحفظة فشلت (ضمن فترة السماح) | يتعافى تلقائياً عند نجاح القراءة |
 | `CAPITAL_BELOW_MIN_TRADE` | الرصيد أقل من `min_trade_usd` | موّل المحفظة |
 | `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | رأس المال المتاح أقل من الحد الأدنى للصفقة، فلا يمكن تنفيذها حتى بعد رفع الحجم إلى الأرضية | موّل المحفظة، أو أغلق مركزاً، أو اخفض `min_trade_usd` |
+| `BELOW_MINIMUM_TRADE` | **بوابة ENZO الداخلية قبل الإرسال — ليست رفضاً من MoonPay** (الأداة لم تُستدعَ أصلاً). الحجم المقرّر أقل من `execution.min_trade_usd` | `./enzoctl wallet` ثم موّل المحفظة أو اغلق مركزاً أو اخفض `min_trade_usd` |
+| `ABOVE_MAXIMUM_TRADE` | الحجم أعلى من `execution.max_trade_usd` (يشترى فقط، لا يمنع البيع أبداً) | راجع `max_trade_usd` وحجم رأس المال |
+| `INSUFFICIENT_SOL_FOR_FEES` | رصيد SOL أقل من احتياطي الرسوم (`sol_fee_reserve`) | موّل المحفظة بـSOL للرسوم |
 | `EXECUTOR_NOT_READY` | CLI مفقود / غير مُصادَق / المحفظة غير موجودة | الرسالة تحمل السبب المحدد |
 | `PUMPDEV_RETRYING` / `PUMPDEV_DOWN` | تغذية الإطلاقات الجديدة ميتة | تحقق من الشبكة وحزمة `websockets` |
 | `PUMPDEV_STALE` | التغذية متصلة لكن بلا رسائل منذ 90+ ثانية | عادةً تُستأنف تلقائياً |
@@ -337,4 +340,6 @@ tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
 | رفض شراء متكرر | `./enzoctl logs audit -n 100` | `NO_ROUTE` = عملة على منحنى الربط |
 | الحجم أصغر من المتوقع | `./enzoctl wallet` | رأس المال الحقيقي مقابل `risk_per_trade` |
 | الصفقة دائماً $1.00 | `./enzoctl wallet` | رأس المال صغير → الأرضية مطبَّقة (طبيعي) |
+| أمر $1.00 مرفوض بـ`BELOW_MINIMUM_TRADE` | `./enzoctl logs -n 100` | بوابة ENZO لا MoonPay. أُصلحت 2026-09-05: كان الحجم يُشتقّ مرتين (دولار←SOL←دولار) فيرجع `$0.9999999999999999 < $1.00` عند ~18% من أسعار SOL. الآن المرجع هو الحجم المقرّر مع تسامح مليون من الدولار |
+| `SOL/USD is a GUESSED $180.00` في السجل | `./enzoctl logs` | تعذّر قراءة السعر من DexScreener ⇒ الحجم المُرسَل قد لا يساوي الدولار المقصود. تحقّق من خروج HTTPS، والأمر يُسجَّل بمصدر سعره (`sol_price_source`) |
 | `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | `./enzoctl wallet` | المتاح أقل من `min_trade_usd` |

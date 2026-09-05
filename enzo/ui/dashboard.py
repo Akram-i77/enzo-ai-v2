@@ -130,6 +130,18 @@ def generate() -> str:
     base_token = str(ex_cfg.get("base_token") or "USDC").upper()
     mode_label = "PAPER MODE • " if paper else "REAL TRADING ✅ • "
     executor_label = "MOONPAY CLI" if paper else f"MOONPAY CLI ({base_token} base)"
+
+    # Provenance of the SOL/USD behind the wallet figure and EVERY order size.
+    # Read from the snapshot file the engine writes - no network in the render
+    # path, so the page cannot block on I/O or spend rate-limit budget.
+    try:
+        _cap_snap = pf.capital_info() or {}
+    except Exception:
+        _cap_snap = {}
+    sol_price_src = str(_cap_snap.get("sol_price_source") or "")
+    sol_price_val = _cap_snap.get("sol_price")
+    # Only a LIVE bot paying real SOL can be mis-sized by a guessed price.
+    sol_price_guess = (sol_price_src == "fallback" and base_token == "SOL" and not paper)
     max_open = int(rm_cfg.get("max_open_positions", 5))
     max_exposure = float(rm_cfg.get("max_exposure", 30.0))
     risk_per_trade = float(rm_cfg.get("risk_per_trade", 2.5))
@@ -321,6 +333,21 @@ def generate() -> str:
             'رصيدك تلقائياً، أو نفّذ <code>./enzoctl rebase --confirm</code>. '
             'حتى ذلك الحين أساس التراجع وROI محسوبان على رقم غير موجود.</span>'
             '<span class="fault-hint">Equity baseline is the placeholder default until the wallet is read.</span>'
+            '</div>'
+        )
+
+    if sol_price_guess:
+        banner_html += (
+            '<div id="solPriceFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            '<span><b>سعر SOL المستعمل تخمين لا قراءة حيّة</b> — تعذّر الوصول إلى '
+            'DexScreener فاستُخدم الرقم الثابت. وبما أن <code>execution.base_token=SOL</code> '
+            'فكل حجم أمر يُشتقّ من هذا الرقم: ما يُرسل فعلياً قد يساوي أكثر أو أقل من '
+            'الدولار المقصود (عند سعر حقيقي $203 يكون الفرق ≈ 13%)، وكذلك قيمة المحفظة '
+            'و«المتاح للإنفاق». لا تُموِّل صفقة بناءً على هذه الأرقام حتى تعود القراءة '
+            'الحيّة؛ اللافتة تختفي وحدها عند أول قراءة ناجحة.</span>'
+            f'<span class="fault-hint">capital.sol_price={_esc(str(sol_price_val))} · '
+            'source=fallback · ./enzoctl wallet · ./enzoctl logs</span>'
             '</div>'
         )
 
