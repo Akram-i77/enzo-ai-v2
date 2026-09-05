@@ -137,6 +137,21 @@ tradeable float, and finally the **real** `analyze.run_pipeline` verdict — the
 same code path the trading loop runs, so the tool and the bot cannot disagree.
 Exit code is `1` when the coin is vetoed, `0` when it is clean.
 
+### And on the dashboard (no terminal at all)
+
+| Where | What it shows |
+|---|---|
+| Diagnostics → `🎯 Entry Universe · Layer 0` | all five gates as pills with `ARMED`/`OFF`, a `N/5 ARMED` counter, and your real thresholds read from `config/enzo-config.yaml` — `$5,000` / `$10,000` + `2.5 SOL` / `first 8 wallets` / `10%` — plus the sniper-proxy limitation stated on the page itself |
+| Diagnostics → `⚡ GMGN Data Source` | API-key `present`/`MISSING`, the address dialect the installed CLI accepted, every discovery category with its last count, the last sweep and the last provider error (never swallowed) |
+| Activity → `🎯 Gate Vetoes` button | isolates the decisions a gate killed; each one prints its `reason`, its veto codes in red, and the evidence line (`pump_v1 / platform / phase / fees / snipers / top wallet`) |
+| Red banner at the top | `GMGN_API_KEY` not set ⇒ **every gate reads "unknown"**; or all discovery categories dead ⇒ the bot is looking at an empty market. Both clear themselves once the cause is gone |
+| `GET /api/state` | `config_summary.universe_gates` (17 thresholds) and `gmgn_status` for any external monitor |
+
+Until this change a vetoed coin appeared as `SYM → IGNORE (conf=0)` with no
+explanation: the audit row always carried `reason` and `rejected_signals`, but the
+converter that feeds the activity list dropped them. It now carries them, plus
+`universe` and `top_holder_pct`, which `audit.record()` persists as of this commit.
+
 ---
 
 ## 4) The two honest limitations
@@ -202,7 +217,7 @@ tests/test_token_universe_gates.py   48 checks — every veto code, both phases,
                                           coin that should pass still passes),
                                           and an AST + subprocess guard that
                                           analyze() returns a decision dict
-tests/test_gmgn_cli_compat.py        79 checks — v1.6 dialect + the legacy
+tests/test_gmgn_cli_compat.py        80 checks — v1.6 dialect + the legacy
                                           fallback, API-key guard, every
                                           discovery envelope, dead categories,
                                           the flags pushed to the CLI, field
@@ -216,7 +231,19 @@ tests/test_enzoctl_probe.py          51 checks — probe's numbers, window, fees
                                           output modes; doctor's new checks in
                                           their passing AND failing states
 
-Full suite: 19 files · 640 checks · 0 failures · ~80s
+tests/test_dashboard_e2e.py         116 checks — a real HTTP server in an
+                                          isolated sandbox: every route, every
+                                          one of the 14 buttons clicked inside a
+                                          jsdom DOM, the Layer-0 card and its
+                                          thresholds present, the Gate-Vetoes
+                                          filter matching a SEEDED veto event
+                                          (reason + codes + evidence rendered),
+                                          the missing-API-key banner appearing
+                                          and disappearing again, and
+                                          /api/state exposing universe_gates
+                                          with your values, not defaults
+
+Full suite: 19 files · 685 checks · 0 failures · ~82s
 ```
 
 All of it runs against `tests/mockbin/gmgn-cli`, a mock that reproduces v1.6.1's

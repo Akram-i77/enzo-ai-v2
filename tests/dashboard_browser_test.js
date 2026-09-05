@@ -136,7 +136,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     tabProblems.length ? tabProblems.join(', ') : '');
 
   section('4. activity filter buttons');
-  const filters = ['ALL', 'TRADE', 'ANALYSIS', 'DISCOVERY'];
+  const filters = ['ALL', 'TRADE', 'ANALYSIS', 'DISCOVERY', 'UNIVERSE'];
   let fOk = 0;
   const fProblems = [];
   const feed = doc.getElementById('activityFeedContainer');
@@ -157,6 +157,57 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   ok(fOk === filters.length, 'each filter button sets the filter AND re-renders the feed',
     fProblems.length ? fProblems.join(', ') : '');
+
+  section('4b. the Gate Vetoes filter really finds Layer-0 rejections');
+  {
+    const uniBtn = buttons.find((b) => (b.getAttribute('onclick') || '').indexOf("filterActivity('UNIVERSE')") >= 0);
+    ok(!!uniBtn, 'the 🎯 Gate Vetoes button exists');
+    if (uniBtn) {
+      uniBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      await sleep(250);
+      const items = feed ? Array.from(feed.querySelectorAll('.activity-item')) : [];
+      const txt = feed ? (feed.textContent || '') : '';
+      ok(items.length > 0, 'it shows the seeded veto event (not an empty pane)',
+        items.length + ' item(s)');
+      ok(txt.indexOf('SNIPER_FLOOD_EARLY') >= 0, 'and the veto CODE itself is on screen',
+        txt.indexOf('SNIPER_FLOOD_EARLY') >= 0 ? '' : txt.slice(0, 120));
+      ok(txt.indexOf('phase: migrated') >= 0 || txt.indexOf('Pump V1') >= 0,
+        'the Layer-0 evidence line renders (platform/phase/fees/snipers)', txt.slice(0, 140));
+      ok(txt.indexOf('top wallet:') >= 0, 'and the measured holder concentration renders');
+    }
+    const allBtn2 = buttons.find((b) => (b.getAttribute('onclick') || '').indexOf("filterActivity('ALL')") >= 0);
+    if (allBtn2) {
+      allBtn2.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      await sleep(200);
+    }
+  }
+
+  section('4c. the new diagnostics cards are in the DOM with their thresholds');
+  {
+    const uniCard = doc.getElementById('universeGateCard');
+    ok(!!uniCard, 'the 🎯 Entry Universe · Layer 0 card exists');
+    if (uniCard) {
+      const t = uniCard.textContent || '';
+      const pills = uniCard.querySelectorAll('.stage-pill').length;
+      ok(pills === 5, 'it shows all five gates as pills', 'found ' + pills);
+      ok(/\d\/5 ARMED/.test(t), 'the header says how many gates are armed',
+        (t.match(/\d\/5 ARMED/) || [''])[0]);
+      ok(t.indexOf('$5,000') >= 0 && t.indexOf('$10,000') >= 0,
+        'both market-cap floors are printed from the config');
+      ok(t.indexOf('2.5') >= 0 && t.indexOf('SOL') >= 0, 'the fees floor and its declared unit');
+      ok(t.indexOf('first 8 wallets') >= 0, 'the early-sniper window size');
+      ok(t.indexOf('10') >= 0 && t.indexOf('HOLDER_CONCENTRATION') >= 0, 'the holder cap');
+      ok(t.indexOf('no trade tape') >= 0,
+        'and it states the sniper proxy limitation honestly, on the page itself');
+    }
+    const gCard = doc.getElementById('gmgnSourceCard');
+    ok(!!gCard, 'the ⚡ GMGN Data Source card exists');
+    ok(!!doc.getElementById('gmgnKeyStatus'), 'it reports the API-key status');
+    ok(!!doc.getElementById('gmgnCats'), 'and the discovery categories with their counts');
+    ok(!!doc.getElementById('gmgnLastError'), 'and the last provider error (not swallowed)');
+    const rate = (doc.getElementById('gmgnBanStatus') || {}).textContent || '';
+    ok(rate.indexOf('req/s') >= 0, 'the pace shown is the configured one', rate.slice(0, 60));
+  }
 
   section('5. rendering from live data');
   // The filter test above left the feed on its last category; put it back on ALL

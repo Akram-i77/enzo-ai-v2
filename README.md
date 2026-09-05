@@ -192,6 +192,21 @@ market_analysis:  {max_holder_percentage: 10.0}   # أعلى محفظة، عدا
 `HOLDER_CONCENTRATION`. «لا أعرف» **ليست** «نجح»: كل بوابة تجهل رقمها تقول ذلك
 صراحةً وترفض (حسب `on_unknown` / `require_known_fees`).
 
+**كل هذا ظاهر على اللوحة، لا في السجل فقط:**
+
+- بطاقة **«🎯 الكون المسموح · الطبقة 0»** في صفحة التشخيص: البوابات الخمس
+  (Pump V1 · حدّ ما قبل الترحيل · حدّ ما بعد الترحيل · قنّاصو البداية · سقف
+  المحافظ) مع حالة كل واحدة `ARMED`/`OFF` وأرقامها **المقروءة من إعدادك** لا
+  من الافتراضيات، وعدّاد `N/5 ARMED` في رأس البطاقة.
+- زر **«🎯 Gate Vetoes»** في تدفق النشاط يعزل القرارات التي أسقطتها بوابة.
+- كل رفض يعرض الآن **سببه ورموزه وأدلّته** (المنصّة/الطور/الرسوم/عدد
+  القنّاصين/تركّز أعلى محفظة) — كان يظهر `SYM → IGNORE (conf=0)` بلا تفسير،
+  لأن تحويل سجلّ القرارات إلى تدفق النشاط كان يُسقط `reason` و`rejected_signals`.
+- بطاقة **«⚡ مصدر بيانات GMGN»**: وجود المفتاح، لهجة العناوين
+  (`--address`/`--token`)، فئات الاكتشاف وعدد كل فئة، آخر مسح، وآخر خطأ من
+  المزوّد. ولافتتان حمراوان: **بلا `GMGN_API_KEY`** (كل البوابات تقرأ «مجهول»)
+  وحين **تموت فئات الاكتشاف كلها**.
+
 ## حماية الرغ: ثلاث طبقات / Rug protection layers
 
 | الطبقة | متى تعمل | ماذا تفعل | ثمنها |
@@ -236,8 +251,10 @@ rug_protection:
 | `dev_behavior.factory_dev_*` (7 مفاتيح جديدة + 6 قديمة) | سلالم عقوبة المطوِّر المصنعي وسقفها (كانت أرقاماً صلبة في `dev.py`) |
 
 `tests/test_dashboard_e2e.py` + `tests/dashboard_browser_test.js` يشغّلان خادماً حقيقياً
-في صندوق معزول ثم **ينقران كل زر** داخل DOM: 13 زراً، 6 مسارات HTTP، شارة العلم 🚩
-على المراكز المشبوبة، وبطاقة الطبقات في التشخيص.
+في صندوق معزول ثم **ينقران كل زر** داخل DOM: 14 زراً، 6 مسارات HTTP، شارة العلم 🚩
+على المراكز المشبوبة، بطاقتا الطبقة 0 وطبقات الرغّ في التشخيص، وتصفية
+`Gate Vetoes` على **حدث رفض حقيقي** مزروع (لا على لوحة فارغة)، واختفاء لافتة
+المفتاح بعودته (لا إنذار دائم على بوت سليم).
 
 ### خروج الركود / Stall exit
 
@@ -339,6 +356,7 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 | هل هو حي؟ (مناسب للمشرفين) | `GET /health` → `200` سليم، **`503` مشكلة** |
 | الحالة الكاملة | `GET /api/health` |
 | المحفظة والمراكز والإحصاءات | `GET /api/state` |
+| بوابات الدخول (17 عتبة) وصحة مصدر البيانات | `GET /api/state` → `config_summary.universe_gates` + `gmgn_status` |
 | نشاط الأنظمة الفرعية | `GET /api/activity` |
 | أسعار المراكز المفتوحة (للمخطط) | `GET /api/prices` |
 | اللوحة | `GET /enzo-dashboard.html` |
@@ -356,17 +374,28 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-ثماني حزم، **258 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+تسع عشرة حزمة، **685 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
-python3 tests/test_executor.py             #  47  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
-python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
+python3 tests/test_dashboard_e2e.py        # 116  اللوحة: خادم حي + نقر كل زر في DOM
+python3 tests/test_gmgn_cli_compat.py      #  80  توافق gmgn-cli v1.6.1 والمسار الكامل
+python3 tests/test_enzoctl_probe.py        #  51  enzoctl probe/doctor (صدق التقارير)
+python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
+python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
 python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها
+python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
 python3 tests/test_min_trade_floor.py      #  34  min_trade_usd كأرضية لا كعتبة رفض
 python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة ومنع NO_ROUTE
 python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف (فشل آمن + كتابة ذرّية)
+python3 tests/test_rug_layers.py           #  25  طبقات الرغّ 1 (نقض) + 3 (وقف مبكر) + 4 (قاطع)
+python3 tests/test_fresh_start_baseline.py #  24  بداية نظيفة: لا ledger قديم ينبعث
 python3 tests/test_base_token_capital.py   #  23  رأس المال بحسب عملة الأساس
-python3 tests/test_dashboard_js.py         #  12  صحة JavaScript المولَّد في اللوحة
+python3 tests/test_capital_staleness.py    #  21  قدم لقطة رأس المال ⇒ منع التداول
+python3 tests/test_rug_gate.py             #  19  نقض البصمات عند الدخول
+python3 tests/test_config_wiring.py        #  18  نظافة الإعداد: لا مفاتيح ميتة جديدة
+python3 tests/test_dashboard_js.py         #  17  صحة JavaScript المولَّد في اللوحة
+python3 tests/test_suite_isolation.py      #  11  عزل الحزم بعضها عن بعض
+python3 tests/test_floor_last_gate.py      #   8  الأرضية كآخر بوابة قبل التنفيذ
 ```
 
 لا حاجة لضبط `PATH`: واجهة MoonPay الوهمية مرفقة داخل المستودع في
@@ -375,10 +404,11 @@ python3 tests/test_dashboard_js.py         #  12  صحة JavaScript المولَ
 `tests/test_engine_e2e.py` يعمل في صندوق معزول عبر `ENZO_HOME` — لا يلمس قاعدة
 بياناتك ولا أموالك. وهو يثبت المسار الكامل من الاكتشاف حتى التنفيذ الحي.
 
-> **قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم الثماني وتأكد من `0 failed`.
-> للتحقق من اللوحة في متصفح فعلي (يتطلب `npm i jsdom`) يمكن تحميل الصفحة من
-> الخادم الحي والنقر على كل زر؛ الفحص الثابت في `test_dashboard_js.py` يغطي
-> الصحة النحوية وربط الأزرار دون أي اعتماديات.
+> **قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم التسع عشرة وتأكد من `0 failed`.
+> فحص المتصفّح الفعلي (نقر كل زر على خادم حي) يحتاج `npm i jsdom` ثم
+> `ENZO_JSDOM_PATH=/path/to/node_modules python3 tests/test_dashboard_e2e.py`؛
+> بدونه يُتخطّى ذلك الجزء وحده وتبقى بقية الحزمة تعمل. الفحص الثابت في
+> `test_dashboard_js.py` يغطي الصحة النحوية وربط الأزرار دون أي اعتماديات.
 
 ---
 

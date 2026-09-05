@@ -185,12 +185,100 @@ def generate() -> str:
     exposure_used = sum(float(p.get("size_usd", 0.0) or 0.0)
                         for p in (state.get("open_positions") or {}).values())
     exposure_pct = (exposure_used / eq * 100.0) if eq > 0 else 0.0
+    _gm = ((cfg.get("data_sources", {}) or {}).get("gmgn", {}) or {})
     try:
-        _gap_ms = float((((cfg.get("data_sources", {}) or {}).get("gmgn", {}) or {})
-                         .get("request_gap_ms", 350)))
-        gmgn_rate_label = f"{1000.0 / max(_gap_ms, 1.0):.1f} req/s · {_gap_ms:.0f} ms gap"
+        _rps = float(_gm.get("requests_per_sec", 0.8))
+        _gap_ms = float(_gm.get("request_gap_ms", 350))
+        _burst = float(_gm.get("burst_capacity", 2.5))
+        # Honest label. The old one derived "req/s" from the gap alone
+        # (1000/350 = 2.9 req/s) while the token bucket actually refills at
+        # requests_per_sec (0.8) - the page advertised a speed the bot never had.
+        gmgn_rate_label = f"{_rps:.1f} req/s · {_gap_ms:.0f} ms gap · burst {_burst:.1f}"
     except Exception:
         gmgn_rate_label = "default pacing"
+
+    # GMGN is the SOLE market-data source, so its health belongs on the page:
+    # a missing API key or a CLI whose flags changed makes every gate read
+    # nothing while the dashboard still looks perfectly healthy.
+    try:
+        _pst = gmgn.provider_status() or {}
+    except Exception:
+        _pst = {}
+    try:
+        _dst = gmgn.discovery_status() or {}
+    except Exception:
+        _dst = {}
+    gmgn_key_ok = bool(_pst.get("api_key_present"))
+    gmgn_last_err = str(_pst.get("last_error") or "")
+    gmgn_last_ep = str(_pst.get("last_error_endpoint") or "")
+    _dialect = _pst.get("addr_dialect") or {}
+    gmgn_dialect_label = ", ".join(f"{k}={v}" for k, v in list(_dialect.items())[:4]) \
+        or "not negotiated yet (no token call since start)"
+    _cats = _dst.get("categories_ok") or {}
+    _cat_bits = []
+    for _cn, _cv in _cats.items():
+        if _cv.get("skipped"):
+            _cat_bits.append(f"{_cn}: skipped (not a gmgn-cli v1.6 command)")
+        elif _cv.get("ok"):
+            _cat_bits.append(f"{_cn}: {_cv.get('count')} token(s)")
+        else:
+            _cat_bits.append(f"{_cn}: FAILED")
+    gmgn_cats_label = " · ".join(_cat_bits) if _cat_bits else "no discovery sweep in this process yet"
+    _cats_tried = [c for c, v in _cats.items() if not v.get("skipped")]
+    _cats_failed = [c for c, v in _cats.items() if v.get("ok") is False and not v.get("skipped")]
+    gmgn_dead = bool(_cats_tried) and len(_cats_failed) == len(_cats_tried)
+    gmgn_last_count = _dst.get("last_count")
+    if not gmgn_key_ok:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"NO API KEY · {gmgn_rate_label}"
+    elif gmgn_dead:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"ALL CATEGORIES FAILED · {gmgn_rate_label}"
+    elif gmgn_last_err:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-warn", f"DEGRADED · {gmgn_rate_label}"
+    else:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-pos", f"NORMAL · {gmgn_rate_label}"
+
+    # ── Entry universe (Layer 0): Pump V1 only, phase floors, sniper flood ───
+    _tu = cfg.get("token_universe", {}) or {}
+    _pg = cfg.get("phase_gates", {}) or {}
+    _sf = cfg.get("sniper_flood", {}) or {}
+    _pre = _pg.get("pre_migration", {}) or {}
+    _mig = _pg.get("migrated", {}) or {}
+    _ma = cfg.get("market_analysis", {}) or {}
+    uni_pump_only = bool(_tu.get("pump_v1_only", True))
+    uni_reject_unknown = bool(_tu.get("reject_unknown_launchpad", True))
+    uni_pre_mc = _pre.get("min_market_cap")
+    uni_pre_sells = _pre.get("min_sells")
+    uni_mig_mc = _mig.get("min_market_cap")
+    uni_mig_fees = _mig.get("min_total_fees")
+    uni_fees_unit = str(_mig.get("fees_unit", "sol") or "sol").upper()
+    uni_require_fees = bool(_mig.get("require_known_fees", True))
+    uni_unknown_phase = str(_pg.get("unknown_phase", "strict") or "strict")
+    uni_sniper_on = bool(_sf.get("enabled", True))
+    uni_first_n = int(_sf.get("first_n", 8) or 0)
+    uni_min_snipers = int(_sf.get("min_sniper_count", 4) or 0)
+    uni_max_total = float(_sf.get("max_total_sniper_buy_usd", 5000) or 0)
+    uni_max_single = float(_sf.get("max_single_sniper_buy_usd", 5000) or 0)
+    uni_on_unknown = str(_sf.get("on_unknown", "reject") or "reject")
+    uni_holder_cap = _ma.get("max_holder_percentage")
+    uni_holder_on = uni_holder_cap is not None and float(uni_holder_cap or 0) > 0
+
+    def _usd(v):
+        return f"${float(v):,.0f}" if v is not None else "not set"
+
+    def _num(v):
+        return f"{float(v):g}" if v is not None else "not set"
+
+    uni_pre_on = uni_pre_mc is not None or uni_pre_sells is not None
+    uni_mig_on = uni_mig_mc is not None or uni_mig_fees is not None
+    uni_checks = [uni_pump_only, uni_pre_on, uni_mig_on, uni_sniper_on, uni_holder_on]
+    uni_armed = sum(1 for b in uni_checks if b)
+    uni_hdr_txt = f"{uni_armed}/5 ARMED"
+    uni_hdr_cls = "color-pos" if uni_armed == 5 else ("color-neg" if uni_armed == 0 else "color-warn")
+    uni_p1_pill = "hit" if uni_pump_only else ""
+    uni_pre_pill = "hit" if uni_pre_on else ""
+    uni_mig_pill = "hit" if uni_mig_on else ""
+    uni_sn_pill = "hit" if uni_sniper_on else ""
+    uni_hc_pill = "hit" if uni_holder_on else ""
 
     # Server-side fault banner. Rendered only when the previous regeneration
     # failed (so a recovered bot shows a clean page again on the next render).
@@ -233,6 +321,29 @@ def generate() -> str:
             'رصيدك تلقائياً، أو نفّذ <code>./enzoctl rebase --confirm</code>. '
             'حتى ذلك الحين أساس التراجع وROI محسوبان على رقم غير موجود.</span>'
             '<span class="fault-hint">Equity baseline is the placeholder default until the wallet is read.</span>'
+            '</div>'
+        )
+
+    if not gmgn_key_ok:
+        banner_html += (
+            '<div id="gmgnKeyFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            '<span><b>GMGN_API_KEY غير موجود</b> — أداة gmgn-cli (v1.6) ترفض كل نداء بدونه، '
+            'فلا تصل أي بيانات سوق: الاكتشاف يُرجع صفراً وكل بوابات الدخول (Pump V1، الطور، '
+            'القيمة السوقية، البيع، الرسوم، القنّاصون، تركّز المحافظ) تقرأ «مجهول». '
+            'صدّره في البيئة التي يُقلع منها البوت (أو ضعه في <code>~/.config/gmgn/.env</code>) '
+            'ثم أعد التشغيل.</span>'
+            '<span class="fault-hint">Verify with: ./enzoctl doctor (gmgn_api_key) · ./enzoctl probe &lt;MINT&gt;</span>'
+            '</div>'
+        )
+    elif gmgn_dead:
+        banner_html += (
+            '<div id="gmgnDeadFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            '<span>كل فئات الاكتشاف فشلت في آخر دورة — النتيجة <b>لم تُخزَّن</b> كإجابة، '
+            'وستُعاد المحاولة الدورة القادمة. هذا يعني مصدر بيانات معطلاً أو محدوداً، '
+            'لا سوقاً هادئاً.</span>'
+            f'<span class="fault-hint">{_esc(gmgn_cats_label)} · ./enzoctl scan --force ثم ./enzoctl logs</span>'
             '</div>'
         )
 
@@ -795,6 +906,8 @@ def generate() -> str:
           <button class="btn" onclick="filterActivity('TRADE')"><span>Trades & Exits</span></button>
           <button class="btn" onclick="filterActivity('ANALYSIS')"><span>6-Axis Scans</span></button>
           <button class="btn" onclick="filterActivity('DISCOVERY')"><span>Discovery</span></button>
+          <button class="btn" id="universeFilterBtn" onclick="filterActivity('UNIVERSE')"
+                  title="قرارات رُفضت ببوابة من بوابات الدخول: Pump V1، الطور، القيمة السوقية، البيع، الرسوم، القنّاصون، تركّز المحافظ"><span>🎯 Gate Vetoes</span></button>
         </div>
       </div>
 
@@ -1009,12 +1122,19 @@ def generate() -> str:
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
-        <div class="axis-card">
+        <div class="axis-card" id="gmgnSourceCard">
           <div class="axis-header">
-            <span class="axis-name">⚡ GMGN Rate Limiter</span>
-            <span class="axis-score color-pos" id="gmgnBanStatus">NORMAL ({gmgn_rate_label})</span>
+            <span class="axis-name">⚡ GMGN Data Source</span>
+            <span class="axis-score {gmgn_hdr_cls}" id="gmgnBanStatus">{gmgn_hdr_txt}</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-secondary);">Token bucket rate controller active with automatic backoff and unban coordination.</p>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+            <div><b>API key:</b> <span id="gmgnKeyStatus" class="{ 'color-pos' if gmgn_key_ok else 'color-neg' }">{ 'present' if gmgn_key_ok else 'MISSING — every call is refused' }</span></div>
+            <div><b>CLI dialect:</b> <span id="gmgnDialect">{_esc(gmgn_dialect_label)}</span></div>
+            <div><b>Discovery:</b> <span id="gmgnCats">{_esc(gmgn_cats_label)}</span></div>
+            <div><b>Last sweep:</b> <span id="gmgnLastCount">{ 'no sweep yet' if gmgn_last_count is None else str(gmgn_last_count) + ' candidate(s)' }</span></div>
+            <div><b>Last error:</b> <span id="gmgnLastError" class="{ 'color-warn' if gmgn_last_err else '' }">{ _esc((gmgn_last_ep + ': ' + gmgn_last_err)[:150]) if gmgn_last_err else 'none' }</span></div>
+            <p style="margin-top:2px;">Token bucket with automatic backoff and unban coordination. The pace above is the configured one (requests_per_sec / request_gap_ms / burst_capacity) — not a number derived from the gap.</p>
+          </div>
         </div>
 
         <div class="axis-card">
@@ -1031,6 +1151,45 @@ def generate() -> str:
             <span class="axis-score color-pos">SQLite WAL Mode</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">ACID compliant concurrent multi-process transaction ledger active at data/enzo.db.</p>
+        </div>
+
+        <div class="axis-card" id="universeGateCard">
+          <div class="axis-header">
+            <span class="axis-name">🎯 Entry Universe · Layer 0</span>
+            <span class="axis-score {uni_hdr_cls}" id="universeGateStatus">{uni_hdr_txt}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+            <div>
+              <span class="stage-pill {uni_p1_pill}" id="uniPumpPill">PUMP V1 ONLY · { 'ON' if uni_pump_only else 'OFF' }</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                Buys standard pump.fun coins only (<code>launchpad=pump</code> / <code>launchpad_platform=Pump.fun</code>). Unknown launchpad is {'REJECTED — unknown is not treated as pump.fun' if uni_reject_unknown else 'allowed'} (<code>LAUNCHPAD_UNKNOWN</code> / <code>NOT_PUMP_V1</code>).
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {uni_pre_pill}">PRE-MIGRATION · { 'ON' if uni_pre_on else 'OFF' }</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                On the bonding curve (<code>launchpad_status=1</code>): market cap &ge; {_esc(_usd(uni_pre_mc))} and sell transactions &ge; {_esc(_num(uni_pre_sells))}. A missing counter is reported as <code>SELLS_UNKNOWN</code>, never read as zero and never as "enough".
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {uni_mig_pill}">MIGRATED · { 'ON' if uni_mig_on else 'OFF' }</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                After graduation (<code>launchpad_status=2</code>): market cap &ge; {_esc(_usd(uni_mig_mc))} and global fees paid &ge; {_esc(_num(uni_mig_fees))} {_esc(uni_fees_unit)}. Fees come from the dev's launch book (<code>portfolio created-tokens</code>), which does not label its unit — the unit is declared in config. {'"Could not measure" is a REJECTION (require_known_fees).' if uni_require_fees else '"Could not measure" is allowed.'} Unknown phase &rarr; <code>{_esc(uni_unknown_phase)}</code>.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {uni_sn_pill}">EARLY-SNIPER RUG · { 'ON' if uni_sniper_on else 'OFF' }</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                The first {uni_first_n} wallets in after the dev's create transaction: &ge; {uni_min_snipers} sniper-tagged AND &gt; {_esc(_usd(uni_max_total))} combined, <b>or any single wallet &gt; {_esc(_usd(uni_max_single))}</b> &rarr; <code>SNIPER_FLOOD_EARLY</code>, never bought. gmgn-cli has no trade tape, so this reads <code>start_holding_at</code> + <code>buy_volume_cur</code> per wallet — both approximation errors push toward rejecting. Unmeasurable &rarr; <code>{_esc(uni_on_unknown)}</code>.
+              </p>
+            </div>
+            <div>
+              <span class="stage-pill {uni_hc_pill}">HOLDER CAP · { 'ON' if uni_holder_on else 'OFF' }</span>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                Top-1 <b>wallet</b> must hold &le; {_esc(_num(uni_holder_cap))}% of supply (<code>HOLDER_CONCENTRATION</code>). The bonding curve, AMM vault and burn addresses (<code>addr_type</code> 1/2) are excluded, so a healthy migrated token whose pool holds 40% is not vetoed. If it cannot be measured the cap is reported as NOT enforced rather than silently passed.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div class="axis-card" id="rugProtectionCard">
@@ -1220,12 +1379,34 @@ def generate() -> str:
     }}
   }}
 
+  // Layer-0 veto codes (Pump V1 / phase / market cap / sells / fees / early
+  // snipers / holder cap). The "Gate Vetoes" filter answers the owner's most
+  // common question - "which coins did my NEW rules turn down, and why?" -
+  // without reading the audit log by hand.
+  var UNIVERSE_CODES = ['NOT_PUMP_V1', 'LAUNCHPAD_UNKNOWN', 'PHASE_UNKNOWN',
+    'MCAP_UNKNOWN', 'MCAP_BELOW_PRE_MIN', 'MCAP_BELOW_MIGRATED_MIN', 'MCAP_BELOW_UNKNOWN_MIN',
+    'SELLS_UNKNOWN', 'SELLS_BELOW_MIN', 'FEES_NOT_CHECKED', 'FEES_UNKNOWN', 'FEES_BELOW_MIN',
+    'SNIPER_FLOOD_NOT_CHECKED', 'SNIPER_FLOOD_EARLY', 'SNIPER_DATA_UNAVAILABLE',
+    'HOLDER_CONCENTRATION'];
+
+  function isUniverseVeto(a) {{
+    if (!a) return false;
+    var d = a.data || {{}};
+    var hay = String(a.message || '') + ' ' + String(d.reason || '') + ' ' +
+              (d.rejected_signals || []).join(' ');
+    for (var i = 0; i < UNIVERSE_CODES.length; i++) {{
+      if (hay.indexOf(UNIVERSE_CODES[i]) >= 0) return true;
+    }}
+    return false;
+  }}
+
   function renderActivities() {{
     var container = document.getElementById('activityFeedContainer');
     if (!container) return;
     var filtered = allActivities.filter(function(a) {{
       if (currentActivityFilter === 'ALL') return true;
       if (currentActivityFilter === 'TRADE') return a.category === 'TRADE' || a.category === 'EXIT';
+      if (currentActivityFilter === 'UNIVERSE') return isUniverseVeto(a);
       return a.category === currentActivityFilter;
     }});
 
@@ -1262,6 +1443,39 @@ def generate() -> str:
           '</div>';
       }}
 
+      // WHY it was turned down. The audit row always carried the reason and the
+      // veto codes, but the feed dropped them and showed only
+      // "SYMBOL -> IGNORE (conf=0)" - useless for a bot trading real money.
+      var vetoStr = '';
+      var rej = data.rejected_signals || [];
+      if (rej.length) {{
+        vetoStr += '<div class="act-details">' + rej.map(function(r) {{
+          return '<span style="color:#fb7185;">✘ ' + String(r).slice(0, 150) + '</span>';
+        }}).join('') + '</div>';
+      }} else if (data.reason) {{
+        vetoStr += '<div class="act-details"><span>' + String(data.reason).slice(0, 170) + '</span></div>';
+      }}
+      var uni = data.universe || null;
+      if (uni) {{
+        var bits = [];
+        bits.push(uni.pump_v1 ? '🎯 Pump V1 ✔' : '🎯 not Pump V1 ✘');
+        if (uni.platform) bits.push('platform: ' + uni.platform);
+        if (uni.phase) bits.push('phase: ' + uni.phase);
+        if (uni.fees && uni.fees.value !== null && uni.fees.value !== undefined) {{
+          bits.push('fees: ' + uni.fees.value + ' ' + String(uni.fees.unit || '').toUpperCase());
+        }}
+        if (uni.snipers) {{
+          bits.push('early snipers: ' + (uni.snipers.sniper_count || 0) +
+                    ' / $' + Number(uni.snipers.sniper_total_usd || 0).toLocaleString('en-US'));
+        }}
+        if (data.top_holder_pct !== null && data.top_holder_pct !== undefined) {{
+          bits.push('top wallet: ' + data.top_holder_pct + '%');
+        }}
+        vetoStr += '<div class="act-details">' + bits.map(function(b) {{
+          return '<span>' + b + '</span>';
+        }}).join('') + '</div>';
+      }}
+
       html += '<div class="activity-item ' + lvl + '">' +
         '<div class="act-header">' +
         '<span class="act-tag ' + cat + '">' + cat + '</span>' +
@@ -1269,6 +1483,7 @@ def generate() -> str:
         '</div>' +
         '<div class="act-msg">' + msg + '</div>' +
         detailsStr +
+        vetoStr +
         '</div>';
     }});
 

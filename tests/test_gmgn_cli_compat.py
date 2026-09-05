@@ -188,6 +188,13 @@ set_state({})
 saved = os.environ.pop("GMGN_API_KEY", None)
 try:
     gmgn.reset_provider_status()
+    # Before any call: the flag must already say the key is missing. It used to
+    # stay False until a CLI call died, so /api/state published
+    # api_key_present=False together with api_key_missing=False.
+    _pre = gmgn.provider_status()
+    ok(_pre.get("api_key_present") is False and _pre.get("api_key_missing") is True,
+       "provider_status is honest BEFORE any call (no present=False/missing=False pair)",
+       f"present={_pre.get('api_key_present')} missing={_pre.get('api_key_missing')}")
     raised = None
     try:
         empty = gmgn.token_info("NoKeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")

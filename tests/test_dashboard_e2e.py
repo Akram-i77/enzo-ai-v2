@@ -257,6 +257,83 @@ def seed_db():
                     "IGNORE FLAG: RUG-FINGERPRINT: bundlers_top20=9 >= 6", {"mint": MINT})
     ok(len(audit.get_recent_activities(limit=10)) > 0, "تدفق النشاط يسجّل رفض البصمة")
 
+    # ── Layer 0 on the dashboard: the reason and the gate evidence must reach
+    #    the feed. The audit row always had them; the activity converter dropped
+    #    them, so an IGNORE showed up as "SYM -> IGNORE (conf=0)" with no why.
+    _FLOOD_DECISION = {
+        "token_symbol": "FLOOD", "mint_address": "FloodMint111111111111111111111111111111111",
+        "decision": "IGNORE", "confidence_score": 0,
+        "decision_reason": "Rejected by quality gate: SNIPER_FLOOD_EARLY",
+        "market_cap_usd": 42000.0,
+        "axis_scores": {"security": 70, "momentum": 60},
+        "rejected_signals": ["SNIPER_FLOOD_EARLY: 4 of the first 8 wallets are sniper-tagged "
+                             "and bought $5,800 combined > $5,000 threshold",
+                             "HOLDER_CONCENTRATION: top wallet 12.0% > max 10.0%"],
+        "universe": {"pump_v1": True, "platform": "pump.fun", "phase": "migrated",
+                     "phase_evidence": ["launchpad_status=2"],
+                     "fees": {"ok": True, "value": 4.12, "unit": "sol"},
+                     "snipers": {"sniper_count": 4, "sniper_total_usd": 5800}},
+        "top_holder_pct": 12.0,
+    }
+    audit.record(_FLOOD_DECISION)
+    _acts = audit.get_recent_activities(limit=15)
+    _va = next((a for a in _acts if (a.get("data") or {}).get("mint", "").startswith("FloodMint")), None)
+    ok(_va is not None, "قرار الرفض وصل إلى تدفق النشاط", str(_va and _va.get("category")))
+    if _va:
+        _d = _va.get("data") or {}
+        ok(bool(_d.get("reason")), "ومعه السبب (كان يسقط في التحويل)", str(_d.get("reason"))[:60])
+        ok(any("SNIPER_FLOOD_EARLY" in str(r) for r in (_d.get("rejected_signals") or [])),
+           "ومعه رموز الرفض حرفية", str(_d.get("rejected_signals"))[:90])
+        ok((_d.get("universe") or {}).get("phase") == "migrated",
+           "ومعه دليل الكون (الطور/المنصّة/الرسوم/القنّاصون)", str(_d.get("universe"))[:90])
+        ok(float(_d.get("top_holder_pct") or 0) == 12.0,
+           "ومعه تركّز المحافظ المقاس", str(_d.get("top_holder_pct")))
+        ok(_va.get("category") == "ANALYSIS", "وتصنيفه ANALYSIS (يظهر تحت 6-Axis Scans)",
+           str(_va.get("category")))
+
+    # ── the page must carry the new cards, the new filter and the thresholds ──
+    _h2 = open(dashboard.generate(), encoding="utf-8").read()
+    for needle, why in (
+            ('id="universeGateCard"', "بطاقة «الكون المسموح · الطبقة 0»"),
+            ('id="universeGateStatus"', "وحالة تسليحها N/5"),
+            ('filterActivity(\'UNIVERSE\')', "زر تصفية أعتاب الدخول"),
+            ('id="gmgnSourceCard"', "بطاقة صحة مصدر البيانات"),
+            ('id="gmgnKeyStatus"', "وحالة مفتاح GMGN_API_KEY فيها"),
+            ('id="gmgnLastError"', "وآخر خطأ من المزوّد (لا يُبتلع)"),
+            ('$5,000', "حدّ ما قبل الترحيل"),
+            ('$10,000', "حدّ ما بعد الترحيل"),
+            ('2.5 SOL', "حدّ الرسوم مع وحدته المعلنة"),
+            ('first 8 wallets', "نافذة أول 8"),
+            ('HOLDER_CONCENTRATION', "رمز رفض تركّز المحافظ"),
+            ('no trade tape', "والاعتراف الصريح بحدّ بديل القنّاصين")):
+        ok(needle in _h2, f"اللوحة تعرض: {why}")
+
+    # ── honesty: no API key => a loud banner, and it disappears when present ──
+    _saved_key = os.environ.get("GMGN_API_KEY")
+    _saved_home = os.environ.get("HOME")
+    try:
+        # HOME is pointed at the sandbox so a real ~/.config/gmgn/.env on this
+        # machine cannot mask the test, and the key is set UNSET then SET
+        # explicitly: the suite never relied on the environment having one.
+        os.environ["HOME"] = SANDBOX
+        os.environ.pop("GMGN_API_KEY", None)
+        _h3 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="gmgnKeyFault"' in _h3,
+           "بلا GMGN_API_KEY تظهر لافتة حمراء صريحة (لا لوحة تبدو سليمة)")
+        ok("GMGN_API_KEY" in _h3 and "تقرأ «مجهول»" in _h3,
+           "واللافتة تشرح الأثر: كل بوابات الدخول تقرأ «مجهول»")
+        os.environ["GMGN_API_KEY"] = "test-key-present"
+        _h4 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="gmgnKeyFault"' not in _h4,
+           "وبوجود المفتاح تختفي اللافتة (لا إنذار دائم على بوت سليم)")
+    finally:
+        if _saved_key is None:
+            os.environ.pop("GMGN_API_KEY", None)
+        else:
+            os.environ["GMGN_API_KEY"] = _saved_key
+        if _saved_home is not None:
+            os.environ["HOME"] = _saved_home
+
     # ...and the warning must disappear once the ledger is real (there is now a
     # closed trade), otherwise it would cry forever on a working bot.
     _h = open(dashboard.generate(), encoding="utf-8").read()
@@ -274,6 +351,14 @@ def seed_db():
         audit.log_event("SYSTEM", "INFO", f"filler event {i} for the activity cap test", {})
     ok(f"activity_limit: {ACTIVITY_LIMIT}" in open(yml, encoding="utf-8").read(),
        f"صندوق الاختبار يضبط activity_limit={ACTIVITY_LIMIT} مع 7 أحداث مزروعة")
+    # The cap test just pushed older events out of the live feed, so re-seed the
+    # Layer-0 veto AFTER the fillers: the DOM clicks that follow must be able to
+    # see a real Gate-Veto event through the wire, not only in-process.
+    audit.record(_FLOOD_DECISION)
+    ok(any("SNIPER_FLOOD_EARLY" in str(r)
+           for a in audit.get_recent_activities(limit=int(ACTIVITY_LIMIT))
+           for r in ((a.get("data") or {}).get("rejected_signals") or [])),
+       "حدث رفض الطبقة 0 ما زال داخل حدّ النشاط الحيّ (لا يدفعه الحشو خارجه)")
 
 
 # ── 3. live server over real HTTP ────────────────────────────────────────────
@@ -341,7 +426,11 @@ def live_checks(html_path):
         code, body = http("GET", base + "/")
         ok(code == 200 and "rugProtectionCard" in body,
            "GET / يعيد اللوحة كاملة وفيها بطاقة الحماية", f"HTTP {code}, {len(body)} حرف")
-        ok(code == 200 and body.count("<button") >= 13, "كل الأزرار وصلت عبر HTTP")
+        ok(code == 200 and body.count("<button") >= 14,
+           "كل الأزرار وصلت عبر HTTP (13 + زر أعتاب الدخول الجديد)",
+           f"{body.count('<button')} زر")
+        ok(code == 200 and "universeGateCard" in body,
+           "وبطاقة الطبقة 0 وصلت عبر HTTP لا في الملف المولّد فقط")
 
         code, body = http("GET", base + "/api/state")
         js = {}
@@ -350,6 +439,21 @@ def live_checks(html_path):
         except Exception:
             js = {}
         ok(code == 200 and js.get("status") == "success", "GET /api/state = 200 وحالة success", f"HTTP {code}")
+
+        ug = (js.get("config_summary") or {}).get("universe_gates") or {}
+        ok(bool(ug), "/api/state يعرّض universe_gates", str(list(ug)[:6]))
+        ok(ug.get("pump_v1_only") is True and float(ug.get("pre_min_market_cap") or 0) == 5000.0
+           and float(ug.get("pre_min_sells") or 0) == 10.0
+           and float(ug.get("mig_min_market_cap") or 0) == 10000.0
+           and float(ug.get("mig_min_total_fees") or 0) == 2.5
+           and str(ug.get("mig_fees_unit")) == "sol"
+           and int(ug.get("sniper_first_n") or 0) == 8
+           and float(ug.get("sniper_max_total_usd") or 0) == 5000.0
+           and float(ug.get("max_holder_percentage") or 0) == 10.0,
+           "وقيمها = إعدادك فعلاً (لا افتراضيات)", str(ug)[:150])
+        gs = js.get("gmgn_status") or {}
+        ok("api_key_present" in gs and "discovery" in gs,
+           "/api/state يعرّض حالة مصدر البيانات GMGN", str(list(gs)[:6]))
 
         rp = (js.get("config_summary") or {}).get("rug_protection") or {}
         ok(len(rp) == 18, "ملخّص الإعداد يعرّض مفاتيح rug_protection الثمانية عشر كلها",

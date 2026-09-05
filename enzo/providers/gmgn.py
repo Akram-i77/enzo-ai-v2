@@ -55,6 +55,12 @@ def provider_status() -> dict:
     out = dict(_PROVIDER_STATUS)
     out["age_sec"] = round(time.time() - out["last_error_ts"], 1) if out["last_error_ts"] else None
     out["api_key_present"] = bool(os.environ.get("GMGN_API_KEY") or _api_key_file())
+    # Honest in BOTH directions and before any call has been made. Previously
+    # this flag only flipped after a CLI call died on the missing key, so a
+    # freshly started bot reported api_key_present=False AND
+    # api_key_missing=False - a contradiction every consumer (dashboard banner,
+    # /api/state, enzoctl doctor) would then have to re-derive on its own.
+    out["api_key_missing"] = bool(out.get("api_key_missing")) or not out["api_key_present"]
     out["addr_dialect"] = dict(_ADDR_DIALECT)
     return out
 

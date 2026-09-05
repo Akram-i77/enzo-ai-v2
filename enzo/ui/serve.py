@@ -412,6 +412,17 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                 # Risk Limits Details
                 rm = cfg.get("risk_management", {})
                 _rug = cfg.get("rug_protection", {}) or {}
+                _tu = cfg.get("token_universe", {}) or {}
+                _pg = cfg.get("phase_gates", {}) or {}
+                _sf = cfg.get("sniper_flood", {}) or {}
+                try:
+                    _pst = gmgn.provider_status() or {}
+                except Exception:
+                    _pst = {}
+                try:
+                    _dst = gmgn.discovery_status() or {}
+                except Exception:
+                    _dst = {}
                 max_daily = float(rm.get("max_daily_loss", 8.0))
                 max_dd = float(rm.get("max_drawdown", 25.0))
                 eq = float(state.get("equity", init_cap))
@@ -486,7 +497,52 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                             "veto_factory_created": int(_rug.get("veto_factory_created", 50)),
                             "veto_factory_open_ratio": float(_rug.get("veto_factory_open_ratio", 0.03)),
                             "soft_flag_ratio": float(_rug.get("soft_flag_ratio", 0.5)),
-                        }
+                        },
+                        # Layer 0 - the entry universe (Pump V1 only, phase floors,
+                        # early-sniper rug rule, holder cap). Exposed so the owner
+                        # can SEE the gates and their thresholds without opening
+                        # the YAML. Read from the loaded config: no extra I/O and
+                        # no extra gmgn-cli call.
+                        "universe_gates": {
+                            "pump_v1_only": bool(_tu.get("pump_v1_only", True)),
+                            "reject_unknown_launchpad": bool(_tu.get("reject_unknown_launchpad", True)),
+                            "discovery_min_market_cap": _tu.get("discovery_min_market_cap"),
+                            "unknown_phase": _pg.get("unknown_phase", "strict"),
+                            "pre_min_market_cap": (_pg.get("pre_migration") or {}).get("min_market_cap"),
+                            "pre_min_sells": (_pg.get("pre_migration") or {}).get("min_sells"),
+                            "mig_min_market_cap": (_pg.get("migrated") or {}).get("min_market_cap"),
+                            "mig_min_total_fees": (_pg.get("migrated") or {}).get("min_total_fees"),
+                            "mig_fees_unit": (_pg.get("migrated") or {}).get("fees_unit", "sol"),
+                            "mig_require_known_fees": bool((_pg.get("migrated") or {}).get("require_known_fees", True)),
+                            "sniper_enabled": bool(_sf.get("enabled", True)),
+                            "sniper_first_n": int(_sf.get("first_n", 8) or 0),
+                            "sniper_min_count": int(_sf.get("min_sniper_count", 4) or 0),
+                            "sniper_max_total_usd": float(_sf.get("max_total_sniper_buy_usd", 5000) or 0),
+                            "sniper_max_single_usd": float(_sf.get("max_single_sniper_buy_usd", 5000) or 0),
+                            "sniper_on_unknown": _sf.get("on_unknown", "reject"),
+                            "max_holder_percentage": (cfg.get("market_analysis") or {}).get("max_holder_percentage"),
+                        },
+                    },
+                    # Live GMGN data-source health. Without the API key (or with a
+                    # CLI whose flags changed) every gate reads nothing, and the
+                    # page would otherwise look perfectly healthy while the bot
+                    # sees an empty market.
+                    "gmgn_status": {
+                        "api_key_present": bool(_pst.get("api_key_present")),
+                        "api_key_missing": bool(_pst.get("api_key_missing")),
+                        "last_error": _pst.get("last_error"),
+                        "last_error_endpoint": _pst.get("last_error_endpoint"),
+                        "last_error_age_sec": _pst.get("age_sec"),
+                        "error_count": _pst.get("error_count"),
+                        "addr_dialect": _pst.get("addr_dialect") or {},
+                        "discovery": {
+                            "last_count": _dst.get("last_count"),
+                            "consecutive_empty": _dst.get("consecutive_empty"),
+                            "age_sec": _dst.get("age_sec"),
+                            "last_error": _dst.get("last_error"),
+                            "categories": _dst.get("categories_ok") or {},
+                        },
+                        "ban_remaining_sec": ban_rem,
                     }
                 }
                 return self._send_json(res)

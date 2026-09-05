@@ -71,6 +71,12 @@ def record(decision: dict, extra: dict = None):
             },
             "rejected_signals": decision.get("rejected_signals"),
             "supporting_signals": decision.get("supporting_signals"),
+            # Layer-0 evidence, persisted so any rejection can be audited later
+            # WITHOUT re-querying GMGN: which launchpad, which phase and why,
+            # the fees reading, the early-sniper window, and the measured holder
+            # concentration behind the max_holder_percentage cap.
+            "universe": decision.get("universe"),
+            "top_holder_pct": decision.get("top_holder_pct"),
         }
         os.makedirs(os.path.dirname(AUDIT_JSONL_PATH), exist_ok=True)
         with open(AUDIT_JSONL_PATH, "a", encoding="utf-8") as f:
@@ -236,6 +242,16 @@ def get_recent_activities(limit: int = 100) -> list:
                 "data": {
                     "axes": r.get("axes") or {},
                     "market_cap_usd": r.get("market_cap_usd"),
+                    # The audit row HAS the reason and the veto codes, but they
+                    # were dropped here - so the Activity feed showed
+                    # "SYMBOL -> IGNORE (conf=0)" with no explanation at all.
+                    # For a bot trading real money, "why not?" is the question
+                    # the owner asks most often.
+                    "reason": r.get("reason"),
+                    "rejected_signals": (r.get("rejected_signals") or [])[:6],
+                    "universe": r.get("universe"),
+                    "top_holder_pct": r.get("top_holder_pct"),
+                    "mint": r.get("mint"),
                 }
             })
         if len(activities) >= limit:
