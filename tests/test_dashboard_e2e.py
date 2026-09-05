@@ -195,6 +195,11 @@ def static_checks():
        str(int(RUG.get("early_stop_pct", 12))) in html,
        "عتباتك الحقيقية (لا قيم افتراضية) هي المعروضة")
 
+    # Fresh LIVE ledger (nothing seeded yet): the page itself must warn that the
+    # $10,000 equity on the KPI cards is a placeholder, not the owner's money.
+    ok('id="baselineFault"' in html,
+       "دفتر جديد: اللوحة تحذّر أن $10,000 رقم افتراضي لا رصيدك")
+
     if shutil.which("node"):
         scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, re.S)
         tmp = tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8")
@@ -251,6 +256,12 @@ def seed_db():
     audit.log_event("ANALYSIS", "WARNING",
                     "IGNORE FLAG: RUG-FINGERPRINT: bundlers_top20=9 >= 6", {"mint": MINT})
     ok(len(audit.get_recent_activities(limit=10)) > 0, "تدفق النشاط يسجّل رفض البصمة")
+
+    # ...and the warning must disappear once the ledger is real (there is now a
+    # closed trade), otherwise it would cry forever on a working bot.
+    _h = open(dashboard.generate(), encoding="utf-8").read()
+    ok('id="baselineFault"' not in _h,
+       "وبعدما صار للدفتر سجلّ حقيقي يختفي التحذير (لا إنذار دائم)")
 
     # dashboard.activity_limit must be a real knob, not decoration: cap it in the
     # sandbox config, seed more events than the cap, and let the LIVE server

@@ -213,6 +213,29 @@ def generate() -> str:
     else:
         banner_html = ""
 
+    # A brand-new LIVE ledger starts on the fictitious 10,000 default and the
+    # engine rebases it onto the real wallet at the first successful read. Until
+    # then the KPI cards would show $10,000 of equity that does not exist, and
+    # the drawdown breaker would be anchored to it. `enzoctl doctor` reports this
+    # as `ledger_baseline`; the page must say it too, because the page is what the
+    # owner actually looks at.
+    _fictitious_baseline = (
+        not bool(cfg.get("paper_mode", True))
+        and not (state.get("closed_positions") or [])
+        and not (state.get("open_positions") or {})
+        and abs(init_cap - 10000.0) < 1e-6)
+    if _fictitious_baseline:
+        banner_html += (
+            '<div id="baselineFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            '<span>رأس المال المعروض ($10,000) هو <b>الرقم الافتراضي</b> لا رصيدك الحقيقي: '
+            'الدفتر جديد ولم تُقرأ المحفظة بعد. شغّل المحرك دورة واحدة ليُضبط الأساس على '
+            'رصيدك تلقائياً، أو نفّذ <code>./enzoctl rebase --confirm</code>. '
+            'حتى ذلك الحين أساس التراجع وROI محسوبان على رقم غير موجود.</span>'
+            '<span class="fault-hint">Equity baseline is the placeholder default until the wallet is read.</span>'
+            '</div>'
+        )
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
