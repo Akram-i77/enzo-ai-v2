@@ -676,6 +676,43 @@ def cmd_doctor(args):
             add("capital", ok, detail,
                 "check the wallet: mp wallet list · mp login · mp consent accept",
                 critical=stale or not cap.get("ok"))
+
+            # A fresh LIVE ledger starts on the fictitious 10,000 default and the
+            # engine rebases it onto the wallet at the first successful read. If
+            # that never happened, equity, ROI and the max_drawdown breaker are
+            # all measured against money that does not exist - say so.
+            try:
+                _st = portfolio.load_state() or {}
+                _ledger = float(_st.get("initial_capital") or 0.0)
+                _hist = bool(_st.get("closed_positions")) or bool(_st.get("open_positions") or {})
+                _wusd = float(cap.get("usd") or 0.0)
+                _at_default = abs(_ledger - 10000.0) < 1e-6
+                _fictitious = (not cfg.get("paper_mode") and not _hist and bool(cap.get("ok"))
+                               and _at_default and _wusd > 0
+                               and abs(_ledger - _wusd) > 0.5 * max(_wusd, 1.0))
+                # Third state: a fresh LIVE ledger still on the default AND no
+                # wallet reading to compare with. That is not "fine" - it is
+                # unverifiable, and saying ✔ here is how a $10,000 phantom
+                # baseline reaches production unnoticed.
+                _unverifiable = (not cfg.get("paper_mode") and not _hist
+                                 and _at_default and not bool(cap.get("ok")))
+                if _fictitious:
+                    add("ledger_baseline", False,
+                        f"initial_capital ${_ledger:,.2f} is the fictitious default while the "
+                        f"wallet holds ${_wusd:,.2f} — drawdown/ROI are measured against it",
+                        "run one engine cycle (it rebases automatically) or: ./enzoctl rebase --confirm")
+                elif _unverifiable:
+                    add("ledger_baseline", False,
+                        f"initial_capital is still the ${_ledger:,.0f} default and the wallet "
+                        f"could not be read to verify it ({cap.get('detail')})",
+                        "fix the wallet read (mp wallet list), then the first engine cycle "
+                        "rebases it — or: ./enzoctl rebase --confirm")
+                else:
+                    add("ledger_baseline", True,
+                        f"initial_capital ${_ledger:,.2f} "
+                        f"({'paper/ledger' if cfg.get('paper_mode') else 'wallet-anchored'})")
+            except Exception as e:
+                add("ledger_baseline", False, f"{type(e).__name__}: {e}")
         except Exception as e:
             add("capital", False, f"{type(e).__name__}: {e}")
 

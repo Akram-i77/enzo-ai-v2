@@ -216,12 +216,16 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
     _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
 
     if rebase:
-        _maybe_rebase(usd, cap, state)
+        # Pass the config we already loaded: re-loading it here meant a fresh
+        # workspace (or any config hiccup) raised inside _maybe_rebase, which
+        # swallowed it at DEBUG level and left the ledger on the fictitious
+        # 10,000 default - silently disabling the drawdown baseline.
+        _maybe_rebase(usd, cap, state, cfg)
 
     return out
 
 
-def _maybe_rebase(usd: float, cap: dict, state: dict) -> None:
+def _maybe_rebase(usd: float, cap: dict, state: dict, cfg: dict = None) -> None:
     """Rebase initial_capital onto the real wallet figure when it is implausible.
 
     Guarded so it is convergent rather than something that fires every cycle:
@@ -238,7 +242,7 @@ def _maybe_rebase(usd: float, cap: dict, state: dict) -> None:
         if state.get("closed_positions") or (state.get("open_positions") or {}):
             return
         ledger = float(state.get("initial_capital") or 0.0)
-        cfg = load_config()
+        cfg = cfg or load_config()
         min_trade = float((cfg.get("execution") or {}).get("min_trade_usd", 1.0))
         implausible = ledger < min_trade or abs(ledger - usd) > 0.5 * max(usd, 1.0)
         if not implausible:
@@ -253,8 +257,22 @@ def _maybe_rebase(usd: float, cap: dict, state: dict) -> None:
                         f"{float(cap.get('deployable_sol') or 0):.4f} SOL)",
                 data={"usd": round(usd, 2), "previous": round(ledger, 2), "source": "wallet"},
             )
+        else:
+            # Not an exception, just refused - still worth a WARNING: the ledger
+            # keeps a baseline that does not match the wallet, so equity, ROI and
+            # the max_drawdown breaker are all measured against the wrong number.
+            _LOGGER.warning(
+                "initial_capital rebase did not apply (ledger $%.2f vs wallet $%.2f) — "
+                "the drawdown/ROI baseline is still the old number. "
+                "Run: ./enzoctl rebase --confirm", ledger, usd)
     except Exception as e:
-        _LOGGER.debug("initial_capital rebase skipped: %s", e)
+        # Was DEBUG, i.e. invisible: a fresh workspace whose config could not be
+        # re-read here silently kept the fictitious 10,000 default and the
+        # drawdown circuit breaker ended up anchored to money that does not exist.
+        _LOGGER.warning(
+            "initial_capital rebase skipped (%s: %s) — the ledger baseline stays "
+            "at $%.2f while the wallet holds $%.2f. Run: ./enzoctl rebase --confirm",
+            type(e).__name__, e, float(state.get("initial_capital") or 0.0), usd)
 
 
 def deployable_capital(cfg: dict = None, state: dict = None, force: bool = False) -> float:
