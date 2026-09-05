@@ -277,24 +277,33 @@ try:
     env = dict(os.environ, ENZO_HOME=tmp, PYTHONPATH=ROOT)
     marker = os.path.join(tmp, "TRANSFER_REVISION.txt")
 
-    def revision_line():
+    def doctor_out(*keys):
         proc = subprocess.run([sys.executable, "enzoctl", "doctor"], cwd=tmp,
                               env=env, capture_output=True, text=True, timeout=300)
         out = proc.stdout + proc.stderr
         return "\n".join(l.strip() for l in out.splitlines()
-                          if "code_revision" in l or "cannot identify" in l)
+                          if any(k in l for k in keys))
 
     try:
         with open(marker, "w", encoding="utf-8") as fh:
             fh.write("abc1234def5678\n")
-        line = revision_line()
+        line = doctor_out("code_revision", "cannot identify")
         check("المراجعة تُقرأ من TRANSFER_REVISION.txt بدل unknown",
               "abc1234def56" in line and "TRANSFER_REVISION.txt" in line,
               line[:150] or "لا سطر")
         os.remove(marker)
-        line = revision_line()
+        line = doctor_out("code_revision", "cannot identify")
         check("وبلا المراجعة يعلن العجز بدل الأخضر الكاذب",
               "cannot identify the running code" in line and "\u2714" not in line,
+              line[:150] or "لا سطر")
+
+        # Same gitless copy, other item that used to lie: `secrets_not_in_git`
+        # printed a fixed "secrets are committed to git" sentence even when the
+        # check PASSED, so a green ✔ claimed a compromise it had not verified.
+        # Without git metadata it cannot verify anything and must say so.
+        line = doctor_out("secrets_not_in_git")
+        check("ولا يدّعي التحقق من الأسرار وهو عاجز عن ذلك",
+              "cannot verify here" in line and "\u2714" not in line,
               line[:150] or "لا سطر")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

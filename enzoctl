@@ -638,10 +638,28 @@ def cmd_doctor(args):
         tg = bool((sec.get("telegram") or {}).get("bot_token") or sec.get("telegram_bot_token"))
         add("telegram_token", tg, "present" if tg else "missing — Telegram alerts will not send",
             "add the token to config/enzo-secrets.json", critical=False)
-        add("secrets_not_in_git", not _tracked_by_git(C.SECRETS_PATH),
-            "secrets are committed to git — treat the token as compromised",
-            "@BotFather -> /revoke, then git rm --cached config/enzo-secrets.json",
-            critical=False)
+        # The detail must follow the verdict. It used to be a fixed sentence, so a
+        # PASSING check printed "secrets are committed to git" next to a green ✔ -
+        # a lie in the passing direction, and in a copied workspace (no .git) the
+        # check cannot verify anything at all while still claiming success. The
+        # source repository is public and the token is committed there, so an
+        # unverifiable copy gets a warning, not a tick.
+        if not os.path.isdir(os.path.join(ROOT, ".git")):
+            add("secrets_not_in_git", False,
+                "cannot verify here (this copy has no git metadata) - the source "
+                "repository is public and config/enzo-secrets.json is committed to "
+                "it, so treat the Telegram token as stolen",
+                "@BotFather -> /revoke, then put the new token in "
+                "config/enzo-secrets.json", critical=False)
+        else:
+            tracked = _tracked_by_git(C.SECRETS_PATH)
+            add("secrets_not_in_git", not tracked,
+                ("secrets are committed to git — treat the token as compromised"
+                 if tracked else
+                 "config/enzo-secrets.json is not tracked by git"),
+                ("@BotFather -> /revoke, then git rm --cached config/enzo-secrets.json"
+                 if tracked else None),
+                critical=False)
     except Exception as e:
         add("telegram_token", False, f"{e}", critical=False)
 
