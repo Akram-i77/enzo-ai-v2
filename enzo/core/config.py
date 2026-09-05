@@ -129,6 +129,54 @@ DEFAULTS = {
         "max_scam_score": 15,
         "max_holder_percentage": 10.0,
     },
+    # ── Which coins ENZO trades at all (owner decision 2026-09-05) ───────────
+    # Standard pump.fun coins only ("Pump V1"): GMGN reports the launchpad as
+    # `launchpad` = "pump" and `launchpad_platform` = "Pump.fun". Anything else
+    # (letsbonk, moonshot, fourmeme, bags, a bare Raydium pair) is refused, and
+    # so is a coin whose launchpad cannot be determined.
+    "token_universe": {
+        "pump_v1_only": True,
+        "reject_unknown_launchpad": True,
+        # Server-side floor applied to the discovery lists themselves, so the
+        # request budget is spent on coins that could pass anyway.
+        "discovery_min_market_cap": 5000,
+    },
+    # ── Different floors before and after the bonding curve graduates ────────
+    # pre-migration: cap >= $5,000 and at least 10 SELL transactions (proof the
+    # token can be sold by someone other than the dev).
+    # migrated: cap >= $10,000 and total fees paid >= 2.5 SOL.
+    "phase_gates": {
+        "unknown_phase": "strict",      # strict | pre | reject
+        "pre_migration": {
+            "min_market_cap": 5000,
+            "min_sells": 10,
+        },
+        "migrated": {
+            "min_market_cap": 10000,
+            "min_total_fees": 2.5,
+            "fees_unit": "sol",         # GMGN does not state the unit; declare it
+            "min_sells": None,
+            "require_known_fees": True,
+        },
+    },
+    # ── The rug signature: snipers take the first wallets with huge size ─────
+    # gmgn-cli exposes no trade tape, so the window is reconstructed from
+    # `token traders`: start_holding_at gives entry order, buy_volume_cur the USD
+    # size, and GMGN's `sniper` tag marks launch buyers. If enough of the first
+    # N wallets are snipers and their combined (or any single) buy exceeds the
+    # threshold, the coin is refused permanently.
+    "sniper_flood": {
+        "enabled": True,
+        "first_n": 8,
+        "min_sniper_count": 4,
+        "max_total_sniper_buy_usd": 5000,
+        "max_single_sniper_buy_usd": 5000,
+        "sniper_tags": ["sniper"],
+        "include_bundler": False,
+        "traders_limit": 100,
+        "order_by": "buy_volume_cur",
+        "on_unknown": "reject",         # reject | allow — when the window cannot be read
+    },
     "scam_detection": {
         "honeypot_risk_threshold": 0.7,
         "rug_pull_risk_threshold": 0.7,
@@ -220,7 +268,24 @@ DEFAULTS = {
             "cli": "gmgn-cli",
             "chain": "sol",
             "request_gap_ms": 350,
-            "discovery": ["trending", "trenches", "smartmoney", "kol"],
+            # Sustained ceiling for the token bucket (was hardcoded at 0.8/s).
+            "requests_per_sec": 0.8,
+            # Burst size of that bucket: how many calls may fire back-to-back
+            # before settling onto requests_per_sec. It used to be a hardcoded
+            # default inside db.rl_acquire (i.e. not configurable), and the DB row
+            # kept the value from the FIRST call, so editing requests_per_sec
+            # later changed nothing until the row was deleted.
+            "burst_capacity": 2.5,
+            # gmgn-cli v1.6 has `market trenches|trending|hot-searches|signal`.
+            # `market smartmoney` / `market kol` do NOT exist (smart money and KOL
+            # live under `track`, which returns trade records for a wallet, not a
+            # token list) - keeping them in the list burned a rate-limit slot and
+            # logged a failure on every cycle.
+            "discovery": ["trenches", "trending"],
+            "discovery_limit": 50,
+            # Server-side launchpad filter: trenches takes --launchpad-platform,
+            # trending takes --platform. Empty string disables the filter.
+            "launchpad_platform_filter": "Pump.fun",
             "max_candidates_per_scan": 40,
             "max_depth_analyses": 12,
             "extra_discovery": True,
@@ -391,6 +456,9 @@ _CRITICAL_KEYS = [
     ("risk_management", dict),
     ("exit_strategy", dict),
     ("market_analysis", dict),
+    ("token_universe", dict),
+    ("phase_gates", dict),
+    ("sniper_flood", dict),
     ("data_sources", dict),
     ("weighted_confidence", dict),
 ]
@@ -503,13 +571,55 @@ def require_dependencies(hint: str = "") -> None:
 # config loading
 # ─────────────────────────────────────────────────────────────────────────────
 
+_STRICT_LOADER = None
+
+
+def _strict_loader():
+    """A SafeLoader that REFUSES duplicate keys in the same mapping.
+
+    PyYAML's default loader silently keeps only the LAST duplicate, so a
+    hand-edited enzo-config.yaml with the same key twice loads the wrong value
+    and nothing anywhere complains. This is a money-critical footgun for a file
+    the operator edits by hand: a duplicated `requests_per_sec` once made a test
+    sandbox run at the production 0.8 requests/second (three minutes per run)
+    while the file *looked* like it asked for 200/s.
+    """
+    global _STRICT_LOADER
+    if _STRICT_LOADER is not None:
+        return _STRICT_LOADER
+
+    class _Loader(yaml.SafeLoader):
+        pass
+
+    def _construct_no_duplicates(loader, node, deep=False):
+        out = {}
+        lines = {}
+        for key_node, value_node in node.value:
+            key = loader.construct_object(key_node, deep=deep)
+            ln = key_node.start_mark.line + 1
+            if key in out:
+                raise EnzoConfigError(
+                    f"duplicate config key '{key}' — it appears on line {lines[key]} "
+                    f"and again on line {ln}. YAML would silently keep ONLY the last "
+                    f"one, so the bot could trade with settings you never meant. "
+                    f"Delete one of the two lines.")
+            lines[key] = ln
+            out[key] = loader.construct_object(value_node, deep=deep)
+        return out
+
+    _Loader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                            _construct_no_duplicates)
+    _STRICT_LOADER = _Loader
+    return _Loader
+
+
 def _parse_yaml(text: str) -> dict:
     """Parse YAML, with a tiny built-in fallback for the simple flat/nested
     subset ENZO uses. The fallback exists only so a missing PyYAML degrades to
     a *loud warning plus best-effort parse*, never to silently-wrong settings.
     """
     if yaml is not None:
-        data = yaml.safe_load(text)
+        data = yaml.load(text, Loader=_strict_loader())
         return data if isinstance(data, dict) else {}
     return _mini_yaml(text)
 

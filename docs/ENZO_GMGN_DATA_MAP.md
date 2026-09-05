@@ -1,5 +1,14 @@
 # ENZO ↔ GMGN — كل نقاط البيانات (Data Map)
 
+> ⚠ **جُزئياً متجاوَز (2026-09-05).** هذا التدقيق كُتب قبل gmgn-cli v1.6.
+> الإصدار المثبّت الآن **v1.6.1** غيّر أشياء جوهرية: `--token` صار `--address`،
+> و`market smartmoney` / `market kol` **لم تعودا أمرين**، و`GMGN_API_KEY` صار
+> إلزامياً، و`price` في `token info` صار **كائناً** (`price.price` + عدّادات
+> `buys_*/sells_*`)، و**لا توجد قيمة سوقية** في `token info` (تُحسب
+> `price × circulating_supply`)، وحصص المحافظ اسمها `amount_percentage` مع
+> `addr_type` (0=محفظة 1=حرق 2=مجمّع). المرجع الحالي الموثّق بالاختبارات:
+> **`docs/ENZO_PUMP_V1_FILTERS.md`** و`tests/test_gmgn_cli_compat.py`.
+
 **Date:** 2026-08-10 01:15 GMT+1 · **Mode:** AUDIT (no changes)
 **مصدر:** enzo_gmgn.py (الطبقة الوحيدة للبيانات منذ 2026-08-05) + enzo-config.yaml
 

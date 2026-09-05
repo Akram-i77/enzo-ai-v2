@@ -9,6 +9,37 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 from enzo.core.config import LOGS_DIR
 
+# Where console logs go. The engine keeps stdout; the control plane (enzoctl)
+# switches this to stderr so that `enzoctl --json <cmd> | jq` receives JSON and
+# nothing else on stdout. Loggers are created lazily all over the codebase, so a
+# one-shot "move the existing handlers" pass is not enough - the stream has to be
+# read here, at creation time, as well.
+_CONSOLE_STREAM = sys.stdout
+
+
+def set_console_stream(stream) -> int:
+    """Route console logging to `stream` (and move handlers already created)."""
+    global _CONSOLE_STREAM
+    _CONSOLE_STREAM = stream
+    moved = 0
+    try:
+        loggers = [logging.getLogger()]
+        loggers += [logging.getLogger(n) for n in list(logging.root.manager.loggerDict)]
+        for lg in loggers:
+            for h in list(getattr(lg, "handlers", [])):
+                if (isinstance(h, logging.StreamHandler)
+                        and not isinstance(h, RotatingFileHandler)
+                        and getattr(h, "stream", None) not in (None, stream)):
+                    try:
+                        h.setStream(stream)
+                    except Exception:                                # noqa: BLE001
+                        h.stream = stream
+                    moved += 1
+    except Exception:                                                # noqa: BLE001
+        pass
+    return moved
+
+
 def setup_logger(name: str = "enzo", log_to_console: bool = True, log_to_file: bool = True, level: int = logging.INFO) -> logging.Logger:
     logger = logging.getLogger(name)
     if getattr(logger, "_enzo_configured", False):
@@ -23,7 +54,7 @@ def setup_logger(name: str = "enzo", log_to_console: bool = True, log_to_file: b
     )
 
     if log_to_console and not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
-        ch = logging.StreamHandler(sys.stdout)
+        ch = logging.StreamHandler(_CONSOLE_STREAM)
         ch.setLevel(level)
         ch.setFormatter(formatter)
         logger.addHandler(ch)

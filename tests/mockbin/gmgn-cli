@@ -1,0 +1,467 @@
+#!/usr/bin/env python3
+"""Mock of gmgn-cli v1.6.1 with the real tool's exact argument semantics.
+
+Why this exists
+---------------
+Every market-data decision ENZO makes comes out of this CLI, and until now the
+suite had no way to exercise those paths: there was a mock for the MoonPay CLI
+(execution) but none for GMGN (data), so the provider was only ever tested
+against hand-written dicts. That is how three live breakages stayed invisible -
+`token holders --token` / `market kline --token` are rejected by v1.6.1 (it
+requires `--address`), `market smartmoney` is not a command at all, and every
+call dies without GMGN_API_KEY.
+
+Reproduced faithfully from the published package (dist/ + skills/ docs):
+  * GMGN_API_KEY is REQUIRED - the real tool dies before any request;
+  * `token info|security|pool|holders|traders` take --chain/--address (--token is
+    an "unknown option" / "required option not specified" error, exit 1);
+  * `market kline` takes --address and --resolution 30s/1m/5m/15m/1h/4h/1d;
+  * `market trenches` returns {new_creation, near_completion, completed};
+  * `market trending` returns {data: {rank: [...]}};
+  * `token holders|traders` accept --limit/--order-by/--direction/--tag;
+  * output is JSON on stdout (compact with --raw, pretty without), notices on
+    stderr, and errors are `[gmgn-cli] Error: ...` with exit 1.
+
+Scenario control: GMGN_MOCK_STATE is a JSON object whose keys override the
+defaults - `token_info`, `traders`, `holders`, `trenches`, `trending`,
+`created_tokens`, `kline`, `security`, `pool`, `fail` ({endpoint,rc,err}),
+`no_api_key` (bool), `legacy_dialect` (accept --token like pre-1.6 builds).
+"""
+import json
+import os
+import sys
+import time
+
+NOW = int(time.time())
+MINT_DEFAULT = "MockPumpToken11111111111111111111111111111"
+DEV_DEFAULT = "MockDevWallet1111111111111111111111111111111"
+
+
+def _state():
+    raw = os.environ.get("GMGN_MOCK_STATE") or ""
+    if not raw.strip():
+        return {}
+    try:
+        s = json.loads(raw)
+        return s if isinstance(s, dict) else {}
+    except Exception:
+        return {}
+
+
+def die(msg, rc=1):
+    sys.stderr.write(f"[gmgn-cli] Error: {msg}\n")
+    sys.exit(rc)
+
+
+def commander_error(msg):
+    """commander's own option errors are printed without the [gmgn-cli] prefix."""
+    sys.stderr.write(f"error: {msg}\n")
+    sys.exit(1)
+
+
+def emit(data, raw=False):
+    sys.stdout.write(json.dumps(data) if raw else json.dumps(data, indent=2))
+    sys.stdout.write("\n")
+    sys.exit(0)
+
+
+# ── argument parsing (commander semantics: unknown option = hard error) ──────
+argv = sys.argv[1:]
+if not argv or argv[0] in ("-h", "--help", "help"):
+    emit_help = True
+else:
+    emit_help = False
+
+if "-V" in argv or "--version" in argv:
+    print("1.6.1")
+    sys.exit(0)
+
+pos = [a for a in argv if not a.startswith("--")]
+opts = {}
+i = 0
+while i < len(argv):
+    a = argv[i]
+    if a.startswith("--"):
+        if a == "--raw":
+            opts["raw"] = True
+        elif i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+            opts[a] = argv[i + 1]
+            i += 1
+        else:
+            opts[a] = True
+    i += 1
+
+GROUP = pos[0] if pos else ""
+CMD = pos[1] if len(pos) > 1 else ""
+ST = _state()
+
+# Record every invocation so tests can assert on the exact argv the provider
+# built (--address vs --token, --launchpad-platform vs --platform, --raw, ...).
+_log = os.environ.get("GMGN_ARGV_LOG")
+if _log:
+    try:
+        with open(_log, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"argv": argv}) + "\n")
+    except Exception:
+        pass
+
+if emit_help:
+    print("Usage: gmgn-cli [options] [command]")
+    print("Commands: token, market, portfolio, track, swap, order, gas-price, cooking, config")
+    sys.exit(0)
+
+# ── the API key gate: the real tool refuses everything without it ────────────
+if ST.get("no_api_key") or not os.environ.get("GMGN_API_KEY"):
+    die("GMGN_API_KEY is required. Set it in your .env file or environment.")
+
+# ── failure injection ────────────────────────────────────────────────────────
+_fail = ST.get("fail") or {}
+
+
+def maybe_fail(endpoint):
+    if _fail.get("endpoint") == endpoint:
+        sys.stderr.write(str(_fail.get("err") or "injected failure") + "\n")
+        sys.exit(int(_fail.get("rc") or 1))
+
+
+# ── address dialect: v1.6 requires --address; --token is an error ────────────
+def address_or_die(legacy_ok=False):
+    """--address (gmgn-cli >= 1.6); --token on older builds.
+
+    ``legacy_only`` in the mock state emulates an OLD build: --address must be
+    REJECTED so the provider's dialect fallback to --token is exercised.
+    """
+    if bool(ST.get("legacy_only")) and "--address" in opts:
+        commander_error("unknown option '--address'")
+    if "--address" in opts:
+        return opts["--address"]
+    if legacy_ok and "--token" in opts:
+        return opts["--token"]
+    if "--token" in opts:
+        commander_error("unknown option '--token'")
+    commander_error("required option '--address <address>' not specified")
+
+
+LEGACY = bool(ST.get("legacy_dialect"))
+
+# ── payload builders ─────────────────────────────────────────────────────────
+
+
+def default_info(mint):
+    price = 0.0000085
+    supply = 1_000_000_000
+    info = {
+        "address": mint,
+        "symbol": "MOCK",
+        "name": "Mock Pump Token",
+        "decimals": 6,
+        "total_supply": str(supply),
+        "circulating_supply": str(supply),
+        # price is a nested OBJECT in v1.6 - price.price plus windowed stats
+        "price": {
+            "price": str(price),
+            "price_1m": str(price * 0.98),
+            "price_5m": str(price * 0.90),
+            "price_1h": str(price * 0.70),
+            "price_6h": str(price * 0.50),
+            "price_24h": str(price * 0.30),
+            "buys_1m": 42, "sells_1m": 9,
+            "buys_5m": 180, "sells_5m": 40,
+            "buys_1h": 610, "sells_1h": 190,
+            "buys_6h": 900, "sells_6h": 260,
+            "buys_24h": 1400, "sells_24h": 430,
+            "volume_1m": 3200.0, "volume_5m": 12000.0, "volume_1h": 38000.0,
+            "volume_24h": 96000.0,
+            "buy_volume_24h": 61000.0, "sell_volume_24h": 35000.0,
+            "swaps_1m": 51, "swaps_5m": 220, "swaps_1h": 800, "swaps_24h": 1830,
+            "hot_level": 3,
+        },
+        "liquidity": 14500.0,
+        "holder_count": 268,
+        "creation_timestamp": NOW - 900,
+        "open_timestamp": NOW - 895,
+        "biggest_pool_address": "",
+        "launchpad": "pump",
+        "launchpad_platform": "Pump.fun",
+        "launchpad_status": "1",          # 0 not opened / 1 live / 2 migrated
+        "launchpad_progress": "0.42",
+        "migrated_pool": "",
+        "migration_market_cap": None,
+        "ath_price": price * 1.6,
+        "locked_ratio": 0.0,
+        "pool": {
+            "pool_address": "", "quote_address": "So11111111111111111111111111111111111111112",
+            "quote_symbol": "SOL", "exchange": "pump_fun", "liquidity": 14500.0,
+            "base_reserve": 700_000_000.0, "quote_reserve": 42.0,
+            "base_reserve_value": 5950.0, "quote_reserve_value": 8400.0,
+            "fee_ratio": 0.01, "creation_timestamp": NOW - 895,
+        },
+        "dev": {
+            "creator_address": DEV_DEFAULT,
+            "creator_token_balance": 0.0,
+            "creator_token_status": "hold",
+            "top_10_holder_rate": "0.1834",
+        },
+        "stat": {
+            "top70_sniper_hold_rate": "0.0431",
+            "creator_created_count": 2,
+            "top_bundler_trader_percentage": "0.0210",
+            "top_rat_trader_percentage": "0.0",
+            "fresh_wallet_rate": "0.1100",
+            "dev_team_hold_rate": "0.0",
+        },
+        "rug_ratio": "0.04",
+        "bundler_rate": "0.02",
+        "entrapment_ratio": "0.0",
+        "sniper_count": 3,
+        "bot_degen_count": 1,
+        "is_wash_trading": False,
+        "renounced_mint": 1,
+        "renounced_freeze_account": 1,
+        "creator_close": 0,
+        "creation_tool": "pump.fun",
+        "gas_fee": 0.000005,
+        "wallet_tags_stat": {
+            "sniper_wallets": 3, "smart_wallets": 4, "whale_wallets": 0,
+            "bundler_wallets": 1, "fresh_wallets": 41, "renowned_wallets": 0,
+            "rat_trader_wallets": 0, "creator_wallets": 1, "top_wallets": 12,
+        },
+    }
+    override = ST.get("token_info") or {}
+    for k, v in override.items():
+        if k == "price" and isinstance(v, dict):
+            info["price"].update(v)
+        else:
+            info[k] = v
+    return info
+
+
+def default_traders(mint):
+    """Top traders, newest-launch shape: start_holding_at is the first-buy ts."""
+    t0 = NOW - 895
+    rows = []
+    # 6 early wallets (first seconds) - benign by default
+    for i in range(6):
+        rows.append({
+            "address": f"EarlyWallet{i}111111111111111111111111111111111",
+            "start_holding_at": t0 + 1 + i,
+            "buy_volume_cur": 250.0 + i * 40,
+            "sell_volume_cur": 0.0,
+            "buy_tx_count_cur": 1,
+            "sell_tx_count_cur": 0,
+            "buy_amount_cur": 30_000_000.0,
+            "sell_amount_cur": 0.0,
+            "amount_percentage": 0.03 - i * 0.002,
+            "sell_amount_percentage": 0.0,
+            "unrealized_profit": 120.0,
+            "realized_profit": 0.0,
+            "maker_token_tags": [],
+            "tags": [],
+            "addr_type": 0,
+            "native_balance": "1500000000",
+        })
+    # later retail
+    for i in range(6):
+        rows.append({
+            "address": f"RetailWallet{i}11111111111111111111111111111111",
+            "start_holding_at": t0 + 120 + i * 60,
+            "buy_volume_cur": 90.0 + i * 15,
+            "sell_volume_cur": 20.0,
+            "buy_tx_count_cur": 2,
+            "sell_tx_count_cur": 1,
+            "buy_amount_cur": 9_000_000.0,
+            "sell_amount_cur": 2_000_000.0,
+            "amount_percentage": 0.008,
+            "sell_amount_percentage": 0.2,
+            "unrealized_profit": 10.0,
+            "realized_profit": 5.0,
+            "maker_token_tags": [],
+            "tags": ["fresh_wallet"] if i % 3 == 0 else [],
+            "addr_type": 0,
+            "native_balance": "400000000",
+        })
+    if isinstance(ST.get("traders"), list):
+        rows = ST["traders"]
+    return rows
+
+
+def default_holders(mint):
+    rows = []
+    for i in range(10):
+        rows.append({
+            "address": f"Holder{i}111111111111111111111111111111111111111",
+            "balance": 100_000_000.0 / (i + 1),
+            "amount_percentage": 0.10 / (i + 1),
+            "maker_token_tags": [],
+            "tags": [],
+            "is_new": i > 6,
+            "addr_type": 0,
+        })
+    if isinstance(ST.get("holders"), list):
+        rows = ST["holders"]
+    return rows
+
+
+def filter_rows(rows):
+    """Apply --tag / --order-by / --direction / --limit like the real CLI."""
+    tag = opts.get("--tag")
+    if tag:
+        out = []
+        for r in rows:
+            tags = [str(x).lower() for x in (r.get("maker_token_tags") or [])]
+            tags += [str(x).lower() for x in (r.get("tags") or [])]
+            if tag.lower() in tags:
+                out.append(r)
+        rows = out
+    order = opts.get("--order-by")
+    if order and rows and order in rows[0]:
+        rev = str(opts.get("--direction", "desc")).lower() != "asc"
+        rows = sorted(rows, key=lambda r: float(r.get(order) or 0.0), reverse=rev)
+    lim = opts.get("--limit")
+    if lim:
+        try:
+            rows = rows[:max(0, min(int(lim), 100))]
+        except Exception:
+            pass
+    return rows
+
+
+def default_trenches():
+    base = {
+        "address": MINT_DEFAULT, "symbol": "MOCK", "name": "Mock Pump Token",
+        "launchpad_platform": "Pump.fun", "exchange": "pump_fun",
+        "usd_market_cap": 8500.0, "liquidity": 14500.0,
+        "total_supply": 1_000_000_000,
+        "created_timestamp": NOW - 900, "open_timestamp": NOW - 895,
+        "swaps_1m": 51, "swaps_1h": 800, "swaps_24h": 1830,
+        "volume_1h": 38000.0, "volume_24h": 96000.0,
+        "buys_24h": 1400, "sells_24h": 430, "net_buy_24h": 26000.0,
+        "holder_count": 268, "renounced_mint": True,
+        "renounced_freeze_account": True, "burn_status": "none",
+        "rug_ratio": "0.04", "top_10_holder_rate": "0.1834",
+        "rat_trader_amount_rate": "0.0", "bundler_trader_amount_rate": "0.02",
+        "is_wash_trading": False, "sniper_count": 3,
+        "suspected_insider_hold_rate": "0.0", "open_source": "unknown",
+        "owner_renounced": "unknown", "buy_tax": "0", "dev_team_hold_rate": "0.0",
+        "price": 0.0000085, "smart_degen_count": 4, "hot_level": 3,
+    }
+    data = {"new_creation": [dict(base)], "near_completion": [], "completed": []}
+    if isinstance(ST.get("trenches"), dict):
+        data.update(ST["trenches"])
+    return data
+
+
+def default_trending():
+    item = {
+        "address": MINT_DEFAULT, "symbol": "MOCK", "name": "Mock Pump Token",
+        "chain": "sol", "total_supply": 1_000_000_000, "creator": DEV_DEFAULT,
+        "launchpad_platform": "Pump.fun", "exchange": "pump_amm",
+        "open_timestamp": NOW - 7200, "creation_timestamp": NOW - 7300,
+        "rank": 4, "hot_level": 8, "price": 0.000031,
+        "market_cap": 31000.0, "liquidity": 42000.0, "volume": 180000.0,
+        "history_highest_market_cap": 44000.0, "initial_liquidity": 12563.0,
+        "price_change_percent": 42.0, "price_change_percent1m": 1.2,
+        "price_change_percent5m": 6.4, "price_change_percent1h": 21.0,
+        "swaps": 2200, "buys": 1500, "sells": 700, "holder_count": 940,
+        "gas_fee": 0.000005, "renounced_mint": 1, "renounced_freeze_account": 1,
+        "top_10_holder_rate": "0.22", "rug_ratio": "0.07",
+        "bundler_rate": "0.01", "sniper_count": 6,
+        "top70_sniper_hold_rate": "0.09", "dev_team_hold_rate": "0.0",
+        "progress": 1.0,
+    }
+    data = {"rank": [item]}
+    if isinstance(ST.get("trending"), dict):
+        data.update(ST["trending"])
+    return data
+
+
+def default_created_tokens(dev):
+    data = {
+        "inner_count": 1, "open_count": 1, "total_count": 2,
+        "creator_ath_info": {"ath_mc": 84000.0, "ath_token": MINT_DEFAULT,
+                             "token_symbol": "MOCK", "token_name": "Mock Pump Token"},
+        "tokens": [{
+            "token_address": MINT_DEFAULT, "symbol": "MOCK",
+            "market_cap": 8500.0, "token_ath_mc": 12000.0,
+            "is_open": False, "pool_liquidity": 14500.0,
+            "create_timestamp": NOW - 900, "holders": 268,
+            "launchpad_platform": "Pump.fun", "bundler_rate": "0.02",
+            "total_fee": 3.42, "coin_creator_fee": 1.71, "cto_flag": False,
+            "liquidity_less_4k": False,
+        }],
+    }
+    if isinstance(ST.get("created_tokens"), dict):
+        data.update(ST["created_tokens"])
+    return data
+
+
+# ── dispatch ─────────────────────────────────────────────────────────────────
+if GROUP == "token":
+    if CMD == "info":
+        maybe_fail("token/info")
+        emit({"code": 0, "data": default_info(address_or_die(LEGACY))}, opts.get("raw"))
+    if CMD == "security":
+        maybe_fail("token/security")
+        sec = {"is_honeypot": False, "is_blacklisted": False, "is_airdrop_scam": False,
+               "is_insider_trading": False, "buy_tax": "0", "sell_tax": "0",
+               "renounced_mint": 1, "renounced_freeze_account": 1}
+        sec.update(ST.get("security") or {})
+        emit({"code": 0, "data": sec}, opts.get("raw"))
+    if CMD == "pool":
+        maybe_fail("token/pool")
+        pool = {"pool_address": "", "liquidity": 14500.0, "initial_liquidity": 12563.0,
+                "base_reserve": 700_000_000.0, "quote_reserve": 42.0, "exchange": "pump_fun"}
+        pool.update(ST.get("pool") or {})
+        emit({"code": 0, "data": pool}, opts.get("raw"))
+    if CMD == "holders":
+        maybe_fail("token/holders")
+        emit({"code": 0, "data": filter_rows(default_holders(address_or_die(LEGACY)))},
+             opts.get("raw"))
+    if CMD == "traders":
+        maybe_fail("token/traders")
+        emit({"code": 0, "data": filter_rows(default_traders(address_or_die(LEGACY)))},
+             opts.get("raw"))
+    commander_error(f"unknown command '{CMD}'")
+
+elif GROUP == "market":
+    if CMD == "trenches":
+        maybe_fail("market/trenches")
+        emit({"code": 0, "data": default_trenches()}, opts.get("raw"))
+    if CMD == "trending":
+        maybe_fail("market/trending")
+        emit({"code": 0, "data": default_trending()}, opts.get("raw"))
+    if CMD == "kline":
+        maybe_fail("market/kline")
+        res = str(opts.get("--resolution", "1m"))
+        if res not in ("30s", "1m", "5m", "15m", "1h", "4h", "1d"):
+            commander_error(f"invalid resolution '{res}'")
+        candles = [[NOW - 300 + i * 60, 0.0000080 + i * 0.0000001,
+                    0.0000090 + i * 0.0000001, 0.0000075, 0.0000088,
+                    1_200_000.0] for i in range(5)]
+        if isinstance(ST.get("kline"), list):
+            candles = ST["kline"]
+        emit({"code": 0, "data": candles}, opts.get("raw"))
+    if CMD in ("signal", "hot-searches", "search"):
+        maybe_fail(f"market/{CMD}")
+        emit({"code": 0, "data": ST.get(CMD.replace("-", "_")) or []}, opts.get("raw"))
+    # v1.6.1 has no `market smartmoney` / `market kol` - the real CLI errors out
+    commander_error(f"unknown command '{CMD}'")
+
+elif GROUP == "portfolio":
+    if CMD == "created-tokens":
+        maybe_fail("portfolio/created-tokens")
+        emit({"code": 0, "data": default_created_tokens(opts.get("--address", DEV_DEFAULT))},
+             opts.get("raw"))
+    if CMD == "stats":
+        maybe_fail("portfolio/stats")
+        emit({"code": 0, "data": ST.get("wallet_stats") or {
+            "realized_profit": 1200.0, "pnl_stat": {"winrate": 0.42, "token_num": 88,
+                                                    "avg_holding_period": 3600},
+            "common": {"created_token_count": 2, "tags": []}}}, opts.get("raw"))
+    commander_error(f"unknown command '{CMD}'")
+
+elif GROUP == "track":
+    maybe_fail(f"track/{CMD}")
+    emit({"code": 0, "data": []}, opts.get("raw"))
+
+commander_error(f"unknown command '{GROUP}'")

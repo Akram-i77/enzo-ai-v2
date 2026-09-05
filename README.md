@@ -38,6 +38,9 @@ bash bootstrap.sh      # 1. ثبّت المتطلبات وتحقق
 ./enzoctl wallet        # الأرصدة الحقيقية + رأس المال القابل للنشر
 ./enzoctl logs -f       # متابعة السجل حيّاً
 ./enzoctl scan --force  # دورة فحص إضافية الآن
+./enzoctl probe <MINT>  # ماذا ترى البوابات في عملة واحدة، حيّاً:
+                        #   الهوية والطور وأول 8 محافظ والرسوم وتركّز المحافظ
+                        #   ثم قرار المحلّل الحقيقي (خروج 1 = مرفوضة)
 ./enzoctl config        # الإعدادات الفعّالة (كل الأقسام)
 ./enzoctl health        # لقطة الصحة
 ```
@@ -56,6 +59,7 @@ bash bootstrap.sh      # 1. ثبّت المتطلبات وتحقق
 | websockets | تغذية إطلاقات PumpDev الحية | `./enzoctl doctor` |
 | `@moonpay/cli` (`mp`) | تنفيذ الصفقات الحقيقية | `mp wallet list` |
 | `gmgn-cli` | بيانات السوق والاكتشاف | `./enzoctl doctor` |
+| **`GMGN_API_KEY`** | gmgn-cli v1.6 **يرفض كل نداء** بدونه — فيظهر كأنه «سوق هادئ» | `./enzoctl doctor` ← `gmgn_api_key` |
 
 ```bash
 npm i -g @moonpay/cli
@@ -142,6 +146,51 @@ mp verify --email you@example.com --code <CODE>
 
 مقايضة يجب معرفتها: رقم أعلى = مساحة أوسع للعملة لترتفع (خروج مبكر أقل في
 عملات شديدة التذبذب)، لكنه يُبقي ربحاً أقل حين يُنفَّذ فعلاً.
+
+## الكون المسموح: عملات Pump القياسية فقط / Entry universe (Layer 0)
+
+منذ 2026-09-05 البوت **لا يشتري إلا عملة pump.fun قياسية (Pump V1)**، ويطبّق
+حدوداً مختلفة حسب طور العملة. التفاصيل الكاملة مع مصدر كل رقم من
+`gmgn-cli v1.6.1` في **`docs/ENZO_PUMP_V1_FILTERS.md`**.
+
+| الطور | كيف يُعرف | الحدود |
+|---|---|---|
+| **قبل الترحيل** | `launchpad_status = 1` (حيّ على منحنى الربط) | قيمة سوقية ≥ **$5,000** · عمليات بيع ≥ **10** |
+| **بعد الترحيل** | `launchpad_status = 2` (أو `migrated_pool` / `exchange = pump_amm`) | قيمة سوقية ≥ **$10,000** · رسوم مدفوعة ≥ **2.5 SOL** |
+| **طور مجهول** | لا دليل في الحمولة | `unknown_phase: strict` ⇒ يُعامل بالحدّ الأشد |
+| **منصّة مجهولة** | لا `launchpad` ولا `launchpad_platform` | `reject_unknown_launchpad: true` ⇒ **رفض** (مجهول ≠ pump.fun) |
+
+**قاعدة الرغ الجديدة (أول 8):** تُقرأ أول 8 محافظ دخلت بعد إنشاء العملة
+(مرتّبة بـ `start_holding_at`)؛ إن كان منها **≥4 قنّاصين** ومجموع شرائهم
+**> $5,000**، **أو** قنّاص واحد alone **> $5,000** ⇒ `SNIPER_FLOOD_EARLY` = رفض
+نهائي، لا شراء أبداً.
+
+> ⚠ **أمانة الحدّين:** `gmgn-cli v1.6.1` لا يوفّر شريط صفقات زمني، فأول 8
+> **محافظ** هي أقرب بديل قابل للقراءة (وليس أول 8 صفقات حرفياً). وقيمة الرسوم
+> تأتي من `portfolio created-tokens` بلا وحدة معلنة من الـAPI، فالوحدة مُعلَنة في
+> الإعداد (`fees_unit: sol`). الاثنان موثّقان في §4 من التقرير، وكلاهما يظهر لك
+> صراحةً في `./enzoctl probe`.
+
+```yaml
+token_universe:   {pump_v1_only: true, reject_unknown_launchpad: true,
+                   discovery_min_market_cap: 5000}
+phase_gates:
+  pre_migration:  {min_market_cap: 5000,  min_sells: 10}
+  migrated:       {min_market_cap: 10000, min_total_fees: 2.5, fees_unit: sol,
+                   require_known_fees: true}
+  unknown_phase:  strict
+sniper_flood:     {enabled: true, first_n: 8, min_sniper_count: 4,
+                   max_total_sniper_buy_usd: 5000,
+                   max_single_sniper_buy_usd: 5000, on_unknown: reject}
+market_analysis:  {max_holder_percentage: 10.0}   # أعلى محفظة، عدا المنحنى/المجمّع/الحرق
+```
+
+رموز الرفض التي ستراها في السجل وفي `rejected_signals`:
+`LAUNCHPAD_UNKNOWN` · `NOT_PUMP_V1` · `PHASE_UNKNOWN` · `MCAP_BELOW_PRE_MIN` ·
+`MCAP_BELOW_MIGRATED_MIN` · `SELLS_BELOW_MIN` · `FEES_BELOW_MIN` ·
+`FEES_UNKNOWN` · `SNIPER_FLOOD_EARLY` · `SNIPER_DATA_UNAVAILABLE` ·
+`HOLDER_CONCENTRATION`. «لا أعرف» **ليست** «نجح»: كل بوابة تجهل رقمها تقول ذلك
+صراحةً وترفض (حسب `on_unknown` / `require_known_fees`).
 
 ## حماية الرغ: ثلاث طبقات / Rug protection layers
 

@@ -844,6 +844,17 @@ def rl_acquire(key: str = "gmgn", tokens_needed: float = 1.0,
                     time.sleep(min(ban_wait + 0.5, 2.0))
                     continue
 
+                # CONFIG WINS OVER THE STORED RATE. The row is inserted once with
+                # whatever requests_per_sec was configured at the first call, and
+                # the refill expression below reads the STORED column — so without
+                # this sync, editing data_sources.gmgn.requests_per_sec (or the
+                # burst capacity) had no effect at all until the DB row was
+                # deleted. That is why the shipped 0.8/s looked "hardcoded".
+                if (abs(float(row["rate_per_sec"] or 0) - float(rate_per_sec)) > 1e-9
+                        or abs(float(row["capacity"] or 0) - float(capacity)) > 1e-9):
+                    cur.execute("UPDATE rate_limiter SET rate_per_sec = ?, capacity = ? "
+                                "WHERE key = ?", (rate_per_sec, capacity, key))
+
                 time_since_last = now - float(row["last_updated"])
                 if time_since_last < min_gap_sec:
                     time.sleep(min_gap_sec - time_since_last)

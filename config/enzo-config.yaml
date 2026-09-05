@@ -62,6 +62,63 @@ market_analysis:
 # The last two keys above are currently DEAD (no code reads them). Real
 # concentration protection comes from security_scan (hard reject top10 > 85%)
 # and the list_screen / screen_pump_card pre-filters.
+# ─────────────────────────────────────────────────────────────────────────────
+# أيّ العملات يتداولها البوت — قرار المالك 2026-09-05
+# Which coins ENZO is allowed to trade at all
+# ─────────────────────────────────────────────────────────────────────────────
+token_universe:
+  # العملة القياسية من pump.fun فقط (Pump V1). أي منصة إطلاق أخرى
+  # (letsbonk / moonshot / fourmeme / bags) أو زوج Raydium عادي ⇒ رفض.
+  pump_v1_only: true
+  # إذا لم تذكر البيانات منصة الإطلاق إطلاقاً ⇒ لا تشترِ (الأصل أن نعرف، لا أن نخمّن).
+  reject_unknown_launchpad: true
+  # أرضية تُطبَّق على قوائم الاكتشاف نفسها (فلتر عند المصدر، توفيراً للطلبات).
+  discovery_min_market_cap: 5000
+
+# ─────────────────────────────────────────────────────────────────────────────
+# حدود حسب مرحلة العملة: قبل الهجرة (على منحنى الربط) وبعدها
+# Phase-aware floors: bonding curve vs graduated
+# ─────────────────────────────────────────────────────────────────────────────
+phase_gates:
+  # إن تعذّر تحديد المرحلة: strict = الأشدّ من الحدين (افتراضي)، pre = حدّ ما قبل
+  # الهجرة، reject = لا تشترِ إطلاقاً.
+  unknown_phase: strict
+  pre_migration:
+    min_market_cap: 5000        # أدنى قيمة سوقية قبل الهجرة
+    min_sells: 10               # أدنى عدد صفقات بيع (دليل أن العملة تُباع فعلاً)
+  migrated:
+    min_market_cap: 10000       # أدنى قيمة سوقية بعد الهجرة
+    min_total_fees: 2.5         # Global Fees Paid — الحد الأدنى
+    fees_unit: sol              # الوحدة التي يُقاس بها الرقم أعلاه
+    min_sells: null             # null = بلا قيد إضافي على البيوع بعد الهجرة
+    # إن لم تُبلّغ GMGN عن الرسوم: true ⇒ رفض (أمان)، false ⇒ تجاهل هذا القيد.
+    require_known_fees: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# بصمة الـ rug: أوائل المحافظ سنايبرز بأحجام ضخمة — قرار المالك 2026-09-05
+# Early-sniper flood veto
+#
+# ملاحظة صريحة عن المصدر: أداة gmgn-cli لا توفّر «سجلّ صفقات» (أوامرها:
+# token info/security/pool/holders/traders + market kline/trenches/trending/
+# signal/hot-searches/search). لذلك لا يمكن قراءة «أول 8 معاملات» حرفياً؛
+# يُعاد بناء الترتيب من `token traders`: كل محفظة تحمل start_holding_at (وقت أول
+# شراء لها) و buy_volume_cur (ما اشترته بالدولار) ووسم sniper من GMGN. الترتيب
+# بحسب وقت الدخول يعطي المحافظ التي دخلت أولاً فعلاً.
+# قيود صادقة: القائمة هي «كبار المتداولين» (نطلب 100)، فمن اشترى وباع فوراً قد
+# لا يظهر؛ والمحافظ بلا وقت دخول تُحسب separately ولا تُعتبر «مبكرة» أبداً.
+# ─────────────────────────────────────────────────────────────────────────────
+sniper_flood:
+  enabled: true
+  first_n: 8                        # عدد المحافظ الأولى بعد الإنشاء
+  min_sniper_count: 4               # كم منها يجب أن يكون موسوماً sniper
+  max_total_sniper_buy_usd: 5000    # مجموع شرائهم بالدولار ⇒ تجاوزُه رفض
+  max_single_sniper_buy_usd: 5000   # أو شراء محفظة واحدة بهذا الحجم ⇒ رفض
+  sniper_tags: [sniper]             # الوسوم التي تُعتبر سنايبر
+  include_bundler: false            # أضف bundler إن أردت توسيع التعريف
+  traders_limit: 100                # كم صفاً نطلب من GMGN (الحد الأقصى 100)
+  order_by: buy_volume_cur          # ترتيب الطلب — يشمل من باع مبكراً
+  on_unknown: reject                # reject | allow عند تعذّر قراءة النافذة
+
 scam_detection:
   honeypot_risk_threshold: 0.7
   rug_pull_risk_threshold: 0.7
@@ -156,11 +213,23 @@ data_sources:
     cli: gmgn-cli
     chain: sol
     request_gap_ms: 350
+    # السقف المستمر لطلبات GMGN في الثانية (كان ثابتاً 0.8 في الكود = 48/دقيقة).
+    requests_per_sec: 0.8
+    # حجم «دفعة» السماح: كم نداءً يمكن إطلاقها متتالية قبل الاستقرار على
+    # requests_per_sec. كان رقماً ثابتاً داخل الكود، وكانت قاعدة البيانات تحفظ
+    # قيمة أول نداء فلا يتغيّر المعدل حتى بعد تعديل الإعدادات — صار يُقرأ من هنا.
+    burst_capacity: 2.5
+    # gmgn-cli v1.6.1: أوامر market الموجودة هي trenches / trending /
+    # hot-searches / signal فقط. `market smartmoney` و`market kol` لم تعودا
+    # أمرين (smart money وKOL صارتا تحت `track` وتُرجعان سجلّ صفقات محفظة لا
+    # قائمة عملات) — وإبقاؤهما كان يستهلك طلباً ويسجّل فشلاً في كل دورة.
     discovery:
-    - trending
     - trenches
-    - smartmoney
-    - kol
+    - trending
+    discovery_limit: 50
+    # فلتر المنصة عند المصدر: trenches يقبل --launchpad-platform وtrending يقبل
+    # --platform. اتركها فارغة "" لتعطيل الفلتر.
+    launchpad_platform_filter: "Pump.fun"
     max_candidates_per_scan: 40
     max_depth_analyses: 12
     extra_discovery: true
