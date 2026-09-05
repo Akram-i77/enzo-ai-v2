@@ -33,28 +33,91 @@ def _liquidity_axis(sig: dict, sec: dict, ma: dict) -> dict:
     }
 
 
-def _momentum_axis(sig: dict, ma: dict) -> dict:
-    pc1h = float(sig.get("price_change_1h") or 0)
-    pc24 = float(sig.get("price_change_24h") or 0)
-    pc5m = sig.get("price_change_5m")
-    pc5m = float(pc5m) if pc5m is not None else None
-    base = clamp(50 + pc1h * 5 + pc24 * 1)
+def _pct_or_none(v):
+    """A percent window value as float, or None when it could not be measured.
 
-    if pc5m is not None:
-        base = clamp(base + pc5m * 2)
+    Never 0.0: zero is the claim "the price did not move", and laundering
+    "unknown" into it is what kept the momentum axis blind for so long.
+    """
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _momentum_axis(sig: dict, ma: dict) -> dict:
+    """Momentum over the windows the owner chose (shipped: 1m and 5m).
+
+    This axis used to score `price_change_1h` (weight 5) and `price_change_24h`
+    (weight 1) - and the provider never found either field (gmgn._price_change_pct
+    asked for spellings GMGN does not use), so both read 0.0 and the price
+    contribution was a CONSTANT: `base = clamp(50 + 0*5 + 0*1) = 50` for every
+    coin ever scanned. The whole axis was buy_pressure in a momentum costume, its
+    flag printed `1h=+0.00% 24h=+0.00%` in the owner's own logs, and
+    `momentum_positive = pc1h >= 0` was True for everything because 0 >= 0.
+
+    Two things changed, and they belong together:
+      * the provider now reads the real spellings (flat `price_change_percent1m`,
+        nested `price.price_change_percent1h`, or derived from the windowed price
+        LEVELS `price.price_1m` vs `price.price`);
+      * the windows are the owner's: 1m and 5m. On a pump.fun coin the dump
+        happens in minutes, so a 1h/24h window cannot see it - a rug in its pump
+        phase scores as "momentum" and only a short window shows the turn.
+
+    Weights live in `market_analysis.momentum.weight_1m` / `weight_5m`: points
+    added to a neutral 50 per +1% in that window. A window that could not be
+    measured contributes NOTHING and is reported as `n/a` - never as 0.
+    """
+    _mc = ma.get("momentum")
+    _mc = _mc if isinstance(_mc, dict) else {}
+    try:
+        w1m = float(_mc.get("weight_1m", 8.0))
+    except Exception:                                    # noqa: BLE001
+        w1m = 8.0
+    try:
+        w5m = float(_mc.get("weight_5m", 3.0))
+    except Exception:                                    # noqa: BLE001
+        w5m = 3.0
+
+    pc1m = _pct_or_none(sig.get("price_change_1m"))
+    pc5m = _pct_or_none(sig.get("price_change_5m"))
+    # Context only: measured, published in the flags and in `detail`, NOT scored.
+    pc1h = _pct_or_none(sig.get("price_change_1h"))
+    pc24 = _pct_or_none(sig.get("price_change_24h"))
+
+    windows = [("1m", pc1m, w1m), ("5m", pc5m, w5m)]
+    scored = [(n, v, w) for (n, v, w) in windows if v is not None]
+    if scored:
+        base = clamp(50.0 + sum(v * w for (_n, v, w) in scored))
+    else:
+        base = 50.0
 
     bp_raw = sig.get("buy_pressure_pct")
     if bp_raw is not None:
         buy_pressure = float(bp_raw)
         pressure_score = clamp((buy_pressure - 40) * 2)
         score = clamp(0.6 * base + 0.4 * pressure_score)
-        flags = [f"1h={pc1h:+.2f}% 24h={pc24:+.2f}% buy_pressure={buy_pressure:.1f}%"]
+        flags = [" ".join(
+            [f"{n}={v:+.2f}%" if v is not None else f"{n}=n/a" for (n, v, _w) in windows]
+            + [f"buy_pressure={buy_pressure:.1f}%"])]
     else:
+        buy_pressure = None
         score = base
-        flags = [f"1h={pc1h:+.2f}% 24h={pc24:+.2f}% (buy_pressure n/a)"]
+        flags = [" ".join(
+            [f"{n}={v:+.2f}%" if v is not None else f"{n}=n/a" for (n, v, _w) in windows]
+            + ["(buy_pressure n/a)"])]
 
-    if pc5m is not None:
-        flags.append(f"5m={pc5m:+.2f}%")
+    if not scored:
+        flags.append("NO price window measured — score is buy-pressure only")
+    _ctx = " ".join(f"{n}={v:+.2f}%" for n, v in (("1h", pc1h), ("24h", pc24))
+                    if v is not None)
+    if _ctx:
+        flags.append(f"context (not scored): {_ctx}")
+    bp5 = _pct_or_none(sig.get("buy_pressure_5m"))
+    if bp5 is not None:
+        flags.append(f"buy_pressure_5m={bp5:.1f}%")
 
     smart = sig.get("smart_degen_count")
     if smart is not None:
@@ -74,9 +137,9 @@ def _momentum_axis(sig: dict, ma: dict) -> dict:
             flags.append(f"hot_level={int(hot)}")
 
     b = sig.get("buys")
-    s = sig.get("sells")
-    if b is not None and s is not None and (b + s) > 0:
-        ratio = float(b) / (float(b) + float(s))
+    s_ = sig.get("sells")
+    if b is not None and s_ is not None and (b + s_) > 0:
+        ratio = float(b) / (float(b) + float(s_))
         if ratio >= 0.6:
             score = clamp(score + 5)
             flags.append(f"buy_ratio={ratio:.0%}")
@@ -88,10 +151,14 @@ def _momentum_axis(sig: dict, ma: dict) -> dict:
         "score": int(score),
         "flags": flags,
         "detail": {
+            "pc1m": pc1m,
+            "pc5m": pc5m,
             "pc1h": pc1h,
             "pc24": pc24,
-            "pc5m": pc5m,
+            "windows_scored": [n for (n, _v, _w) in scored],
+            "weights": {"1m": w1m, "5m": w5m},
             "buy_pressure": bp_raw,
+            "buy_pressure_5m": bp5,
             "smart_degen_count": smart,
             "hot_level": hot
         }
@@ -340,7 +407,18 @@ def analyze(merged: dict, config: dict = None, fetch_deep: bool = False) -> dict
     bp_raw = sig.get("buy_pressure_pct")
     has_pressure = bp_raw is not None
     buy_pressure = float(bp_raw) if has_pressure else None
-    pc1h = float(sig.get("price_change_1h") or 0)
+    # Direction comes from the owner's momentum windows (5m, falling back to 1m).
+    # It used to be `float(sig.get("price_change_1h") or 0)`, i.e. a constant 0.0
+    # because the provider could not find the field - which made the support line
+    # "1h momentum +0.00%" and the ML feature momentum_positive true for EVERY coin.
+    pc5m_dir = _pct_or_none(sig.get("price_change_5m"))
+    pc1m_dir = _pct_or_none(sig.get("price_change_1m"))
+    if pc5m_dir is not None:
+        pc_dir, pc_dir_win = pc5m_dir, "5m"
+    elif pc1m_dir is not None:
+        pc_dir, pc_dir_win = pc1m_dir, "1m"
+    else:
+        pc_dir, pc_dir_win = None, None
     market_cap = sig.get("market_cap_usd")
     holder_count = sec.get("holder_count")
     top_holder_pct = sec.get("top_holder_pct")
@@ -490,8 +568,11 @@ def analyze(merged: dict, config: dict = None, fetch_deep: bool = False) -> dict
     elif has_pressure and buy_pressure is not None:
         supporting.append(f"Buy pressure {buy_pressure:.1f}% >= {min_bp:.0f}%")
 
-    if pc1h >= 0:
-        supporting.append(f"1h momentum {pc1h:+.2f}%")
+    if pc_dir is not None and pc_dir >= 0:
+        supporting.append(f"{pc_dir_win} momentum {pc_dir:+.2f}%")
+    elif pc_dir is None:
+        # Unknown is not positive. Say so instead of banking a free support line.
+        supporting.append("momentum window UNKNOWN (no 1m/5m price change measured)")
 
     # Weighted Confidence Computation — only over axes that actually have data
     active_axes = [k for k in axes if axis_available[k]]
@@ -519,7 +600,7 @@ def analyze(merged: dict, config: dict = None, fetch_deep: bool = False) -> dict
         "smart_money_in": (wal_axis.get("smart_count") or 0) > 0,
         "whale_in": (wal_axis.get("whale_count") or 0) > 0,
         "market_structure_growing": ms_axis["score"] >= 60,
-        "momentum_positive": pc1h >= 0,
+        "momentum_positive": bool(pc_dir is not None and pc_dir >= 0),
         "liquidity_ok": liq >= min_liq,
     }
 

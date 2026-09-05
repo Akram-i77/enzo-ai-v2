@@ -128,6 +128,17 @@ DEFAULTS = {
         "min_buy_pressure": 30,
         "max_scam_score": 15,
         "max_holder_percentage": 10.0,
+        # Momentum windows — owner decision 2026-09-05: score the 1-MINUTE and
+        # 5-MINUTE price change instead of 1h/24h. On a pump.fun coin the dump
+        # happens in minutes, so a 1h/24h window cannot see the turn (and before
+        # the provider fix it saw nothing at all: both read a constant 0.0).
+        # A weight is the number of points added to a neutral 50 per +1% in that
+        # window. 1h/24h are still fetched and published as CONTEXT in the axis
+        # flags and in `detail`, but they are not scored.
+        "momentum": {
+            "weight_1m": 8.0,
+            "weight_5m": 3.0,
+        },
     },
     # ── Which coins ENZO trades at all (owner decision 2026-09-05) ───────────
     # Standard pump.fun coins only ("Pump V1"): GMGN reports the launchpad as

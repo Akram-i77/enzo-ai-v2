@@ -755,6 +755,25 @@ def cmd_doctor(args):
                 "edit data_sources.gmgn.discovery / trending_interval / trenches_types "
                 "in config/enzo-config.yaml",
                 critical=False)
+            # The momentum axis scored 1h/24h for as long as the bot ran, and the
+            # provider could not read either field - so the axis was a constant 50
+            # from price action. The owner moved it to 1m/5m; doctor shows the
+            # windows and weights that are actually judging the money.
+            _mom = ((cfg.get("market_analysis") or {}).get("momentum") or {})
+            try:
+                _w1m = float(_mom.get("weight_1m", 8.0))
+                _w5m = float(_mom.get("weight_5m", 3.0))
+                _mom_ok = True
+                _mom_txt = (f"scored windows: 1m (x{_w1m:g} pts per +1%) + 5m "
+                            f"(x{_w5m:g}) · 1h/24h context only · unmeasurable "
+                            f"window = n/a, never 0")
+            except Exception:
+                _mom_ok = False
+                _mom_txt = ("market_analysis.momentum.weight_1m/weight_5m are not "
+                            "numbers - the momentum axis would fall back to 8.0/3.0")
+            add("momentum_windows", _mom_ok, _mom_txt,
+                "edit market_analysis.momentum in config/enzo-config.yaml",
+                critical=False)
             _ban_left = float(_gmgn.ban_status() or 0.0)
             add("gmgn_rate_config", True,
                 f"{_g.get('requests_per_sec')} req/s · gap {_g.get('request_gap_ms')}ms · "

@@ -1005,6 +1005,145 @@ _iv = ((gmgn.discovery_status().get("categories_ok") or {}).get("trending") or {
 ok(_iv == "1m", "trending reports the --interval it was sent with", str(_iv))
 
 # ─────────────────────────────────────────────────────────────────────────────
+section("15. momentum really reads the price: 1m/5m windows, real key spellings")
+# The axis scored `price_change_1h * 5 + price_change_24h * 1`, and the provider
+# asked GMGN for `price_change_1h` / `price_change_percent_1h` (extra underscore)
+# while v1.6 sends `price_change_percent1h` flat on list items, or a nested
+# `price` object carrying windowed LEVELS (`price.price_1m` next to `price.price`).
+# Nothing matched, every caller did `or 0`, so the price contribution was a
+# CONSTANT 50 on every coin ever scanned: the "momentum" axis was a buy-pressure
+# meter in a momentum costume, its own flag printed `1h=+0.00% 24h=+0.00%` in the
+# owner's logs, and `momentum_positive = pc1h >= 0` was True for everything
+# because 0 >= 0. The owner replaced the windows with 1m/5m - which is also the
+# honest fix, because a pump.fun dump happens in minutes and a 1h window cannot
+# see the turn.
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+_M = "MockPumpToken11111111111111111111111111111"
+_sig = (gmgn.get_market_data(_M) or {}).get("signals") or {}
+ok(isinstance(_sig.get("price_change_1m"), float) and abs(_sig["price_change_1m"] - 2.0408) < 0.01,
+   "price_change_1m is read (derived from price.price_1m vs price.price)",
+   str(_sig.get("price_change_1m")))
+ok(isinstance(_sig.get("price_change_5m"), float) and abs(_sig["price_change_5m"] - 11.1111) < 0.01,
+   "and price_change_5m", str(_sig.get("price_change_5m")))
+ok(isinstance(_sig.get("price_change_1h"), float) and _sig["price_change_1h"] > 40.0,
+   "the long windows are read too (published as context, not scored)",
+   str(_sig.get("price_change_1h")))
+ok(gmgn._price_change_pct({"price_change_percent1m": -3.2}, "1m") == -3.2,
+   "the flat v1.6 spelling `price_change_percent1m` is understood", "")
+ok(gmgn._price_change_pct({"price": {"price_change_percent5m": "4.0"}}, "5m") == 4.0,
+   "and the nested one under `price`", "")
+ok(abs(gmgn._price_change_pct({"price": {"price": "0.000011", "price_5m": "0.000010"}},
+                             "5m") - 10.0) < 1e-6,
+   "a percent is derived from windowed price LEVELS when no percent field exists", "")
+ok(gmgn._price_change_pct({"price": {"price": 1.0}}, "1m") is None,
+   "and a window that cannot be measured stays None - never 0.0 (0 means flat)",
+   str(gmgn._price_change_pct({"price": {"price": 1.0}}, "1m")))
+ok(_sig.get("buy_pressure_5m") is not None and _sig.get("buy_pressure_1m") is not None,
+   "short-window buy pressure is published next to the 24h one (informational; "
+   "the owner's min_buy_pressure gate still judges 24h)",
+   f"5m={_sig.get('buy_pressure_5m')} 1m={_sig.get('buy_pressure_1m')}")
+
+from enzo.analyzers import analyze  # noqa: E402  (parent scope: §10 runs in a subprocess)
+_ma = (C.load_config().get("market_analysis") or {})
+_base_sig = {"price_change_1m": 1.0, "price_change_5m": 2.0, "buy_pressure_pct": 50.0}
+_s_base = analyze._momentum_axis(_base_sig, _ma)["score"]
+_s_long = analyze._momentum_axis(dict(_base_sig, price_change_1h=500.0,
+                                     price_change_24h=9000.0), _ma)["score"]
+ok(_s_base == _s_long,
+   "1h/24h no longer move the score - they are context, exactly as configured",
+   f"{_s_base} vs {_s_long} with 1h=+500% 24h=+9000%")
+_s_up = analyze._momentum_axis(dict(_base_sig, price_change_1m=5.0,
+                                   price_change_5m=15.0), _ma)["score"]
+_s_dn = analyze._momentum_axis(dict(_base_sig, price_change_1m=-5.0,
+                                   price_change_5m=-15.0), _ma)["score"]
+ok(_s_up > _s_base > _s_dn, "the short windows really drive the axis",
+   f"up={_s_up} base={_s_base} down={_s_dn}")
+_dump = analyze._momentum_axis({"price_change_1m": -4.5, "price_change_5m": -18.0,
+                               "price_change_1h": 120.0, "price_change_24h": 900.0,
+                               "buy_pressure_pct": 76.5, "buys": 1400, "sells": 430}, _ma)
+ok(_dump["score"] < 50,
+   "a coin being dumped NOW scores below neutral even with 76% buy pressure and "
+   "+120% on the hour - the shape a rug shows after the turn",
+   f"score={_dump['score']} flags={_dump['flags'][0]}")
+_blind = analyze._momentum_axis({"buy_pressure_pct": 76.5}, _ma)
+ok(_blind["detail"]["windows_scored"] == []
+   and any("NO price window measured" in f for f in _blind["flags"]),
+   "when no window could be measured the axis says so out loud instead of "
+   "pretending the price is flat", str(_blind["flags"][:2]))
+_zero = analyze._momentum_axis(dict(_base_sig),
+                              dict(_ma, momentum={"weight_1m": 0.0, "weight_5m": 0.0}))["score"]
+ok(_zero != _s_base,
+   "market_analysis.momentum.weight_1m/weight_5m are live config, not decoration",
+   f"weights 0 -> {_zero}, shipped weights -> {_s_base}")
+
+# The same honesty at decision level: momentum_positive must not be true by
+# default any more, and a real window must show up in the decision's own flags.
+# A falling coin: price_5m (0.0000125) and price_1m (0.0000108) both ABOVE the
+# current price (0.0000100) => -20.0% over 5m and -7.4% over 1m once derived.
+_FALL = {"launchpad": "pump", "launchpad_platform": "Pump.fun", "launchpad_status": 1,
+         "launchpad_progress": 0.35, "usd_market_cap": 62000, "market_cap": 62000,
+         "liquidity": 18000, "holder_count": 900,
+         "price": {"price": "0.0000100", "price_1m": "0.0000108", "price_5m": "0.0000125",
+                   "buys_24h": 400, "sells_24h": 180, "volume_24h": "120000"}}
+_POOLW = {"address": "CurveATA" + "1" * 36, "amount_percentage": 0.62, "addr_type": 2,
+          "tags": ["pool"]}
+
+
+def _hw(addr, pct):
+    return {"address": addr, "amount_percentage": pct, "addr_type": 0, "tags": [],
+            "maker_token_tags": [], "sell_amount_percentage": 0.0, "unrealized_pnl": 0.1,
+            "buy_tx_count_cur": 2, "sell_tx_count_cur": 1, "start_holding_at": 1700000000}
+
+
+# An earlier section unsets GMGN_API_KEY on purpose (to prove the loud failure);
+# put it back or this pipeline would judge an empty payload.
+os.environ["GMGN_API_KEY"] = "test-key-not-real"
+os.environ["GMGN_MOCK_STATE"] = json.dumps(
+    {"token_info": _FALL, "holders": [_POOLW, _hw("W1" * 20, 0.06), _hw("W2" * 20, 0.04)]})
+gmgn._CACHE.clear()
+_fall_mint = "Falling" + "x" * 40
+_dec = analyze.run_pipeline(_fall_mint)
+_dec = _dec if isinstance(_dec, dict) else {}
+_mom = ((_dec.get("axis_scores") or {}).get("momentum") or {})
+_det = (_mom.get("detail") or {})
+_feat = (_dec.get("features") or {})
+ok(_det.get("pc5m") is not None and float(_det["pc5m"]) < 0,
+   "the decision carries a REAL negative 5m change (the price_5m level sits above "
+   "the current price), not a defaulted 0.0", str(_det.get("pc5m")))
+ok(_det.get("windows_scored") == ["1m", "5m"],
+   "and both of the owner's windows were scored", str(_det.get("windows_scored")))
+ok(float(_det.get("pc1h") or 0) > 0 and _mom.get("score", 100) < 50,
+   "up +68% on the HOUR yet falling now => below neutral. The old 1h-weighted "
+   "axis called exactly this coin 'momentum' (and could not even see it: 1h read "
+   "0.0 for everything)", f"1h={_det.get('pc1h')} score={_mom.get('score')}")
+ok(_feat.get("momentum_positive") is False,
+   "momentum_positive is False for a falling coin - it used to be True for every "
+   "coin ever scanned, because 0 >= 0", str(_feat.get("momentum_positive")))
+
+# The mirror image, so this is not just "everything scores low now".
+_RISE = dict(_FALL)
+_RISE["price"] = dict(_FALL["price"], price="0.0000125", price_1m="0.0000118",
+                      price_5m="0.0000100")
+os.environ["GMGN_MOCK_STATE"] = json.dumps(
+    {"token_info": _RISE, "holders": [_POOLW, _hw("W1" * 20, 0.06), _hw("W2" * 20, 0.04)]})
+gmgn._CACHE.clear()
+_dec2 = analyze.run_pipeline("Rising" + "x" * 40) or {}
+_mom2 = ((_dec2.get("axis_scores") or {}).get("momentum") or {})
+ok(_mom2.get("score", 0) > _mom.get("score", 0)
+   and (_dec2.get("features") or {}).get("momentum_positive") is True,
+   "and a coin rising through both windows scores higher, with momentum_positive "
+   "True - the axis discriminates instead of returning a constant",
+   f"rising={_mom2.get('score')} falling={_mom.get('score')}")
+
+os.environ["GMGN_MOCK_STATE"] = "{}"
+gmgn._CACHE.clear()
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+
+# ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)
 for n in NOTICES:
     print(f"  NOTE  {n}")

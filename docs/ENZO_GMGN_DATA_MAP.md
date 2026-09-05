@@ -47,14 +47,41 @@
 | `volume_24h` / `volume` | `volume_24h_usd` | بوابات (min_volume) |
 | `holder_count` / `holders` | `holder_count` | بوابات (min_holders) |
 
-### 1b. تغيّر السعر (momentum)
-| الحقل | مخرجات | استخدام |
+### 1b. تغيّر السعر (momentum) — ثلاث تهجئات، وكانت كلها تُقرأ خطأ
+
+**الحقول الحقيقية في v1.6.1 (ثلاثة أجيال من الحمولة، كلها موجودة):**
+
+| التهجئة | أين تظهر | مثال |
 |---|---|---|
-| `price_change_percent1h` / `price_1h` | `price_change_1h` | محور momentum |
-| `price_change_percent5m` / `price_5m` | `price_change_5m` | محور momentum |
-| `price_change_percent24h` / `price_24h` | `price_change_24h` | سياق عام |
-| `buys` / `sells` / `swaps` | `buys` / `sells` | buy_pressure + الزخم |
-| `hot_level` | `hot_level` | momentum boost |
+| مسطّحة بلا شريط سفلي | عناصر القوائم (`market search`/`trenches`/`trending`) | `price_change_percent1m`, `price_change_percent5m`, `price_change_percent1h` |
+| مسطّحة تحت `price` | بعض أجيال `token info` | `price.price_change_percent1h` |
+| **مستويات** لا نِسَب | `token info` v1.6 (كائن `price`) | `price.price` (الآن) و`price.price_1m` / `price_5m` / `price_1h` / `price_6h` / `price_24h` (السعر قبل تلك النافذة) |
+
+`gmgn._price_change_pct(info, key)` يجرّب التهجئات الثلاث بالترتيب، وعند غياب
+حقل النسبة **يشتقّها من المستويات**: `(price.price / price.price_5m − 1) × 100`.
+ويعيد `None` حين لا يمكن القياس — **لا `0.0` أبداً** (الصفر ادّعاء أن السعر لم
+يتحرّك، وخلطه بالمجهول هو ما أخفى العطب).
+
+| المخرَج في `signals` | المصدر | الاستخدام |
+|---|---|---|
+| `price_change_1m` | التهجئات أعلاه / مشتقّ من `price_1m` | **محتسب في محور momentum** (وزن `weight_1m`=8) |
+| `price_change_5m` | كذلك | **محتسب في المحور** (وزن `weight_5m`=3) |
+| `price_change_1h` | كذلك | سياق في الأعلام + محور `market_structure` — **لا يُحتسب في الزخم** |
+| `price_change_6h` / `price_change_24h` | كذلك | سياق فقط |
+| `buy_pressure_pct` | `buys`/`sells` (24h) أو أحجام الشراء/البيع | بوابة `min_buy_pressure` (30%) + 40% من نقاط المحور |
+| `buy_pressure_1m` / `buy_pressure_5m` | `price.buys_1m`/`sells_1m` و`_5m` | **معلوماتية في الأعلام** — لا تبوّب أي بوابة |
+| `buys` / `sells` / `sells_1m` / `sells_5m` / `buys_1m` / `buys_5m` | `_swap_count(info, side, window)` | buy_pressure + بوابة ≥10 عمليات بيع + الزخم |
+| `hot_level` | `hot_level` | +5 نقاط إن ≥3 |
+
+**العطب الذي كان هنا (وأُصلح 2026-09-05):** الدالة كانت تطلب `price_change_1h`
+و`change_1h` و`price_change_percent_1h` — **ولا واحدة منها تطابق أي تهجئة
+حقيقية** (الفرق شريط سفلي زائد، أو أن الحقل مستوى سعر لا نسبة). وكل مستهلك كان
+يفعل `or 0` ⇒ `price_change_1h = 0.0` و`price_change_5m = None` لكل عملة ⇒
+`base = clamp(50 + 0×5 + 0×1) = 50` **ثابتة** ⇒ المحور كان مقياس ضغط شراء فقط،
+و`momentum_positive = pc1h >= 0` صحيحة دائماً، وسطر المساندة
+«1h momentum +0.00%» يُضاف لكل عملة. نفس فصيلة عطل الشموع وعطل `data.pump`:
+البيانات كانت في الحمولة طوال الوقت، تحت اسم لم يطلبه أحد — والنسخة المحاكية
+كانت تُصدر الشكل الحقيقي فبقيت الاختبارات خضراء.
 
 ### 1c. حالة pump.fun (phase)
 | الحقل | مخرجات |

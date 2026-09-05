@@ -247,7 +247,8 @@ if not checks:
     # doctor --json may nest the list; fall back to the text output
     print(txt[-400:])
 for name in ("gmgn_cli", "gmgn_api_key", "gmgn_cli_dialect", "gmgn_discovery_categories",
-             "gmgn_rate_config", "universe_gates", "holder_concentration_cap"):
+             "gmgn_rate_config", "universe_gates", "holder_concentration_cap",
+             "momentum_windows"):
     ok(name in checks, f"doctor reports '{name}'", str(list(checks)[:6]) if not checks else "")
 ok((checks.get("gmgn_api_key") or {}).get("ok") is True, "API key present => ok")
 ok((checks.get("gmgn_cli_dialect") or {}).get("ok") is True and
@@ -262,6 +263,29 @@ ok((checks.get("holder_concentration_cap") or {}).get("ok") is True and
    "10.0%" in str((checks.get("holder_concentration_cap") or {}).get("detail")),
    "the holder cap is reported as configured",
    str((checks.get("holder_concentration_cap") or {}).get("detail"))[:120])
+
+# The momentum axis is what decides "is this coin moving up right now"; it scored
+# 1h/24h while the provider read neither (a constant 50). The owner moved it to
+# 1m/5m, so doctor has to echo the windows and weights that judge the money.
+_c = checks.get("momentum_windows") or {}
+ok(_c.get("ok") is True and "1m" in str(_c.get("detail")) and "5m" in str(_c.get("detail")),
+   "doctor names the momentum windows that are really scored",
+   str(_c.get("detail"))[:150])
+ok("x8" in str(_c.get("detail")) and "x3" in str(_c.get("detail")),
+   "with the owner's weights per +1% (8.0 / 3.0 from the shipped config)",
+   str(_c.get("detail"))[:150])
+ok("context only" in str(_c.get("detail")),
+   "and it says out loud that 1h/24h are context, not score", str(_c.get("detail"))[:160])
+
+rc, js, txt = run_ctl("doctor", "--json", state=STATE,
+                      config_mutator=lambda d: d.setdefault("market_analysis", {})
+                      .update(momentum={"weight_1m": "fast", "weight_5m": 3.0}))
+checks = {c["name"]: c for c in ((js or {}).get("checks") or [])} if js else {}
+_c = checks.get("momentum_windows") or {}
+ok(_c.get("ok") is False and "not numbers" in str(_c.get("detail")),
+   "a non-numeric weight is a failed check, not a silent fallback",
+   str(_c.get("detail"))[:150])
+ok(_c.get("critical") is False, "but it does not stop the bot (the axis has defaults)")
 
 # no API key -> a hard ✖ with the fix, and doctor exits non-zero
 rc, js, txt = run_ctl("doctor", "--json", api_key=None, state=STATE)

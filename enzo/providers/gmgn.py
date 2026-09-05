@@ -623,11 +623,57 @@ def _volume_24h(info):
 
 
 def _price_change_pct(info, key):
-    v = _nested_field(info, f"price_change_{key}", f"change_{key}", f"price_change_percent_{key}",
-                      f"token.price_change_{key}", f"token.change_{key}", f"base.price_change_{key}")
-    if v is not None:
-        return fnum(v)
-    return None
+    """Percent price change over a window (`1m`/`5m`/`1h`/`6h`/`24h`), or None.
+
+    gmgn-cli v1.6 carries these in THREE spellings depending on the endpoint, and
+    this function used to know only spellings that appear in none of them:
+
+      flat   : price_change_percent1m / ...5m / ...1h      (list & search items)
+      nested : price.price_change_percent1h                (token info, some gens)
+      levels : price.price_1m next to price.price          (token info v1.6)
+
+    It looked for `price_change_1h` and `price_change_percent_1h` (note the extra
+    underscore), found nothing, and every caller did `or 0` - so "unknown" became
+    "flat". Consequence, verified live: the momentum axis scored a CONSTANT 50
+    from price action (its whole contribution came from buy_pressure), and
+    `momentum_positive = pc1h >= 0` was True for every coin ever scanned, because
+    0 >= 0. Same family as the kline axis and the trenches `data.pump` key: the
+    data was in the payload the whole time, under a name nobody asked for.
+
+    None is preserved now - 0 means "the price did not move", which is a claim.
+    """
+    for spelling in (f"price_change_percent{key}", f"price_change_percent_{key}",
+                     f"price_change_{key}", f"change_{key}"):
+        v = _nested_field(info, spelling, f"price.{spelling}", f"token.{spelling}",
+                          f"base.{spelling}")
+        n = fnum(v)
+        if n is not None:
+            return n
+    # No percent field: derive it from the windowed price LEVELS, which is what
+    # the v1.6 `price` object actually carries (price.price = now, price.price_5m
+    # = the price five minutes ago).
+    now = fnum(_nested_field(info, "price.price", "price_usd", "usd_price"))
+    past = fnum(_nested_field(info, f"price.price_{key}", f"price_{key}"))
+    if now is None or past is None or float(past) == 0.0:
+        return None
+    try:
+        return round((float(now) / float(past) - 1.0) * 100.0, 4)
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _buy_pressure_window(info, window):
+    """Buy pressure over a short window (buys/(buys+sells)), or None if unknown.
+
+    Informational: the 24h figure hides a dump that started ninety seconds ago,
+    so the short window is published next to it. It does NOT gate anything - the
+    owner's `market_analysis.min_buy_pressure` still judges the 24h figure.
+    """
+    b = _swap_count(info, "buy", window)
+    s = _swap_count(info, "sell", window)
+    if b is None or s is None or (b + s) <= 0:
+        return None
+    return round(b / (b + s) * 100.0, 1)
 
 
 def _progress_pct(v):
@@ -1615,9 +1661,13 @@ def get_market_data(mint: str) -> dict:
             "market_cap_usd": mcap,
             "liquidity_usd": liq,
             "volume_24h_usd": vol,
-            "price_change_1h": _price_change_pct(merged, "1h") or 0.0,
-            "price_change_24h": _price_change_pct(merged, "24h") or 0.0,
+            # None (unknown) is kept as None: `or 0.0` used to turn a missing
+            # window into "the price is flat", which is a different claim.
+            "price_change_1m": _price_change_pct(merged, "1m"),
             "price_change_5m": _price_change_pct(merged, "5m"),
+            "price_change_1h": _price_change_pct(merged, "1h"),
+            "price_change_6h": _price_change_pct(merged, "6h"),
+            "price_change_24h": _price_change_pct(merged, "24h"),
             "buy_pressure_pct": _buy_pressure(merged),
             "progress_pct": prog,
             "smart_degen_count": fnum(_get(merged, "smart_degen_count")),
@@ -1628,6 +1678,11 @@ def get_market_data(mint: str) -> dict:
             "sells": _swap_count(merged, "sell"),
             "sells_1m": _swap_count(merged, "sell", "1m"),
             "sells_5m": _swap_count(merged, "sell", "5m"),
+            "buys_1m": _swap_count(merged, "buy", "1m"),
+            "buys_5m": _swap_count(merged, "buy", "5m"),
+            # short-window pressure, informational (see _buy_pressure_window)
+            "buy_pressure_1m": _buy_pressure_window(merged, "1m"),
+            "buy_pressure_5m": _buy_pressure_window(merged, "5m"),
             "buys_24h": _swap_count(merged, "buy"),
             "sells_24h": _swap_count(merged, "sell"),
             "sniper_count": fnum(_nested_field(merged, "sniper_count",

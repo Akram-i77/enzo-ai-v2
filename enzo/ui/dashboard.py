@@ -266,6 +266,22 @@ def generate() -> str:
     _dialect = _pst.get("addr_dialect") or {}
     gmgn_dialect_label = ", ".join(f"{k}={v}" for k, v in list(_dialect.items())[:4]) \
         or "not negotiated yet (no token call since start)"
+    # The Momentum card used to advertise "1h / 5m acceleration" - which was
+    # wrong twice: the axis scored 1h + 24h (5m only when present), and the
+    # provider could not read ANY of them, so the price contributed a constant.
+    # The card now names the windows that are really scored, read from config.
+    _momw = ((cfg.get("market_analysis") or {}).get("momentum") or {})
+    try:
+        _w1m = float(_momw.get("weight_1m", 8.0))
+        _w5m = float(_momw.get("weight_5m", 3.0))
+    except Exception:                                    # noqa: BLE001
+        _w1m, _w5m = 8.0, 3.0
+    momentum_card_label = (
+        f"Scored windows: 1m ({_w1m:g} pts per +1%) and 5m ({_w5m:g} pts per +1%) "
+        f"— 1h/24h are fetched and shown as context but NOT scored. Plus buy/sell "
+        f"pressure (40% of the axis), hot level and smart-trader inflows. A window "
+        f"that cannot be measured is reported n/a, never as 0.")
+
     _cats = _dst.get("categories_ok") or {}
     _cat_bits = []
     # A stage GMGN did not send is the one discovery fault that CANNOT be seen in
@@ -1082,7 +1098,7 @@ def generate() -> str:
             <span class="axis-name">🔥 Momentum & Volume Pressure</span>
             <span class="axis-score color-info">15% Weight</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-secondary);">1h / 5m acceleration, buy/sell pressure ratio, hot level indexing, smart trader inflows.</p>
+          <p style="font-size: 12px; color: var(--text-secondary);">{_esc(momentum_card_label)}</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
