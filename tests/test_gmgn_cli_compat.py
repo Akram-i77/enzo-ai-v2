@@ -26,6 +26,7 @@ Run:  python3 tests/test_gmgn_cli_compat.py
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -587,69 +588,89 @@ ok(not (payload or {}).get("positions"),
    "no ledger position was opened for any vetoed coin", str((payload or {}).get("positions")))
 
 # ─────────────────────────────────────────────────────────────────────────────
-section("9. a GMGN ban is read correctly, escalated, and never probed per coin")
+section("9. a GMGN ban is read from its REAL payload, and never probed or retried")
 # The operator's live symptom, verbatim in the dashboard's Activity stream:
 #   SNIPER_DATA_UNAVAILABLE: token traders failed: RateLimited:
 #   token/traders: still banned
-# Three defects produced it:
-#   (a) the reset timestamp was parsed with a HARDCODED Africa/Lagos zone by a
-#       pattern that dropped "Z", offsets, fractional seconds and zone names - so
-#       ENZO believed the ban ended up to an hour early (or fell back to a 30s
-#       guess) and retried straight into a live ban;
-#   (b) when the retry was still banned the code raised WITHOUT re-registering the
-#       ban, so the stored ban was already in the past and the NEXT candidate
-#       probed GMGN again - one probe per coin for the whole sweep, which is how a
-#       short ban became a long one;
-#   (c) a ban longer than the wait budget fell through to json.loads() of the
-#       error text and surfaced as a confusing "non-json output".
+# The cause is a RATE-LIMIT ban: the scan loop sent ~63 GMGN requests per cycle
+# (2 discovery + 5 per deep analysis x up to 12 analyses) and cycles ran
+# back-to-back, i.e. ~48 req/min forever. Three defects then made the ban worse:
+#   (a) ENZO looked for a "resets at <datetime>" string, but GMGN's documented
+#       payload carries a UNIX timestamp - {"code":429,"error":"RATE_LIMIT_BANNED",
+#       ...,"reset_at":1775184222} plus an X-RateLimit-Reset header - so the parse
+#       fell back to a 30s guess and retried 30s into a ~5-minute ban;
+#   (b) it waited and retried INSIDE the call, a third attempt after gmgn-cli had
+#       already retried once by itself; GMGN's docs say every request during the
+#       cooldown EXTENDS the ban by 5s ("Do not spam retries ... stop and tell the
+#       user the exact retry time instead of sending more requests");
+#   (c) when the retry was still banned it raised WITHOUT re-registering the ban,
+#       so the next candidate probed GMGN again - one probe per coin per sweep.
 reset_provider()
 set_state({})
 
 from datetime import datetime as _dt, timedelta as _td, timezone as _tz  # noqa: E402
 import enzo.core.db as _db  # noqa: E402
+import json as _json  # noqa: E402
+import time as _time  # noqa: E402
 
 
 def _txt(delta_sec, fmt):
     return fmt(_dt.now(_tz.utc) + _td(seconds=delta_sec))
 
 
-# A stamp with no seconds is truncated to the minute BY THE SENDER, so the
-# expectation is computed from that same truncated instant (±5s of test drift),
-# not from the untruncated +120s.
+# ── GMGN's documented ban payload: reset_at as a UNIX timestamp ──
+for _label, _delta in [("300s (the typical ban)", 300), ("120s", 120), ("20s", 20)]:
+    _payload = _json.dumps({"code": 429, "error": "RATE_LIMIT_BANNED",
+                            "message": "too many requests",
+                            "reset_at": int(_time.time() + _delta)})
+    _w, _h = gmgn._ban_reset_wait(_payload)
+    ok(abs(_w - _delta) <= 2 and _h == "reset_at",
+       f"reset_at read from the real 429 body ({_label})", f"{_w:.0f}s / {_h}")
+
+_w, _h = gmgn._ban_reset_wait(
+    "X-RateLimit-Reset: %d" % int(_time.time() + 180))
+ok(abs(_w - 180) <= 2 and _h == "reset_at", "the X-RateLimit-Reset header is read too",
+   f"{_w:.0f}s / {_h}")
+_w, _h = gmgn._ban_reset_wait(
+    _json.dumps({"code": 429, "error": "RATE_LIMIT_BANNED",
+                 "reset_at": int((_time.time() + 90) * 1000)}))
+ok(abs(_w - 90) <= 2, "a millisecond reset_at is not mistaken for the year 55000",
+   f"{_w:.0f}s")
+_w, _h = gmgn._ban_reset_wait(_json.dumps({"code": 429, "error": "RATE_LIMIT_BANNED",
+                                           "reset_at": 4102444800}))  # 2100
+ok(abs(_w - gmgn.BAN_MAX_WAIT) < 1.0, "an absurd reset_at is clamped to 6h, not believed",
+   f"{_w:.0f}s")
+
+# ── legacy human-readable stamps still work (second choice) ──
 _minute = _dt.now(_tz.utc).replace(second=0, microsecond=0) + _td(minutes=2)
 _ban_cases = [
-    ("…T18:30:00.000Z", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")), 120, "offset", 3),
-    ("…+00:00", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S+00:00")), 120, "offset", 3),
-    ("… 18:30:00 UTC", _txt(120, lambda d: d.strftime("%Y-%m-%d %H:%M:%S UTC")), 120, "offset", 3),
+    ("…T18:30:00.000Z", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")), 120, 3),
+    ("…+00:00", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S+00:00")), 120, 3),
+    ("… 18:30:00 UTC", _txt(120, lambda d: d.strftime("%Y-%m-%d %H:%M:%S UTC")), 120, 3),
     ("naive = machine local",
-     (_dt.now().astimezone() + _td(seconds=120)).strftime("%Y-%m-%dT%H:%M:%S"), 120,
-     "naive-local", 3),
+     (_dt.now().astimezone() + _td(seconds=120)).strftime("%Y-%m-%dT%H:%M:%S"), 120, 3),
     ("no seconds, Z", _minute.strftime("%Y-%m-%dT%H:%MZ"),
-     (_minute - _dt.now(_tz.utc)).total_seconds(), "offset", 5),
+     (_minute - _dt.now(_tz.utc)).total_seconds(), 5),
 ]
-for _label, _stamp, _want, _how, _tol in _ban_cases:
-    _w, _h = gmgn._ban_wait_seconds(
+for _label, _stamp, _want, _tol in _ban_cases:
+    _w, _h = gmgn._ban_reset_wait(
         f"[gmgn-cli] Error: 429 RATE_LIMIT — You are BANNED, resets at {_stamp}")
-    ok(abs(_w - _want) <= _tol and _h == _how,
-       f"ban reset read from '{_label}' => {_want:.0f}s", f"{_w:.0f}s / {_h}")
+    ok(abs(_w - _want) <= _tol and _h == "datetime",
+       f"a printed datetime still works as fallback: '{_label}'", f"{_w:.0f}s / {_h}")
 
-_w, _h = gmgn._ban_wait_seconds("BANNED, resets at 2030-01-01T00:00:00Z")
-ok(abs(_w - gmgn.BAN_MAX_WAIT) < 1.0, "an absurd reset is clamped to 6h, not believed",
-   f"{_w:.0f}s")
-_w, _h = gmgn._ban_wait_seconds("you are BANNED")
-ok(_w == gmgn.BAN_DEFAULT_WAIT and _h == "default",
-   "no timestamp falls back to 30s and reports 'default' (never a silent guess)",
-   f"{_w:.0f}s/{_h}")
-ok(gmgn._escalate_ban(120.0, "BANNED") >= 240.0,
-   "an unparsable reset DOUBLES the previous wait instead of dropping back to 30s",
-   f"{gmgn._escalate_ban(120.0, 'BANNED'):.0f}s")
+_w, _h = gmgn._ban_reset_wait("you are BANNED")
+ok(abs(_w - gmgn.BAN_FALLBACK_WAIT) < 1.0 and _h.startswith("documented"),
+   "no timestamp at all => GMGN's documented 5 minutes, NOT a 30s guess (which was "
+   "retried into a live ban)", f"{_w:.0f}s / {_h}")
 
-# ── the live path through the mock CLI: banned, waited, retried, still banned ──
-_ban_txt = ("[gmgn-cli] Error: 429 RATE_LIMIT - You are BANNED, resets at "
-            + _txt(2, lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")))
+# ── the live path through the mock CLI: banned => fail fast, ONE call only ──
+_ban_txt = _json.dumps({"code": 429, "error": "RATE_LIMIT_BANNED",
+                        "message": "plan rate limit exceeded",
+                        "reset_at": int(_time.time() + 120)})
 _db.rl_report_ban("gmgn", ban_duration_sec=0)              # start from no ban
 set_state({"fail": {"endpoint": "token/traders", "rc": 1, "err": _ban_txt}})
 _before = len(argv_log())
+_calls_before = gmgn.call_stats()["total"]
 _raised = None
 try:
     gmgn.token_traders_raw("BanTest11111111111111111111111111111111111")
@@ -658,13 +679,26 @@ except Exception as _e:                                   # noqa: BLE001
 ok(isinstance(_raised, gmgn.RateLimited), "a banned call raises RateLimited",
    str(type(_raised).__name__))
 _msg = str(_raised)
-ok("still banned" in _msg and "backing off" in _msg,
-   "and says it retried plus how long it now backs off", _msg[:150])
-ok(len(argv_log()) - _before == 2, "exactly two CLI calls: the call and ONE retry",
+# The message must carry the ban name AND a clock time + a countdown, because
+# "wait a while" is what the old code effectively said. The countdown is read
+# back out of the message and allowed 115-120s: reset_at was computed a moment
+# before formatting, so an exact 120 would be flaky.
+_m_in = re.search(r"\(in (\d+)s", _msg)
+ok("RATE_LIMIT_BANNED" in _msg and "retry at" in _msg and _m_in
+   and 115 <= int(_m_in.group(1)) <= 120,
+   "and it names the ban plus the EXACT retry time GMGN asked for",
+   _msg[:120] + f"  [countdown={_m_in.group(1) if _m_in else '?'}s]")
+ok(len(argv_log()) - _before == 1,
+   "exactly ONE CLI call: ENZO does not wait-and-retry a third time (gmgn-cli already "
+   "retried once, and each request during the cooldown adds 5s to the ban)",
    f"{len(argv_log()) - _before} call(s)")
 _left = gmgn.ban_status()
-ok(_left >= 55, "the ban is RE-REGISTERED after the failed retry (it used to be left "
-   "expired, so every following coin probed GMGN again)", f"{_left:.0f}s left")
+ok(110 <= _left <= 125, "the ban is registered for GMGN's own reset_at, not a guess",
+   f"{_left:.0f}s left")
+ok(gmgn.call_stats()["bans"] >= 1, "the ban is counted so the volume is visible",
+   _json.dumps(gmgn.call_stats()))
+ok(gmgn.call_stats()["total"] == _calls_before + 1, "and the request counter tracks it",
+   f"{gmgn.call_stats()['total']} total")
 
 _before = len(argv_log())
 _raised2 = None

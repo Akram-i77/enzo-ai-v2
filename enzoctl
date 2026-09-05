@@ -736,6 +736,40 @@ def cmd_doctor(args):
                 + (f" · BAN ACTIVE {int(_ban_left)}s left (./enzoctl unban)"
                    if _ban_left > 0 else " · no ban"), None, critical=False)
 
+            # ── The REQUEST VOLUME, which is what actually earns a ban. The
+            #    pacing knobs above only set the local ceiling (0.8 req/s = 48/min);
+            #    GMGN bans on the plan-tier quota, and one deep analysis costs ~5
+            #    requests. This row does the arithmetic for the operator instead of
+            #    leaving them to guess why the key keeps getting banned.
+            _pm = cfg.get("pump_monitor") or {}
+            _per_min = int(_pm.get("max_analyses_per_min", 0) or 0)
+            _gap_c = float(_pm.get("min_analysis_interval_sec", 0) or 0)
+            _cool = float(_g.get("reanalysis_cooldown_sec", 0) or 0)
+            # The caps that ACTUALLY apply are the tightest of two duplicate keys
+            # (discovery.* vs data_sources.gmgn.*); showing only one of them is how
+            # the config came to look tightened while nothing changed.
+            try:
+                from enzo.core import engine as _eng
+                _cand_cap, _depth = _eng.volume_caps(cfg)
+            except Exception:
+                _cand_cap, _depth = 40, int(_g.get("max_depth_analyses", 0) or 0)
+            _interval = float((cfg.get("engine") or {}).get("scan_interval_sec") or 60.0)
+            _per_cycle = min(_per_min, _depth) if _per_min > 0 else _depth
+            _ceil = _per_cycle * 5 + 2 * max(1.0, 60.0 / max(1.0, _interval))
+            _ok_budget = _per_min > 0 and _cool > 0 and _ceil <= 35.0
+            _st = _gmgn.call_stats()
+            add("gmgn_request_budget", _ok_budget,
+                f"~{_ceil:.0f} requests/min ceiling ({_per_cycle} analyses/cycle × ~5 + "
+                f"discovery, interval {_interval:.0f}s) · max_analyses_per_min {_per_min} · "
+                f"min_analysis_interval_sec {_gap_c:.0f} · reanalysis_cooldown_sec {_cool:.0f} · "
+                f"effective depth cap {_depth} · candidate cap {_cand_cap} · "
+                f"observed {_st.get('total', 0)} total / "
+                f"~{_st.get('per_min_avg', 0)} per min / {_st.get('bans', 0)} ban(s)",
+                ("a GMGN ban is a RATE-LIMIT ban: lower pump_monitor.max_analyses_per_min "
+                 "and data_sources.gmgn.max_depth_analyses, raise reanalysis_cooldown_sec "
+                 "and engine.scan_interval_sec, or upgrade the GMGN plan"
+                 if not _ok_budget else None), critical=False)
+
             # ── The money-critical filter settings, in one glance ────────────
             tu = cfg.get("token_universe") or {}
             pg = cfg.get("phase_gates") or {}
@@ -959,6 +993,7 @@ def cmd_logs(args):
 # ─────────────────────────────────────────────────────────────────────────────
 def cmd_scan(args):
     from enzo.core import engine
+    from enzo.providers import gmgn as gmgn_mod
     from enzo.ui import botctl
     if botctl.is_paused():
         return _set(args, {"scanned": False, "reason": "paused"},
@@ -973,10 +1008,30 @@ def cmd_scan(args):
 
     t0 = time.time()
     mints = [args.mint] if args.mint else None
-    results = engine.scan_once(mints)
+    # A single named mint, or an explicit --force, is a human request for THAT
+    # coin - it bypasses the re-analysis cooldown and the per-minute budget
+    # (which exist to stop the automatic loop from re-examining the same trending
+    # tokens every 60s and earning a RATE_LIMIT_BANNED). A forced sweep still
+    # counts every request, and the cost is printed below.
+    results = engine.scan_once(mints, force=bool(args.force) or bool(args.mint))
     dt = time.time() - t0
 
     lines = [bold(f"Scan complete in {dt:.1f}s — {len(results)} decision(s)"), ""]
+    try:
+        cs = engine.cycle_stats()
+        st = gmgn_mod.call_stats()
+        lines.append(dim(
+            f"  GMGN cost: {cs.get('gmgn_calls', 0)} request(s) this cycle for "
+            f"{cs.get('analysed', 0)} deep analysis/analyses "
+            f"({cs.get('skipped_cooldown', 0)} skipped by cooldown, "
+            f"{cs.get('skipped_budget', 0)} by the per-minute budget) — "
+            f"{st.get('total', 0)} since start, ~{st.get('per_min_avg', 0)}/min, "
+            f"{st.get('bans', 0)} ban(s)"))
+        lines.append(dim(
+            "  budget: pump_monitor.max_analyses_per_min, min_analysis_interval_sec, "
+            "data_sources.gmgn.max_depth_analyses / reanalysis_cooldown_sec"))
+    except Exception:
+        pass
     buys = 0
     for r in results:
         dec = r.get("decision")
@@ -1198,9 +1253,15 @@ def cmd_unban(args):
             dim("   It expires by itself. Clearing it early means the next call may"),
             dim("   be rejected again and GMGN may re-ban for longer."),
             "",
-            dim("   If bans keep coming back, slow the pacing down instead:"),
-            dim("     data_sources.gmgn.requests_per_sec  (now "
-                f"{(_gmgn._rate_per_sec())}) / request_gap_ms"),
+            dim("   If bans keep coming back, cut the VOLUME - a ban is a rate-limit"),
+            dim("   ban, and every request during it adds 5 more seconds:"),
+            dim("     pump_monitor.max_analyses_per_min          (~5 requests each)"),
+            dim("     data_sources.gmgn.max_depth_analyses"),
+            dim("     data_sources.gmgn.reanalysis_cooldown_sec  (skip re-examining"),
+            dim("                                                rejected coins)"),
+            dim("     engine.scan_interval_sec                   (cycle spacing)"),
+            dim(f"     data_sources.gmgn.requests_per_sec  (now {_gmgn._rate_per_sec()})"),
+            dim("   ./enzoctl doctor -> gmgn_request_budget shows the arithmetic."),
             "",
             yellow("   Re-run with --confirm to clear:  ./enzoctl unban --confirm"),
         ], 1)
@@ -1559,7 +1620,9 @@ def build_parser():
     sp = add("scan", cmd_scan, "run one scan cycle now")
     sp.add_argument("mint", nargs="?")
     sp.add_argument("--force", action="store_true",
-                    help="scan even while the engine is running")
+                    help="scan even while the engine is running, and ignore the "
+                         "per-minute budget / re-analysis cooldown for this cycle "
+                         "(each analysis costs ~5 GMGN requests — bans are rate-limit bans)")
 
     add("pause", cmd_pause, "pause trading (exits still monitored)")
     add("resume", cmd_resume, "resume trading")

@@ -37,7 +37,7 @@ bash bootstrap.sh      # 1. ثبّت المتطلبات وتحقق
 ./enzoctl positions     # المراكز المفتوحة + آخر الصفقات
 ./enzoctl wallet        # الأرصدة الحقيقية + رأس المال القابل للنشر
 ./enzoctl logs -f       # متابعة السجل حيّاً
-./enzoctl scan --force  # دورة فحص إضافية الآن
+./enzoctl scan --force  # دورة فحص إضافية الآن (تتجاوز ميزانية الطلبات — وتطبع تكلفتها)
 ./enzoctl unban         # إن حظرت GMGN المفتاح: كم بقي، ومسحها بـ --confirm
 ./enzoctl probe <MINT>  # ماذا ترى البوابات في عملة واحدة، حيّاً:
                         #   الهوية والطور وأول 8 محافظ والرسوم وتركّز المحافظ
@@ -289,6 +289,33 @@ rug_protection:
 
 ---
 
+## ميزانية طلبات GMGN / GMGN request budget
+
+الحظر من GMGN هو **حظر معدل طلبات** (`RATE_LIMIT_BANNED`)، وكل طلب أثناء فترة
+الحظر **يمدّها 5 ثوانٍ** (وثائق GMGN نفسها). لذلك الحماية الحقيقية هي إرسال
+طلبات أقلّ، لا إعادة المحاولة:
+
+| المفتاح | القيمة | المعنى |
+|---|---|---|
+| `pump_monitor.max_analyses_per_min` | 6 | سقف التحليل العميق في الدقيقة (~5 طلبات لكل تحليل) |
+| `pump_monitor.min_analysis_interval_sec` | 45 | أقلّ فاصل بين فحصين للعملة نفسها |
+| `data_sources.gmgn.max_depth_analyses` | 6 | كم عملة تُفحص بعمق في الدورة |
+| `discovery.max_depth_tokens_per_cycle` | 6 | السقف الآخر نفسه — **الأضيق هو الذي يُطبَّق** |
+| `data_sources.gmgn.reanalysis_cooldown_sec` | 900 | عملة نتيجتها **نهائية** (`IGNORE`/`NOT_TRADABLE`): لا تُفحص قبل 15 دقيقة. أما `WAIT` فتبقى قابلة للفحص بعد 45 ثانية حتى لا تضيع فرصة |
+| `data_sources.gmgn.max_candidates_per_scan` | 40 | كم مرشّحاً يُنظر فيه أصلاً |
+| `engine.scan_interval_sec` | 60 | التباعد بين الدورات (دورة أطول منه = بثّ متواصل) |
+| `data_sources.gmgn.requests_per_sec` | 0.8 | الوتيرة المحلّية (لم تكن هي المشكلة) |
+
+أين ترى الحقيقة: صفّ **Requests** في بطاقة GMGN في اللوحة (كم طلباً منذ البدء،
+المعدّل في الدقيقة، تكلفة آخر دورة وكم مرشّحاً تجاوزته الميزانية)،
+و`./enzoctl doctor` → صفّ `gmgn_request_budget` (السقف المحسوب + السقوف الفعّالة)،
+و`./enzoctl scan` يطبع تكلفة الدورة في نهايتها.
+
+التحليل الكامل للحظر بالأرقام وما تغيّر ولماذا:
+[`docs/ENZO_GMGN_RATE_LIMIT.md`](docs/ENZO_GMGN_RATE_LIMIT.md).
+
+---
+
 ## الإعدادات / Configuration
 
 `config/enzo-config.yaml` هو **المصدر الوحيد للحقيقة** — 24 قسماً، مع تعليقات
@@ -394,17 +421,18 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-تسع عشرة حزمة، **735 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+عشرون حزمة، **797 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
 python3 tests/test_dashboard_e2e.py        # 124  اللوحة: خادم حي + نقر كل زر في DOM
-python3 tests/test_gmgn_cli_compat.py      #  95  توافق gmgn-cli v1.6.1 والمسار الكامل + الحظر
+python3 tests/test_gmgn_cli_compat.py      # 101  توافق gmgn-cli v1.6.1 والمسار الكامل + الحظر
 python3 tests/test_enzoctl_probe.py        #  61  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
 python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها
 python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
 python3 tests/test_min_trade_floor.py      #  51  min_trade_usd كأرضية لا كعتبة رفض
+python3 tests/test_rate_limit_budget.py    #  56  ميزانية طلبات GMGN: السقوف معدودة بنداءات CLI
 python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة ومنع NO_ROUTE
 python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف (فشل آمن + كتابة ذرّية)
 python3 tests/test_rug_layers.py           #  25  طبقات الرغّ 1 (نقض) + 3 (وقف مبكر) + 4 (قاطع)
@@ -452,4 +480,5 @@ echo "config/enzo-secrets.json" >> .gitignore
 وتفكيك MoonPay CLI الحقيقي) في:
 
 - [`docs/ENZO_FULL_DIAGNOSIS.md`](docs/ENZO_FULL_DIAGNOSIS.md) — كل الأسباب الجذرية بالأدلة
+- [`docs/ENZO_GMGN_RATE_LIMIT.md`](docs/ENZO_GMGN_RATE_LIMIT.md) — حظر GMGN: 63 طلباً لكل دورة بالأدلة، والعلاج
 - [`docs/OPENCLAW_DEPLOYMENT.md`](docs/OPENCLAW_DEPLOYMENT.md) — عقد التشغيل والمراقبة

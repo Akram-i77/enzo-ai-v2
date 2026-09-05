@@ -51,6 +51,24 @@ def beat(status: str = None, candidates: int = None, interval: float = None):
         ENGINE_HEARTBEAT["interval_sec"] = float(interval)
 
 
+def _gmgn_call_stats() -> dict:
+    """GMGN request volume since the process started. A ban is a RATE-LIMIT ban,
+    so the API exposes the load itself, not only its symptom."""
+    try:
+        return gmgn.call_stats() or {}
+    except Exception:
+        return {}
+
+
+def _gmgn_cycle_stats() -> dict:
+    """What the last scan cycle cost, and how much of it the budget skipped."""
+    try:
+        from enzo.core import engine
+        return engine.cycle_stats() or {}
+    except Exception:
+        return {}
+
+
 def _gmgn_discovery() -> dict:
     try:
         st = gmgn.discovery_status() or {}
@@ -214,7 +232,9 @@ def health_snapshot() -> dict:
             "stale": scan_stale,
         },
         "exit_monitor": {"running": monitor_running, "needed": has_open},
-        "gmgn": {"ban_remaining_sec": round(ban, 1), **_gmgn_discovery()},
+        "gmgn": {"ban_remaining_sec": round(ban, 1),
+                 "call_stats": _gmgn_call_stats(), "cycle_stats": _gmgn_cycle_stats(),
+                 **_gmgn_discovery()},
         "capital": {"usd": round(cap_usd, 2), "source": cap.get("source"),
                     "ok": cap_ok, "blocked": bool(cap.get("blocked")),
                     "age_sec": cap.get("age_sec"), "detail": cap.get("detail"),

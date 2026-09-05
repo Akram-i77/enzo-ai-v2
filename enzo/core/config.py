@@ -286,8 +286,19 @@ DEFAULTS = {
             # Server-side launchpad filter: trenches takes --launchpad-platform,
             # trending takes --platform. Empty string disables the filter.
             "launchpad_platform_filter": "Pump.fun",
+            # Volume caps, ENFORCED by the scan loop. They were in this file and
+            # read by NOTHING (test_config_wiring listed them as dead keys) while
+            # the engine burned ~60 GMGN requests per cycle, back-to-back, 24/7 -
+            # which is exactly how the key earned RATE_LIMIT_BANNED. Each deep
+            # analysis costs ~5 requests (info, security, holders, traders,
+            # created-tokens).
             "max_candidates_per_scan": 40,
-            "max_depth_analyses": 12,
+            "max_depth_analyses": 6,
+            # How long a coin that was examined and NOT bought stays out of the
+            # deep path. Without it the same trending tokens were re-analysed
+            # every 60 seconds forever - the single biggest request sink, and one
+            # GMGN's own docs call out as an anti-pattern.
+            "reanalysis_cooldown_sec": 900,
             "extra_discovery": True,
             "top_traders": True,
         },
@@ -333,19 +344,40 @@ DEFAULTS = {
     },
     "discovery": {
         "dedupe_window_minutes": 720,
+        # Now enforced (it was a dead key): caps how many discovered tokens are
+        # considered at all, together with data_sources.gmgn.max_candidates_per_scan
+        # (the tighter of the two wins).
         "max_tokens_per_scan": 40,
-        "max_depth_tokens_per_cycle": 12,
+        # The depth cap that ACTUALLY applied: engine.py used `discovery.… or
+        # data_sources.gmgn.max_depth_analyses`, so this key always won and
+        # tightening the other one changed nothing. The engine now takes the
+        # tightest of the two; keep them equal to avoid surprises. 12 analyses x
+        # ~5 GMGN requests = ~60 requests/cycle, which is what got the key banned.
+        "max_depth_tokens_per_cycle": 6,
     },
     "paper_trading": {
         "initial_capital": 10000.0,
         "slippage_tolerance": 0.5,
     },
+    # The autonomous loop's spacing. It used to live only as a code default (60),
+    # invisible in the config file - and it matters for rate limits: when a cycle
+    # takes longer than this, `sleep = max(1, interval - elapsed)` collapses to 1s
+    # and GMGN sees one uninterrupted request stream. Now it is a knob the owner
+    # can see and raise.
+    "engine": {
+        "scan_interval_sec": 60,
+    },
     "pump_monitor": {
         "interval_sec": 30,
         "max_candidates": 40,
         "min_initial_buy_sol": 1.0,
-        "min_analysis_interval_sec": 3,
-        "max_analyses_per_min": 15,
+        # The request budget. 15/min x ~5 requests was a 75 req/min ceiling that
+        # no code enforced; 6/min is ~30 req/min and, together with
+        # min_analysis_interval_sec and reanalysis_cooldown_sec, keeps the steady
+        # state near ~10 req/min. GMGN's ban is ~5 minutes and every request sent
+        # during it adds 5 more seconds, so the budget IS the protection.
+        "min_analysis_interval_sec": 45,
+        "max_analyses_per_min": 6,
     },
     "weighted_confidence": {
         "security": 30,

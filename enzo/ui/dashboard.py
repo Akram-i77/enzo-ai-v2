@@ -232,6 +232,26 @@ def generate() -> str:
     gmgn_ban_label = (f"ACTIVE — {int(gmgn_ban_rem)}s left · every GMGN call is "
                       f"refused until then" if gmgn_banned else
                       "none · calls are paced by the token bucket below")
+    # ── Request VOLUME. The ban is a rate-limit ban, so the page has to show how
+    #    much ENZO actually asks for: total since start, the recent per-minute
+    #    average, and what the last cycle cost (deep analyses x ~5 requests each,
+    #    plus how many candidates were skipped by the budget/cooldown). Without
+    #    this the operator can only see the symptom (BANNED), never the cause.
+    try:
+        _cst = gmgn.call_stats() or {}
+    except Exception:
+        _cst = {}
+    try:
+        from enzo.core import engine as _engine_mod
+        _cyc = _engine_mod.cycle_stats() or {}
+    except Exception:
+        _cyc = {}
+    gmgn_volume_label = (
+        f"{_cst.get('total', 0)} request(s) since start · ~{_cst.get('per_min_avg', 0)}/min avg"
+        f" · last cycle {_cyc.get('gmgn_calls', 0)} for {_cyc.get('analysed', 0)} analysis(es)"
+        f" (skipped: {_cyc.get('skipped_cooldown', 0)} cooldown, "
+        f"{_cyc.get('skipped_budget', 0)} budget)")
+    gmgn_volume_ok = float(_cst.get("per_min_avg") or 0.0) <= 35.0
     gmgn_key_ok = bool(_pst.get("api_key_present"))
     gmgn_last_err = str(_pst.get("last_error") or "")
     gmgn_last_ep = str(_pst.get("last_error_endpoint") or "")
@@ -1189,6 +1209,7 @@ def generate() -> str:
           <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
             <div><b>API key:</b> <span id="gmgnKeyStatus" class="{ 'color-pos' if gmgn_key_ok else 'color-neg' }">{ 'present' if gmgn_key_ok else 'MISSING — every call is refused' }</span></div>
             <div><b>Ban:</b> <span id="gmgnBanRemain" class="{ 'color-neg' if gmgn_banned else 'color-pos' }">{_esc(gmgn_ban_label)}</span></div>
+            <div><b>Requests:</b> <span id="gmgnVolume" class="{ 'color-neg' if not gmgn_volume_ok else '' }">{_esc(gmgn_volume_label)}</span></div>
             <div><b>CLI dialect:</b> <span id="gmgnDialect">{_esc(gmgn_dialect_label)}</span></div>
             <div><b>Discovery:</b> <span id="gmgnCats">{_esc(gmgn_cats_label)}</span></div>
             <div><b>Last sweep:</b> <span id="gmgnLastCount">{ 'no sweep yet' if gmgn_last_count is None else str(gmgn_last_count) + ' candidate(s)' }</span></div>

@@ -227,6 +227,51 @@ def _ban_wait_seconds(msg) -> tuple:
         return BAN_DEFAULT_WAIT, "default"
 
 
+# GMGN's documented ban payload (skills/gmgn-market/SKILL.md, "Rate Limit
+# Handling"): {"code":429,"error":"RATE_LIMIT_BANNED","message":"...",
+# "reset_at":1775184222} plus an X-RateLimit-Reset header - a UNIX TIMESTAMP,
+# typically ~5 minutes out. ENZO only ever looked for a "resets at <datetime>"
+# string, which that payload does not contain, so it fell back to a 30s guess and
+# retried 30s into a 5-minute ban. GMGN's docs are explicit that this is the
+# worst possible move: "repeated requests during the cooldown can extend the ban
+# by 5 seconds each time, up to 5 minutes" - so one wrong guess per candidate
+# turned a 5-minute ban into a rolling one that never ended.
+_RESET_AT_RE = re.compile(r"\"?reset_at\"?\s*[:=]\s*\"?(\d{9,13})")
+_HEADER_RESET_RE = re.compile(r"x-ratelimit-reset\W+(\d{9,13})", re.IGNORECASE)
+BAN_FALLBACK_WAIT = 300.0     # GMGN: a ban is "typically 5 minutes"
+
+
+def _unix_reset_wait(raw: str):
+    """Seconds until GMGN's own reset timestamp, or None if it gave none."""
+    txt = str(raw or "")
+    for pat in (_RESET_AT_RE, _HEADER_RESET_RE):
+        m = pat.search(txt)
+        if not m:
+            continue
+        try:
+            ts = float(m.group(1))
+        except Exception:
+            continue
+        if ts > 1e12:                      # milliseconds
+            ts /= 1000.0
+        wait = ts - time.time()
+        if wait > -30.0:                   # a just-passed reset still means "now"
+            return max(1.0, min(BAN_MAX_WAIT, wait)), "reset_at"
+    return None
+
+
+def _ban_reset_wait(raw: str) -> tuple:
+    """(seconds_to_wait, how): GMGN's reset_at first, then a printed datetime,
+    then the documented 5-minute default - never a 30s guess."""
+    got = _unix_reset_wait(raw)
+    if got:
+        return got
+    wait, how = _ban_wait_seconds(raw)
+    if how != "default":
+        return wait, "datetime"
+    return BAN_FALLBACK_WAIT, "documented-default(5min)"
+
+
 def _escalate_ban(previous_wait: float, raw: str) -> float:
     """Backoff to register after a retry that was STILL banned.
 
@@ -244,6 +289,35 @@ def _escalate_ban(previous_wait: float, raw: str) -> float:
 
 
 _GMGN_BIN_CACHE = {"bin": None, "resolved": False}
+
+# Real request volume, so the operator can see the load instead of guessing it:
+# the ban is a rate-limit ban, and the only way to stop it is to send less.
+_CALL_STATS = {"total": 0, "refused_by_limiter": 0, "bans": 0, "started": time.time(),
+               "window_start": time.time(), "window_calls": 0}
+_CALL_LOCK = threading.Lock()
+
+
+def _count_call(refused: bool = False):
+    with _CALL_LOCK:
+        now = time.time()
+        if now - _CALL_STATS["window_start"] >= 60.0:
+            _CALL_STATS["window_start"] = now
+            _CALL_STATS["window_calls"] = 0
+        if refused:
+            _CALL_STATS["refused_by_limiter"] += 1
+            return
+        _CALL_STATS["total"] += 1
+        _CALL_STATS["window_calls"] += 1
+
+
+def call_stats() -> dict:
+    """GMGN request volume: lifetime, last 60s, refusals and bans seen."""
+    with _CALL_LOCK:
+        st = dict(_CALL_STATS)
+    st["uptime_sec"] = round(time.time() - st["started"], 1)
+    st["per_min_avg"] = round(st["total"] / max(1.0, st["uptime_sec"] / 60.0), 1)
+    st["ban_remaining_sec"] = round(ban_status(), 1)
+    return st
 
 
 def resolve_gmgn_bin(cfg: dict = None) -> Optional[str]:
@@ -404,6 +478,7 @@ def _run(args, endpoint, timeout=40):
                              capacity=_burst_capacity(), min_gap_sec=_rl_min_gap(),
                              max_wait_sec=45.0)
     if not acquired:
+        _count_call(refused=True)
         raise RateLimited(f"{endpoint}: rate limited or banned")
 
     bin_path = resolve_gmgn_bin()
@@ -425,6 +500,7 @@ def _run(args, endpoint, timeout=40):
     cmd = [bin_path] + args
     t0 = time.time()
     try:
+        _count_call()
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env={**os.environ})
         ms = (time.time() - t0) * 1000
         out = (proc.stdout or "").strip()
@@ -433,46 +509,31 @@ def _run(args, endpoint, timeout=40):
             if "429" in out or "RATE_LIMIT" in out.upper() or "RATE_LIMIT" in err.upper():
                 if "BANNED" in out.upper() or "BANNED" in err.upper():
                     raw = f"{out} {err}".strip()
-                    wait, how = _ban_wait_seconds(raw)
+                    wait, how = _ban_reset_wait(raw)
                     db.rl_report_ban("gmgn", ban_duration_sec=wait)
-                    _LOGGER.warning(
-                        "GMGN reported a BAN on %s: waiting %.0fs (reset read as "
-                        "'%s' from: %s)", endpoint, wait, how, raw[:200])
-                    retried = False
-                    if wait > 0 and db.rl_acquire(
-                            "gmgn", tokens_needed=1.0, rate_per_sec=_rate_per_sec(),
-                            capacity=_burst_capacity(), min_gap_sec=_rl_min_gap(),
-                            max_wait_sec=wait + 5.0):
-                        retried = True
-                        proc = subprocess.run(cmd, capture_output=True, text=True,
-                                              timeout=timeout, env={**os.environ})
-                        out = (proc.stdout or "").strip()
-                        err = (proc.stderr or "").strip()
-                    if retried and proc.returncode != 0:
-                        retry_raw = f"{out} {err}".strip()
-                        still = ("BANNED" in retry_raw.upper()
-                                 and ("429" in retry_raw or "RATE_LIMIT" in retry_raw.upper()))
-                        # Register the ban AGAIN, escalated. Raising without this
-                        # left the stored ban in the past, so the next candidate
-                        # probed GMGN immediately and the ban never ended.
-                        backoff = _escalate_ban(wait, retry_raw)
-                        db.rl_report_ban("gmgn", ban_duration_sec=backoff)
-                        if still:
-                            raise RateLimited(
-                                f"{endpoint}: still banned after waiting {wait:.0f}s "
-                                f"and retrying — backing off {backoff:.0f}s before the "
-                                f"next GMGN call (reset text: {retry_raw[:110]})")
-                        # The retry died for a DIFFERENT reason: say so instead of
-                        # blaming the ban, or the real fault stays invisible.
-                        raise GMGNError(
-                            f"{endpoint}: rc={proc.returncode} on the post-ban retry "
-                            f"err={err[:200]}")
-                    if not retried:
-                        # Used to fall through and try to json.loads() the error
-                        # text, surfacing as "non-json output" instead of a ban.
-                        raise RateLimited(
-                            f"{endpoint}: banned, GMGN resets in ~{wait:.0f}s — not "
-                            f"retried (longer than the {wait + 5.0:.0f}s wait budget)")
+                    with _CALL_LOCK:
+                        _CALL_STATS["bans"] += 1
+                    retry_at = datetime.now().astimezone() + timedelta(seconds=wait)
+                    # STOP here. gmgn-cli already retried once by itself when the
+                    # cooldown was short (DEFAULT_RATE_LIMIT_AUTO_RETRY_MAX_WAIT_MS),
+                    # and its docs say: "If it still fails, stop and tell the user
+                    # the exact retry time instead of sending more requests",
+                    # because "repeated requests during the cooldown can extend the
+                    # ban by 5 seconds each time". ENZO used to wait and retry a
+                    # second time, and - when the reset could not be parsed - to
+                    # retry after a 30s guess, i.e. straight into a live ban.
+                    _LOGGER.error(
+                        "GMGN BAN on %s: no more requests until %s (in %.0fs, read "
+                        "from '%s'). Every request during the cooldown extends it "
+                        "by 5s. Raw: %s", endpoint, retry_at.strftime("%H:%M:%S"),
+                        wait, how, raw[:200])
+                    raise RateLimited(
+                        f"{endpoint}: RATE_LIMIT_BANNED by GMGN — retry at "
+                        f"{retry_at.strftime('%H:%M:%S')} (in {wait:.0f}s, from "
+                        f"{how}). No further requests will be sent until then; "
+                        f"each one would extend the ban by 5s. If bans keep "
+                        f"returning, lower max_analyses_per_min / "
+                        f"max_depth_analyses or raise requests_per_sec's gap.")
                 else:
                     raise RateLimited(f"{endpoint}: rate limited")
             else:

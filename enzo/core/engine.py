@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import signal
+import collections
 import time
 import threading
 from datetime import datetime, timezone
@@ -239,14 +240,164 @@ def scan_mint(mint: str, pump_card: dict = None) -> Optional[dict]:
         return {"decision": "ANALYSIS_ERROR", "mint_address": mint, "reason": str(e)}
 
 
-def scan_once(watchlist: List[str] = None) -> List[dict]:
+# ── GMGN request budget ──────────────────────────────────────────────────────
+# A ban from GMGN is a RATE-LIMIT ban, and its docs are explicit: every request
+# sent during the cooldown extends it by 5 seconds. So the only real cure is to
+# send fewer requests. Three knobs that were already in the shipped config were
+# never read by any code (they sat in test_config_wiring's frozen dead-key list):
+#   data_sources.gmgn.max_candidates_per_scan
+#   pump_monitor.max_analyses_per_min
+#   pump_monitor.min_analysis_interval_sec
+# They are wired here, plus one new knob for the biggest cut of all: a coin that
+# was just examined and rejected does not need to be examined again next cycle -
+# and "next cycle" used to be every 60 seconds, forever, for the same trending
+# coins (5 GMGN calls each).
+_ANALYSIS_TIMES = collections.deque()
+_LAST_CYCLE_STATS = {"analysed": 0, "skipped_cooldown": 0, "skipped_budget": 0,
+                     "candidates": 0, "candidates_after_cap": 0, "gmgn_calls": 0,
+                     "seconds": 0.0, "ts": 0.0}
+
+
+def duty_cycle_advice(elapsed: float, interval_sec: float) -> str:
+    """'' or a warning: a cycle longer than the interval means the engine never
+    idles, so `sleep_time = max(1.0, interval - elapsed)` collapses to 1s and GMGN
+    sees one uninterrupted request stream. That is the shape of the traffic that
+    earned RATE_LIMIT_BANNED, and it is invisible unless it is said out loud."""
+    try:
+        elapsed = float(elapsed or 0.0)
+        interval_sec = float(interval_sec or 0.0)
+    except Exception:
+        return ""
+    if elapsed <= interval_sec or interval_sec <= 0:
+        return ""
+    return (f"Scan cycle took {elapsed:.0f}s but the interval is {interval_sec:.0f}s — "
+            f"the engine never idles, so GMGN sees a continuous request stream "
+            f"({float(_LAST_CYCLE_STATS.get('gmgn_calls') or 0):.0f} requests last "
+            f"cycle, ~{float(_LAST_CYCLE_STATS.get('gmgn_calls') or 0) * 60.0 / max(1.0, elapsed):.0f}/min). "
+            f"Lower pump_monitor.max_analyses_per_min or "
+            f"data_sources.gmgn.max_depth_analyses, raise engine.scan_interval_sec, "
+            f"or upgrade the GMGN plan.")
+
+
+def cycle_stats() -> dict:
+    """What the last scan cycle actually cost, in GMGN requests."""
+    return dict(_LAST_CYCLE_STATS)
+
+
+def volume_caps(cfg: dict) -> tuple:
+    """(candidate_cap, depth_cap) actually in force — the TIGHTEST of the knobs
+    that configure the same thing.
+
+    Two pairs of keys control the same limits and used to disagree silently:
+      discovery.max_tokens_per_scan      vs data_sources.gmgn.max_candidates_per_scan
+      discovery.max_depth_tokens_per_cycle vs data_sources.gmgn.max_depth_analyses
+    The depth pair was resolved with `a or b`, so `discovery.max_depth_tokens_per_cycle`
+    (12) always won and lowering `max_depth_analyses` changed NOTHING - while the
+    log line still printed the winning 12 and the config looked tightened. Each
+    deep analysis costs ~5 GMGN requests, so that silent precedence is the
+    difference between ~30 and ~60 requests per cycle. Tightest wins, and the
+    effective number is what gets logged.
+    """
+    disc = (cfg or {}).get("discovery") or {}
+    g = ((cfg or {}).get("data_sources") or {}).get("gmgn") or {}
+
+    def _tightest(*vals, default):
+        got = []
+        for v in vals:
+            try:
+                v = int(v or 0)
+            except Exception:
+                v = 0
+            if v > 0:
+                got.append(v)
+        return min(got) if got else default
+
+    return (_tightest(disc.get("max_tokens_per_scan"), g.get("max_candidates_per_scan"),
+                      default=40),
+            _tightest(disc.get("max_depth_tokens_per_cycle"), g.get("max_depth_analyses"),
+                      default=12))
+
+
+def _budget_cfg(cfg: dict) -> tuple:
+    pm = cfg.get("pump_monitor") or {}
+    g = (cfg.get("data_sources") or {}).get("gmgn") or {}
+    return (int(pm.get("max_analyses_per_min", 6) or 0),
+            float(pm.get("min_analysis_interval_sec", 45) or 0),
+            float(g.get("reanalysis_cooldown_sec", 900) or 0))
+
+
+def _budget_left(per_min: int) -> int:
+    if per_min <= 0:
+        return 10 ** 9
+    now = time.time()
+    while _ANALYSIS_TIMES and now - _ANALYSIS_TIMES[0] > 60.0:
+        _ANALYSIS_TIMES.popleft()
+    return max(0, per_min - len(_ANALYSIS_TIMES))
+
+
+# Which outcomes are TERMINAL, i.e. worth keeping out of the deep path for the
+# whole reanalysis_cooldown_sec window. Deliberately narrow, because this decides
+# what a real-money bot is allowed to look at again:
+#   IGNORE        - DANGEROUS security status / rug fingerprint: it will not
+#                   become buyable in 15 minutes.
+#   NOT_TRADABLE  - failed a hard gate (universe/rug/holder concentration).
+# Everything else stays re-examinable after min_analysis_interval_sec only:
+#   WAIT          - confidence below threshold; this is exactly the coin that may
+#                   turn into a BUY two minutes later, and freezing it for 15
+#                   minutes would cost entries.
+#   BUY           - a position is open; the exit monitor owns it from here.
+#   DATA_ERROR / ANALYSIS_ERROR / unknown - a broken data source must not freeze a
+#                   coin (during a GMGN ban every coin would be frozen for 15 min).
+TERMINAL_DECISIONS = ("IGNORE", "NOT_TRADABLE")
+
+
+def _cooldown_left(mint: str, min_gap: float, cooldown: float) -> tuple:
+    """(seconds_left, reason) for re-examining this mint, from the shared cache
+    so it survives a restart (a fresh process must not re-burn the budget)."""
+    if min_gap <= 0 and cooldown <= 0:
+        return 0.0, ""
+    try:
+        val, age, _ttl = db.cache_get(f"enzoscan:{mint}")
+    except Exception:
+        return 0.0, ""
+    if age is None:
+        return 0.0, ""
+    decision = str((val or {}).get("decision") or "").upper()
+    # Both windows are evaluated and the BINDING (longer) one is reported: checking
+    # min_gap first used to hide the 900s freeze behind a 45s answer, so the log
+    # and the skip counter understated how long a rejected coin was out.
+    left_gap = (min_gap - age) if (min_gap > 0 and age < min_gap) else 0.0
+    left_cool = ((cooldown - age)
+                 if (cooldown > 0 and decision in TERMINAL_DECISIONS and age < cooldown)
+                 else 0.0)
+    if left_cool >= left_gap and left_cool > 0:
+        return left_cool, (f"reanalysis_cooldown_sec={cooldown:.0f}s after "
+                           f"a terminal {decision}")
+    if left_gap > 0:
+        return left_gap, f"min_analysis_interval_sec={min_gap:.0f}s"
+    return 0.0, ""
+
+
+def _remember_analysis(mint: str, res: dict) -> None:
+    """Stamp this mint only when the analysis actually produced a decision."""
+    if not res:
+        return
+    try:
+        db.cache_set(f"enzoscan:{mint}",
+                     {"decision": str((res or {}).get("decision") or ""),
+                      "ts": time.time()}, ttl=86400.0)
+    except Exception:
+        pass
+
+
+def scan_once(watchlist: List[str] = None, force: bool = False) -> List[dict]:
     """Execute a single discovery, ranking, depth-capped scan cycle.
 
     Serialized by SCAN_LOCK: the main loop, Telegram buttons and the web
     dashboard's POST /api/scan all funnel through here.
     """
     with SCAN_LOCK:
-        return _scan_once_unlocked(watchlist)
+        return _scan_once_unlocked(watchlist, force=force)
 
 
 def _rollback_position(decision: dict, cfg: dict, reason: str) -> None:
@@ -320,8 +471,13 @@ def _render_dashboard() -> None:
         _LOGGER.error("Dashboard render raised: %s", e)
 
 
-def _scan_once_unlocked(watchlist: List[str] = None) -> List[dict]:
-    """Lock-free core of scan_once — called under SCAN_LOCK."""
+def _scan_once_unlocked(watchlist: List[str] = None, force: bool = False) -> List[dict]:
+    """Lock-free core of scan_once — called under SCAN_LOCK.
+
+    `force` is the operator's `./enzoctl scan --force`: it bypasses the
+    re-analysis cooldown and the per-minute budget (an explicit human request),
+    but still counts every call so the volume stays visible.
+    """
     if botctl.is_paused():
         _LOGGER.info("ENZO is paused via botctl — skipping scan.")
         _heartbeat(status="paused")
@@ -393,6 +549,18 @@ def _scan_once_unlocked(watchlist: List[str] = None) -> List[dict]:
         _discovery_fault("gmgn", e)
 
     total_discovered = len(candidates)
+    # max_candidates_per_scan was configured (40) and read by nothing. It caps
+    # how many discovered tokens are even considered, which bounds the deep calls.
+    _max_cand, _depth_cap = volume_caps(cfg)
+    if _max_cand > 0 and len(candidates) > _max_cand:
+        _kept = dict(sorted(candidates.items(),
+                            key=lambda kv: float(kv[1].get("rank_score") or 0.0),
+                            reverse=True)[:_max_cand])
+        _LOGGER.info("candidate cap %d (tightest of discovery.max_tokens_per_scan and "
+                     "data_sources.gmgn.max_candidates_per_scan): keeping the top %d of %d",
+                     _max_cand, len(_kept), len(candidates))
+        candidates = _kept
+    _LAST_CYCLE_STATS["candidates_after_cap"] = len(candidates)
     _LOGGER.info(f"Discovered {total_discovered} pre-screened candidate tokens.")
 
     if not candidates:
@@ -424,25 +592,71 @@ def _scan_once_unlocked(watchlist: List[str] = None) -> List[dict]:
         return []
 
     # Depth limiting: sort by rank_score and take top N
-    disc_cfg = cfg.get("discovery", {}) or {}
-    gmgn_cfg = (cfg.get("data_sources", {}) or {}).get("gmgn", {})
-    max_depth = int(disc_cfg.get("max_depth_tokens_per_cycle") or gmgn_cfg.get("max_depth_analyses") or 12)
+    max_depth = _depth_cap
 
     sorted_candidates = sorted(candidates.values(), key=lambda c: c.get("rank_score", 0), reverse=True)
     top_candidates = sorted_candidates[:max_depth]
 
-    _LOGGER.info(f"Proceeding to deep 6-axis analysis on top {len(top_candidates)} / {total_discovered} candidates (depth cap: {max_depth}).")
+    _LOGGER.info(
+        "Proceeding to deep 6-axis analysis on top %d / %d candidates "
+        "(effective depth cap: %d = the tightest of discovery.max_depth_tokens_per_cycle "
+        "and data_sources.gmgn.max_depth_analyses; ~5 GMGN requests each).",
+        len(top_candidates), total_discovered, max_depth)
+
+    _per_min, _min_gap, _cooldown = _budget_cfg(cfg)
+    _calls_before = 0
+    try:
+        _calls_before = int((gmgn.call_stats() or {}).get("total") or 0)
+    except Exception:
+        _calls_before = 0
 
     results = []
+    analysed = skipped_cool = skipped_budget = 0
+    _skip_examples = []          # so the log can answer "why was X not scanned?"
+    _t_loop = time.time()
     for cand in top_candidates:
         if botctl.is_paused():
             break
         mint = cand["mint"]
         card = cand.get("card")
+        if not force:
+            left, why = _cooldown_left(mint, _min_gap, _cooldown)
+            if left > 0:
+                skipped_cool += 1
+                if len(_skip_examples) < 3:
+                    _skip_examples.append(f"{str(mint)[:8]}… {left:.0f}s left ({why})")
+                continue
+            if _budget_left(_per_min) <= 0:
+                skipped_budget += 1
+                _LOGGER.info(
+                    "max_analyses_per_min=%d reached — stopping this cycle with %d "
+                    "candidate(s) unexamined. Each deep analysis costs ~5 GMGN "
+                    "requests, and requests are what get the key banned.",
+                    _per_min, len(top_candidates) - analysed - skipped_cool)
+                break
         res = scan_mint(mint, pump_card=card)
+        analysed += 1
+        _ANALYSIS_TIMES.append(time.time())
+        _remember_analysis(mint, res)
         if res:
             results.append(res)
         time.sleep(1.0)  # Safe rate pacing between deep scans
+
+    try:
+        _calls_after = int((gmgn.call_stats() or {}).get("total") or 0)
+    except Exception:
+        _calls_after = _calls_before
+    _LAST_CYCLE_STATS.update({
+        "analysed": analysed, "skipped_cooldown": skipped_cool,
+        "skipped_budget": skipped_budget, "candidates": total_discovered,
+        "gmgn_calls": max(0, _calls_after - _calls_before),
+        "seconds": round(time.time() - _t_loop, 1), "ts": time.time()})
+    _LOGGER.info(
+        "Cycle cost: %d GMGN request(s) for %d deep analysis/analyses "
+        "(%d skipped by cooldown, %d by the per-minute budget) in %.0fs%s",
+        _LAST_CYCLE_STATS["gmgn_calls"], analysed, skipped_cool, skipped_budget,
+        _LAST_CYCLE_STATS["seconds"],
+        (" — e.g. " + "; ".join(_skip_examples)) if _skip_examples else "")
 
     _heartbeat(status="completed", candidates=total_discovered,
                interval=float((load_config().get("engine", {}) or {}).get("scan_interval_sec") or 60.0))
@@ -521,6 +735,9 @@ def run_loop(interval_sec: float = 60.0):
             except Exception:
                 pass
             elapsed = time.time() - t0
+            advice = duty_cycle_advice(elapsed, interval_sec)
+            if advice:
+                _LOGGER.warning("%s", advice)
             sleep_time = max(1.0, interval_sec - elapsed)
             # Sleep in small slices so SIGTERM is honoured promptly.
             deadline = time.time() + sleep_time

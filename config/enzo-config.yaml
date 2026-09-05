@@ -230,8 +230,10 @@ data_sources:
     # فلتر المنصة عند المصدر: trenches يقبل --launchpad-platform وtrending يقبل
     # --platform. اتركها فارغة "" لتعطيل الفلتر.
     launchpad_platform_filter: "Pump.fun"
-    max_candidates_per_scan: 40
-    max_depth_analyses: 12
+    max_candidates_per_scan: 40    # مطبَّق الآن في المحرك (كان رقماً في ملف فقط)
+    max_depth_analyses: 6          # 12 × ~5 طلبات = ~60 طلباً لكل دورة. 6 هو ما يتحمّله مفتاح عادي
+    reanalysis_cooldown_sec: 900   # نتيجة نهائية (IGNORE/NOT_TRADABLE) = لا فحص 15 دقيقة.
+                                 # أما WAIT فتُفحص بعد min_analysis_interval_sec حتى لا تضيع فرصة
     extra_discovery: true
     top_traders: true
   pumpdev:
@@ -268,17 +270,22 @@ data_sources:
       banned_penalty: 30
 discovery:
   dedupe_window_minutes: 720
-  max_tokens_per_scan: 40
-  max_depth_tokens_per_cycle: 12
+  max_tokens_per_scan: 40          # مطبَّق الآن (كان ميتاً) — الأضيق بينه وبين max_candidates_per_scan يفوز
+  max_depth_tokens_per_cycle: 6    # هذا هو السقف الذي كان يعمل فعلاً (12) ويتجاهل max_depth_analyses — صارا 6 معاً
 paper_trading:
   initial_capital: 10000.0
   slippage_tolerance: 0.5
+# فترة دورة الفحص التلقائية (بالثواني). كانت رقماً مخفياً في الكود (60).
+# مهمة جداً للحظر: إذا استغرقت الدورة أكثر من هذه الفترة فإن المحرك لا يتوقف
+# أبداً بين الدورات، فيرى GMGN سيل طلبات متواصلًا — وهذا سبب الحظر.
+engine:
+  scan_interval_sec: 60
 pump_monitor:
   interval_sec: 30
   max_candidates: 40
   min_initial_buy_sol: 1.0
-  min_analysis_interval_sec: 3
-  max_analyses_per_min: 15
+  min_analysis_interval_sec: 45  # مطبَّق الآن: أقل فاصل بين فحصين للعملة نفسها
+  max_analyses_per_min: 6        # مطبَّق الآن: ~30 طلباً/دقيقة كسقف بدل 75
 weighted_confidence:
   security: 30
   wallet_behavior: 20
