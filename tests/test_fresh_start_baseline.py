@@ -262,6 +262,43 @@ try:
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    section("11. نسخة بلا git: المراجعة من TRANSFER_REVISION.txt لا 'unknown'")
+    # The transfer package ships WITHOUT .git on purpose - a `git checkout` or
+    # `git pull` inside a fresh workspace could resurrect the old ledger and undo
+    # the fresh start. So `git rev-parse` finds nothing there, and doctor used to
+    # answer with a green "commit unknown": an unidentifiable build reported as
+    # healthy, which is precisely what remote diagnosis exists to prevent.
+    tmp = tempfile.mkdtemp(prefix="enzo-nogit-")
+    for sub in ("config", "data"):
+        os.makedirs(os.path.join(tmp, sub), exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "enzoctl"), os.path.join(tmp, "enzoctl"))
+    shutil.copy(os.path.join(ROOT, "config", "enzo-config.yaml"),
+                os.path.join(tmp, "config", "enzo-config.yaml"))
+    env = dict(os.environ, ENZO_HOME=tmp, PYTHONPATH=ROOT)
+    marker = os.path.join(tmp, "TRANSFER_REVISION.txt")
+
+    def revision_line():
+        proc = subprocess.run([sys.executable, "enzoctl", "doctor"], cwd=tmp,
+                              env=env, capture_output=True, text=True, timeout=300)
+        out = proc.stdout + proc.stderr
+        return "\n".join(l.strip() for l in out.splitlines()
+                          if "code_revision" in l or "cannot identify" in l)
+
+    try:
+        with open(marker, "w", encoding="utf-8") as fh:
+            fh.write("abc1234def5678\n")
+        line = revision_line()
+        check("المراجعة تُقرأ من TRANSFER_REVISION.txt بدل unknown",
+              "abc1234def56" in line and "TRANSFER_REVISION.txt" in line,
+              line[:150] or "لا سطر")
+        os.remove(marker)
+        line = revision_line()
+        check("وبلا المراجعة يعلن العجز بدل الأخضر الكاذب",
+              "cannot identify the running code" in line and "\u2714" not in line,
+              line[:150] or "لا سطر")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
 finally:
     os.environ.pop("ENZO_HOME", None)
 

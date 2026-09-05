@@ -25,15 +25,29 @@
 انسخ المجلد كاملاً كما هو، **باستثناء** ملفات الحالة التشغيلية (تُولَّد جديدة):
 
 ```
-data/enzo.db*          data/enzo-state.json*     data/enzo-cache.json
-data/enzo-audit.jsonl* data/enzo-learning.json   data/logs/*   data/run/*
+data/enzo.db*            data/enzo-state.json*    data/enzo-cache.json
+data/enzo-audit.jsonl*   data/enzo-learning.json  data/enzo-portfolio.json
+data/enzo-market-structure.json  data/enzo-panel.json  data/enzo-gmgn-ban.json
+data/enzo-dashboard.html data/logs/*   data/run/*
 config/enzo-control.json    (غيابه = غير موقوف، وهذا ما تريده عند البدء)
 __pycache__/  *.pyc  node_modules/
 ```
 
-النسخة المُجهَّزة في `enzo-transfer/enzo-ai-v2` مُنظَّفة هكذا مسبقاً، ومجلد
-`data/` فيها فارغ ⇒ **بدء نظيف**: قاعدة بيانات جديدة، ورأس المال يُقرأ من
-محفظتك الحقيقية عند أول دورة للمحرك.
+النسخة المُجهَّزة في `enzo-transfer/enzo-ai-v2` مُنظَّفة هكذا مسبقاً: `data/`
+فيها **فارغ تماماً** (مجلدا `logs/` و`run/` فقط) ⇒ **بدء نظيف**: قاعدة بيانات
+جديدة، ورأس المال يُقرأ من محفظتك الحقيقية عند أول دورة للمحرك.
+
+**فخّ انتبه له إن نسختَ يدوياً:** حذف `data/enzo.db` وحده **لا يكفي**. عند غياب
+قاعدة البيانات يستورد `db.py` الدفتر القديم من `data/enzo-portfolio.json`
+(`_migrate_from_json_if_needed`)، فتعود أرقامك السابقة كأن شيئاً لم يكن —
+وهذا ما حدث فعلاً في أول نسخة جُرّبت: أظهر `doctor` الأساس القديم رغم حذف
+قاعدة البيانات. لذلك يجب حذف **كل** ملفات الحالة في `data/`، لا قاعدة البيانات فقط.
+
+**لا تنسخ مجلد `.git`.** النسخة تُبنى من `git archive` (الملفات المتتبَّعة فقط)
+وتُكتب مراجعتها في `TRANSFER_REVISION.txt`. السبب: لو كان `.git` موجوداً لكان
+`data/enzo.db` متتبَّعاً، وأي `git checkout .` أو `git pull` في workspace الجديد
+سيُعيد الدفتر القديم ويلغي البدء النظيف. `doctor` يقرأ `TRANSFER_REVISION.txt`
+ويُظهر `commit <hash> (no git metadata here)`.
 
 ---
 
@@ -81,6 +95,7 @@ which gmgn-cli                    # أو ضع مساره الكامل في data_
 | `moonpay_cli` | مسار الأداة | لا تنفيذ لأي صفقة |
 | `capital` | `$X deployable (wallet)` | المحفظة غير مقروءة ⇒ **التحجيم محجوب** |
 | `ledger_baseline` | `wallet-anchored` | الأساس ما زال 10,000 الوهمية ⇒ `./enzoctl rebase --confirm` |
+| `code_revision` | `commit <hash>` (من `TRANSFER_REVISION.txt` في نسخة بلا git) | ⚠ `cannot identify the running code` ⇒ انسخ `TRANSFER_REVISION.txt` من المصدر |
 | `base_token_funding` | جزء من الرصيد قابل للإنفاق كـ SOL | كل المال USDC ⇒ كل شراء يُرفض |
 | `secrets_not_in_git` | (تحذير) | التوكن متتبَّع في git |
 | `process` | running after start | لم يبدأ |
@@ -108,8 +123,16 @@ which gmgn-cli                    # أو ضع مساره الكامل في data_
 ## 5) الاختبارات (اختياري لكن مُوصى به بعد النقل)
 
 ```bash
-for t in tests/test_*.py; do python3 "$t"; done    # 15 حزمة · 446 تحقّقاً
+for t in tests/test_*.py; do python3 "$t"; done    # 15 حزمة · 450 تحقّقاً
 ```
 
 كلها تعمل في صناديق `ENZO_HOME` معزولة: **لا تلمس** قاعدة بياناتك ولا أموالك.
 اختبار اللوحة يشغّل خادماً حقيقياً على منفذ حر وينقر كل زر داخل DOM.
+
+في نسخة النقل (بلا `.git`) يُظهر `test_executor` **44** بدل 48: التحقّقات
+الأربعة الباقية تقارن السلوك بالكود القديم المسترجَع من تاريخ git، وتُتخطّى
+تلقائياً عند غياب التاريخ. **صفر فشل** هو المطلوب في الحالتين.
+
+> اللوحة نفسها تحذّرك قبل أول تشغيل: إن رأيت لافتة «رأس المال المعروض
+> ($10,000) هو الرقم الافتراضي لا رصيدك الحقيقي» فمعناها أن الدفتر جديد ولم
+> تُقرأ المحفظة بعد — تختفي تلقائياً بعد أول دورة ناجحة للمحرك.

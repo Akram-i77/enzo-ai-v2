@@ -553,18 +553,46 @@ def cmd_doctor(args):
         _cwd = os.path.dirname(os.path.abspath(__file__))
         rev = _sp.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
                       text=True, timeout=5, cwd=_cwd)
-        rev = (rev.stdout or "").strip() or "unknown"
-        dirty = _sp.run(["git", "status", "--porcelain", "--",
-                         "enzo", "enzoctl", "enzo.py", "config"],
-                        capture_output=True, text=True, timeout=5, cwd=_cwd)
-        note = f"commit {rev}"
-        if (dirty.stdout or "").strip():
-            note += " (working tree has uncommitted source/config changes)"
-        add("code_revision", True, note, critical=False)
+        rev = (rev.stdout or "").strip()
+        if not rev:
+            # No git metadata: this is a COPIED workspace, not a clone (the
+            # transfer package deliberately ships without .git so that a
+            # `git checkout`/`git pull` can never resurrect an old ledger).
+            # Reporting a green "commit unknown" would defeat the purpose of
+            # this item - an unidentifiable build is exactly the failure mode
+            # remote diagnosis needs to see. The package carries the revision
+            # it was built from, so read that first.
+            marker = os.path.join(_cwd, "TRANSFER_REVISION.txt")
+            stamp = ""
+            if os.path.exists(marker):
+                try:
+                    with open(marker, encoding="utf-8") as fh:
+                        stamp = (fh.read().strip() or "")[:12]
+                except Exception:
+                    stamp = ""
+            if stamp:
+                add("code_revision", True,
+                    f"commit {stamp} (no git metadata here - read from "
+                    f"TRANSFER_REVISION.txt)", critical=False)
+            else:
+                add("code_revision", False,
+                    "cannot identify the running code: no git metadata and no "
+                    "TRANSFER_REVISION.txt, so a stale build would look identical "
+                    "to a current one (fix: copy TRANSFER_REVISION.txt from the "
+                    "source folder, or run `git log --oneline -1` there)",
+                    critical=False)
+        else:
+            dirty = _sp.run(["git", "status", "--porcelain", "--",
+                             "enzo", "enzoctl", "enzo.py", "config"],
+                            capture_output=True, text=True, timeout=5, cwd=_cwd)
+            note = f"commit {rev}"
+            if (dirty.stdout or "").strip():
+                note += " (working tree has uncommitted source/config changes)"
+            add("code_revision", True, note, critical=False)
     except Exception as e:
-        add("code_revision", True,
-            f"git unavailable here ({type(e).__name__}) - run: git log --oneline -1",
-            critical=False)
+        add("code_revision", False,
+            f"cannot identify the running code ({type(e).__name__}) - run: "
+            f"git log --oneline -1", critical=False)
 
     # 3c. Can the configured base token actually fund a trade? The single most
     # common real-money misconfiguration: wallet holds SOL while base_token is
