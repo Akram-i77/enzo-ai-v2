@@ -282,7 +282,17 @@ DEFAULTS = {
             # token list) - keeping them in the list burned a rate-limit slot and
             # logged a failure on every cycle.
             "discovery": ["trenches", "trending"],
-            "discovery_limit": 50,
+            # 30, not 50: the limit is per category, and every extra candidate is
+            # only ranking fodder - the deep path is capped at 6 analyses/cycle
+            # anyway. Smaller payloads answer faster and cost less of the plan
+            # quota (which is what earns RATE_LIMIT_BANNED).
+            "discovery_limit": 30,
+            # `market trending` REQUIRES --interval in gmgn-cli v1.6.1 (1m / 5m /
+            # 1h / 6h / 24h). It was never sent, so trending failed on every cycle
+            # and contributed nothing while still being listed as a source. 1m is
+            # the owner's choice: the tightest momentum window, i.e. the closest
+            # thing to fresh coins that `market rank` can give.
+            "trending_interval": "1m",
             # Server-side launchpad filter: trenches takes --launchpad-platform,
             # trending takes --platform. Empty string disables the filter.
             "launchpad_platform_filter": "Pump.fun",

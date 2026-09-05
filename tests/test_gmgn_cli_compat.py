@@ -146,6 +146,19 @@ def set_state(obj):
     os.environ["GMGN_MOCK_STATE"] = json.dumps(obj)
 
 
+def set_yaml(section, **kw):
+    """Patch any top-level config section in the sandbox YAML."""
+    path = os.environ["ENZO_CONFIG_PATH"]
+    with open(path, encoding="utf-8") as fh:
+        doc = yaml.safe_load(fh) or {}
+    sec = doc.get(section) or {}
+    sec.update(kw)
+    doc[section] = sec
+    with open(path, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(doc, fh, sort_keys=False, allow_unicode=True)
+    C._CFG_CACHE.update({"mtime": None, "size": None, "path": None, "cfg": None})
+
+
 def set_gmgn_cfg(**kw):
     """Patch data_sources.gmgn in the sandbox YAML and drop the cached config."""
     path = os.environ["ENZO_CONFIG_PATH"]
@@ -588,7 +601,7 @@ ok(not (payload or {}).get("positions"),
    "no ledger position was opened for any vetoed coin", str((payload or {}).get("positions")))
 
 # ─────────────────────────────────────────────────────────────────────────────
-section("9. a GMGN ban is read from its REAL payload, and never probed or retried")
+section("11. a GMGN ban is read from its REAL payload, and never probed or retried")
 # The operator's live symptom, verbatim in the dashboard's Activity stream:
 #   SNIPER_DATA_UNAVAILABLE: token traders failed: RateLimited:
 #   token/traders: still banned
@@ -718,8 +731,173 @@ ok(_rep.get("verdict") == "unknown" and "banned" in str(_rep.get("reason")).lowe
    str(_rep.get("reason"))[:100])
 
 set_state({})
-_db.rl_report_ban("gmgn", ban_duration_sec=0)
+# rl_report_ban(..., 0) only ever EXTENDS a ban (max(banned_until, new)) - it does
+# not clear it. Without rl_clear_ban the ban from this section leaks into every
+# later one and all discovery calls come back RateLimited.
+_db.rl_clear_ban("gmgn")
 reset_provider()
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("12. `market trending` gets the --interval it REQUIRES (it failed every cycle)")
+# gmgn-cli v1.6.1 declares TWO required options for `market trending`:
+#   .requiredOption("--chain <chain>")
+#   .requiredOption("--interval <interval>", "1m / 5m / 1h / 6h / 24h")
+# ENZO built ["market","trending","--chain",ch,"--limit",N,"--platform",...], so
+# commander aborted with "required option '--interval <interval>' not specified"
+# BEFORE any HTTP call. `trending` was listed in the config as a discovery source
+# and returned zero tokens on every cycle of the bot's life, while the only trace
+# was one warning line per cycle. 700+ checks stayed green because this mock did
+# not reproduce the requirement - it does now.
+reset_provider()
+# A DISTINCT trending token: the mock's default payload reuses one address for both
+# categories, and discovery de-duplicates by mint - so without this the trending
+# token would be attributed to trenches and the provenance check would prove
+# nothing.
+set_state({"trending": {"rank": [{
+    "address": "TrendFix333333333333333333333333333333333", "symbol": "TRD",
+    "launchpad_platform": "Pump.fun", "exchange": "pump_amm", "price": 0.000031,
+    "market_cap": 31000.0, "liquidity": 42000.0, "buys": 1500, "sells": 700,
+    "volume": 180000.0, "creator": "DevTrend333333333333333333333333333333333"}]}})
+_db.rl_clear_ban("gmgn")          # a leftover ban would refuse every call below
+set_gmgn_cfg(discovery=["trenches", "trending"], trending_interval="1m",
+             discovery_limit=30)
+items = gmgn.discover("sol")
+mk = [a for a in argv_log() if len(a) > 1 and a[0] == "market"]
+td_args = next((a for a in mk if a[1] == "trending"), [])
+ok("--interval" in td_args and td_args[td_args.index("--interval") + 1] == "1m",
+   "trending is called with --interval 1m (data_sources.gmgn.trending_interval)",
+   str(td_args))
+ok(td_args and td_args[td_args.index("--limit") + 1] == "30",
+   "and with discovery_limit=30 (was 50)", str(td_args))
+_cats = gmgn.discovery_status().get("categories_ok") or {}
+ok((_cats.get("trending") or {}).get("ok") is True,
+   "so the trending category now SUCCEEDS instead of failing every cycle",
+   str(_cats.get("trending")))
+ok(any(str(it.get("source")) == "trending" for it in items),
+   "and its tokens really reach the candidate list", str({it.get("source") for it in items}))
+
+# The mock must refuse exactly like the real CLI, or this bug can come back.
+_p = subprocess.run([shutil.which("gmgn-cli"), "market", "trending", "--chain", "sol",
+                     "--limit", "30", "--raw"], capture_output=True, text=True,
+                    env={**os.environ, "GMGN_MOCK_STATE": "{}"}, timeout=60)
+ok(_p.returncode != 0 and "required option '--interval <interval>' not specified"
+   in (_p.stderr or ""),
+   "the mock CLI now mirrors the real one: trending without --interval is an error "
+   "(this is the check that was missing)", (_p.stderr or "").strip()[:90])
+
+# An invalid interval must be refused HERE, with a readable reason, not sent.
+reset_provider()
+set_gmgn_cfg(discovery=["trending"], trending_interval="2m")
+_bad_items = gmgn.discover("sol")
+_cats2 = gmgn.discovery_status().get("categories_ok") or {}
+_td2 = _cats2.get("trending") or {}
+ok(_td2.get("ok") is False and "1m/5m/1h/6h/24h" in str(_td2.get("error")),
+   "an interval GMGN does not have is refused with the valid list named",
+   str(_td2.get("error"))[:120])
+ok(not [a for a in argv_log() if len(a) > 1 and a[1] == "trending"],
+   "and no CLI call is wasted on it", str(argv_log()[:2]))
+
+# Restore the shipped values for the sections that follow.
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+set_gmgn_cfg(discovery=["trenches", "trending"], trending_interval="1m",
+             discovery_limit=30)
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("13. `market kline` shapes: the candle axis was blind, then fatal")
+# gmgn-cli v1.6.1 documents kline as an OBJECT with a `list` array whose rows are
+# objects with STRING numbers and `time` in MILLISECONDS. kline() returned whatever
+# `data` happened to be, so:
+#   * against the real CLI it returned a dict -> every consumer saw len()==1 and
+#     gave up: the candle axis contributed NOTHING, silently;
+#   * against array rows (older builds, the bundled mock) it returned a list of
+#     LISTS -> market_structure's first `c.get("close")` raised AttributeError,
+#     which escaped axis -> analyze -> run_pipeline and turned the WHOLE decision
+#     into ANALYSIS_ERROR / hard_reject ['EXCEPTION']. It only fires from the
+#     SECOND scan of a mint (the first returns early on "insufficient_samples"),
+#     i.e. precisely the coins the engine looks at again - and the rejection looks
+#     like a data-source fault, not a code bug.
+from enzo.analyzers import market_structure as _ms  # noqa: E402
+from enzo.analyzers import analyze as _az  # noqa: E402
+
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+_KM = "KlineMint1111111111111111111111111111111111"
+
+# ── the documented shape ──
+_now = int(time.time())
+_kl = gmgn.kline(_KM, "5m", from_ts=_now - 1860, to_ts=_now)
+ok(isinstance(_kl, list) and len(_kl) == 5,
+   "the documented envelope {data:{list:[...]}} is unwrapped into a LIST of candles "
+   "(kline() used to return the dict itself)", f"{type(_kl).__name__} len={len(_kl)}")
+ok(all(isinstance(r, dict) for r in _kl), "every row is a dict, never an array",
+   str(_kl[:1]))
+_r0 = _kl[0] if _kl else {}
+ok(isinstance(_r0.get("close"), float) and isinstance(_r0.get("volume"), float),
+   "the API's STRING numbers are parsed into floats", str(_r0))
+ok(_r0.get("time") and _r0["time"] < 1e11,
+   "and `time` is converted from milliseconds to Unix seconds", str(_r0.get("time")))
+ok(not isinstance(_kl, dict), "kline() never returns a dict again", "")
+
+# A kline entry CACHED by the previous revision (raw dict / array rows) must not be
+# handed back as-is: the operator's live DB still holds such entries.
+gmgn._cache_set(f"kline:{_KM}:5m", {"list": [
+    {"time": (_now - 300) * 1000, "open": "0.0000080", "close": "0.0000088",
+     "high": "0.0000090", "low": "0.0000075", "volume": "1200000",
+     "amount": "5379110"},
+    {"time": (_now - 240) * 1000, "open": "0.0000081", "close": "0.0000089",
+     "high": "0.0000091", "low": "0.0000076", "volume": "1300000",
+     "amount": "5380110"}]}, ttl=120)
+_stale = gmgn.kline(_KM, "5m")
+ok(isinstance(_stale, list) and len(_stale) == 2
+   and all(isinstance(r, dict) and isinstance(r.get("close"), float) for r in _stale),
+   "a stale CACHE entry from the previous revision (raw {list:[...]}) is normalized "
+   "on the way out too", str(_stale[:1])[:120])
+gmgn._CACHE.pop(f"kline:{_KM}:5m", None)
+
+# ── the older array shape ──
+reset_provider()
+set_state({"kline_arrays": True})
+_kl2 = gmgn.kline(_KM, "5m", from_ts=_now - 1860, to_ts=_now)
+ok(isinstance(_kl2, list) and len(_kl2) == 5 and all(isinstance(r, dict) for r in _kl2),
+   "bare array rows [[ts,o,h,l,c,v],...] normalize to the SAME dict shape",
+   str(_kl2[:1]))
+ok(abs(float(_kl2[0].get("close") or 0) - float(_kl[0].get("close") or 0)) < 1e-9,
+   "and to the same close price as the documented shape",
+   f"{_kl2[0].get('close')} vs {_kl[0].get('close')}")
+
+# ── the axis is no longer blind ──
+set_state({})
+reset_provider()
+_kt = _ms._kline_volume_trend(_KM)
+ok(bool(_kt) and _kt.get("green_ratio") is not None and _kt.get("vol_trend") is not None,
+   "the candle axis now yields green_ratio / vol_trend (it was {} against the real CLI)",
+   str(_kt))
+
+# ── the regression that mattered: the SECOND look must not explode ──
+set_yaml("market_structure", min_sample_interval_sec=0)
+_ms.clear(_KM)
+reset_provider()
+_d1 = _az.run_pipeline(_KM)
+_d2 = _az.run_pipeline(_KM)      # series >= 2 -> reaches the candle axis
+ok(_d1.get("decision") != "ANALYSIS_ERROR",
+   "first look: a real decision", str(_d1.get("decision")))
+ok(_d2.get("decision") != "ANALYSIS_ERROR"
+   and "EXCEPTION" not in (_d2.get("hard_reject") or []),
+   "SECOND look at the same mint: still a real decision - it used to come back "
+   "ANALYSIS_ERROR / hard_reject ['EXCEPTION'] from an AttributeError in the candle "
+   "axis, i.e. the coin was rejected by a code bug",
+   f"{_d2.get('decision')} | {str(_d2.get('decision_reason'))[:70]}")
+_ms2 = ((_d2.get("axis_scores") or {}).get("market_structure") or {})
+ok(_ms2.get("available") is True and int((_ms2.get("detail") or {}).get("samples") or 0) >= 2,
+   "and the market-structure axis really ran on >=2 samples instead of falling back "
+   "to 'insufficient_samples'", str(_ms2.get("detail"))[:110])
+_ms.clear(_KM)
+set_yaml("market_structure", min_sample_interval_sec=60)
+reset_provider()
+set_state({})
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)

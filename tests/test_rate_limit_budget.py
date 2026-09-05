@@ -465,6 +465,28 @@ ok('id="gmgnVolume"' in html, "the dashboard shows a Requests row", "")
 ok("request(s) since start" in html, "with the lifetime count and per-minute average", "")
 ok("last cycle" in html, "and what the last cycle cost", "")
 
+# ── provenance: which source handed over each analysed coin ──
+# seed_candidates() replaced the trenches list only, so the mock's default
+# trending token (a distinct address) survives and is attributed to trending.
+set_cfg(gmgn_kw={"max_depth_analyses": 3, "reanalysis_cooldown_sec": 0,
+                 "trending_interval": "1m"},
+        pump_kw={"max_analyses_per_min": 100, "min_analysis_interval_sec": 0})
+clear_cooldowns()
+reset_calls()
+_prov = engine.scan_once()
+_prov_stats = engine.cycle_stats()
+ok(all("discovery_source" in r for r in (_prov or [])),
+   "every decision carries the discovery source that produced it "
+   "(gmgn_trenches / gmgn_trending / pumpdev / watchlist)",
+   str([r.get("discovery_source") for r in (_prov or [])][:4]))
+ok(isinstance(_prov_stats.get("sources"), dict) and sum(_prov_stats["sources"].values()) >= 1,
+   "and cycle_stats tallies the analysed coins per source", json.dumps(_prov_stats.get("sources")))
+_srcs = sorted({str(r.get("discovery_source")) for r in (_prov or [])})
+ok("gmgn_trending" in _srcs and "gmgn_trenches" in _srcs,
+   "a coin from `market trending` is attributed to trending and one from `market "
+   "trenches` to trenches - so 'the coins are bad' can be traced to a source",
+   str(_srcs))
+
 api = ""
 try:
     from enzo.ui import serve

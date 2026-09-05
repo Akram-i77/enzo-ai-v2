@@ -722,11 +722,24 @@ def cmd_doctor(args):
             _cats = _g.get("discovery") or []
             _valid = {"trenches", "trending", "hot-searches", "signal"}
             _bad = [c for c in _cats if c not in _valid]
-            add("gmgn_discovery_categories", not _bad,
-                (f"unknown categories {_bad} — gmgn-cli v1.6 only has {sorted(_valid)}; "
-                 f"smart money and KOL live under `track` and return a wallet's trades, "
-                 f"not a token list") if _bad else f"configured: {list(_cats)}",
-                "edit data_sources.gmgn.discovery in config/enzo-config.yaml",
+            # `market trending` REQUIRES --interval in v1.6.1; without it commander
+            # aborts before any HTTP call, so the category silently returned 0
+            # tokens on every cycle. Doctor shows the interval that will be sent,
+            # and refuses to call a configured one that GMGN does not have.
+            _iv = str(_g.get("trending_interval") or "")
+            _iv_ok = _iv in ("1m", "5m", "1h", "6h", "24h")
+            _need_iv = "trending" in _cats
+            add("gmgn_discovery_categories", not _bad and (_iv_ok or not _need_iv),
+                ((f"unknown categories {_bad} — gmgn-cli v1.6 only has {sorted(_valid)}; "
+                  f"smart money and KOL live under `track` and return a wallet's trades, "
+                  f"not a token list") if _bad else
+                 (f"trending_interval='{_iv}' is not one of 1m/5m/1h/6h/24h — "
+                  f"`market trending` would be refused" if (_need_iv and not _iv_ok) else
+                  f"configured: {list(_cats)}"
+                  + (f" · trending --interval {_iv}" if _need_iv else "")
+                  + f" · limit {_g.get('discovery_limit')}/category")),
+                "edit data_sources.gmgn.discovery / trending_interval in "
+                "config/enzo-config.yaml",
                 critical=False)
             _ban_left = float(_gmgn.ban_status() or 0.0)
             add("gmgn_rate_config", True,
@@ -1038,7 +1051,11 @@ def cmd_scan(args):
         sym = r.get("token_symbol", "?")
         conf = r.get("confidence_score", 0)
         colour = green if dec == "BUY" else (yellow if dec in ("WAIT", "NOT_TRADABLE") else dim)
-        lines.append(f"  {colour(f'{dec:<14s}')} {sym:<12s} conf={conf}")
+        # Where the coin came from: gmgn_trenches / gmgn_trending / pumpdev /
+        # watchlist. Without it "the coins are bad" cannot be traced to a source.
+        _src = str(r.get("discovery_source") or "")
+        lines.append(f"  {colour(f'{dec:<14s}')} {sym:<12s} conf={conf}"
+                     + (dim(f"  [{_src}]") if _src else ""))
         if dec == "BUY":
             buys += 1
         fr = r.get("failure_reason") or r.get("reason")

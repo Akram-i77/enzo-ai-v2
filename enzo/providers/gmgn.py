@@ -791,6 +791,17 @@ def discover(chain=None) -> list:
     # failure every single cycle - the "returns [] from this host" mystery in the
     # old audit was an unknown-command error, not a region block.
     VALID_CATEGORIES = {"trenches", "trending", "hot-searches", "signal"}
+    # `market trending` has TWO required options in gmgn-cli v1.6.1: --chain AND
+    # --interval ("Time interval: 1m / 5m / 1h / 6h / 24h"). ENZO sent only
+    # --chain, so commander aborted with
+    #   error: required option '--interval <interval>' not specified
+    # BEFORE any network call. The category was listed in the config as a discovery
+    # source and returned ZERO tokens on every cycle of the bot's life, while the
+    # failure surfaced only as one warning line per cycle. The interval is the
+    # owner's choice (data_sources.gmgn.trending_interval); an invalid value is
+    # refused HERE rather than sent to the CLI, so the reason is readable.
+    TRENDING_INTERVALS = ("1m", "5m", "1h", "6h", "24h")
+    trending_interval = str(gmgn_cfg.get("trending_interval") or "1m").strip()
     platform_filter = str(gmgn_cfg.get("launchpad_platform_filter") or "").strip()
     try:
         limit = max(1, min(int(gmgn_cfg.get("discovery_limit", 50)), 80))
@@ -807,8 +818,18 @@ def discover(chain=None) -> list:
             _DISCOVERY_STATUS["categories_ok"][cat] = {
                 "ok": False, "count": 0, "error": msg, "skipped": True}
             continue
+        if cat == "trending" and trending_interval not in TRENDING_INTERVALS:
+            msg = (f"data_sources.gmgn.trending_interval='{trending_interval}' is not one "
+                   f"of {'/'.join(TRENDING_INTERVALS)} — refusing to call `market "
+                   f"trending` with an interval GMGN would reject")
+            _LOGGER.error("GMGN discovery category skipped — %s", msg)
+            _DISCOVERY_STATUS["categories_ok"][cat] = {
+                "ok": False, "count": 0, "error": msg, "skipped": True}
+            continue
         try:
             args = ["market", cat, "--chain", ch, "--limit", str(limit)]
+            if cat == "trending":
+                args += ["--interval", trending_interval]
             if platform_filter:
                 # trenches calls it --launchpad-platform, trending --platform
                 args += ["--launchpad-platform" if cat == "trenches" else "--platform",
@@ -1358,7 +1379,11 @@ def kline(mint: str, resolution="1m", from_ts=None, to_ts=None) -> list:
     ckey = f"kline:{mint}:{resolution}"
     cached = _cache_get(ckey)
     if cached is not None:
-        return cached
+        # Re-normalize on the way out: the operator's DB can still hold a kline
+        # entry written by the previous revision (a raw {"list": [...]} dict, or a
+        # list of array rows), and handing that back would re-create the very
+        # crash this normalizer exists to prevent. _norm_kline is idempotent.
+        return _norm_kline(cached)
 
     try:
         cfg = load_config()
@@ -1369,11 +1394,74 @@ def kline(mint: str, resolution="1m", from_ts=None, to_ts=None) -> list:
         if to_ts:
             base += ["--to", str(int(to_ts))]
         res = _run_addr(base, "market/kline", mint)
-        data = res.get("data", []) if isinstance(res, dict) else (res if isinstance(res, list) else [])
+        data = _norm_kline(res)
         _cache_set(ckey, data, ttl=_CACHE_TTL["kline"])
         return data
     except Exception:
         return []
+
+
+# `market kline` shapes, per gmgn-cli v1.6.1's own bundled schema
+# (skills/gmgn-market/SKILL.md, "market kline Response Fields"): the payload is an
+# OBJECT with a `list` array, each row an object whose numbers are STRINGS and
+# whose `time` is Unix MILLISECONDS:
+#   {"code":0,"data":{"list":[{"time":1775184000000,"open":"0.0000081",
+#     "close":"0.0000088","high":"...","low":"...","volume":"1214",
+#     "amount":"5379110"}, ...]}}
+# Older builds / the bundled mock return bare ARRAY rows instead:
+#   [[ts, open, high, low, close, volume], ...]
+# kline() used to hand back whatever `data` was, so:
+#   * against the real CLI it returned a DICT ({"list": [...]}) and every consumer
+#     saw len() == 1 and quietly gave up - the candle axis was blind;
+#   * against array rows it returned a list of LISTS and the first `c.get("close")`
+#     raised AttributeError, which escaped market_structure.analyze -> analyze ->
+#     run_pipeline and turned the whole decision into ANALYSIS_ERROR/EXCEPTION.
+#     That only happens from the SECOND scan of a mint (the first returns early on
+#     "insufficient_samples"), i.e. exactly the coins the engine looks at again.
+# One normalizer, one shape out: a list of dicts with float values, time in seconds.
+_KLINE_ARRAY_ORDER = ("time", "open", "high", "low", "close", "volume")
+
+
+def _norm_kline(res) -> list:
+    """Normalize any `market kline` payload generation into [{time, open, high,
+    low, close, volume, amount}] with float values and `time` in Unix seconds."""
+    data = res
+    if isinstance(data, dict):
+        inner = data.get("data", data)
+        if isinstance(inner, dict):
+            # documented v1.6.1 envelope: {"list": [ {...}, ... ]}
+            for key in ("list", "kline", "candles", "items", "data"):
+                if isinstance(inner.get(key), list):
+                    inner = inner[key]
+                    break
+        data = inner
+    if not isinstance(data, list):
+        return []
+    out = []
+    for row in data:
+        try:
+            if isinstance(row, dict):
+                t = fnum(row.get("time") or row.get("ts") or row.get("timestamp"))
+                rec = {"time": t,
+                       "open": fnum(row.get("open")),
+                       "high": fnum(row.get("high")),
+                       "low": fnum(row.get("low")),
+                       "close": fnum(row.get("close")),
+                       "volume": fnum(row.get("volume")),
+                       "amount": fnum(row.get("amount"))}
+            elif isinstance(row, (list, tuple)):
+                rec = dict(zip(_KLINE_ARRAY_ORDER, [fnum(v) for v in list(row)[:6]]))
+                rec["amount"] = fnum(row[6]) if len(row) > 6 else None
+            else:
+                continue
+            if rec.get("time") and rec["time"] > 1e11:   # milliseconds -> seconds
+                rec["time"] = rec["time"] / 1000.0
+            if rec.get("close") is None and rec.get("open") is None:
+                continue                                  # not a candle
+            out.append(rec)
+        except Exception:
+            continue
+    return out
 
 
 def get_market_data(mint: str) -> dict:

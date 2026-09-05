@@ -255,7 +255,7 @@ def scan_mint(mint: str, pump_card: dict = None) -> Optional[dict]:
 _ANALYSIS_TIMES = collections.deque()
 _LAST_CYCLE_STATS = {"analysed": 0, "skipped_cooldown": 0, "skipped_budget": 0,
                      "candidates": 0, "candidates_after_cap": 0, "gmgn_calls": 0,
-                     "seconds": 0.0, "ts": 0.0}
+                     "sources": {}, "seconds": 0.0, "ts": 0.0}
 
 
 def duty_cycle_advice(elapsed: float, interval_sec: float) -> str:
@@ -612,6 +612,7 @@ def _scan_once_unlocked(watchlist: List[str] = None, force: bool = False) -> Lis
 
     results = []
     analysed = skipped_cool = skipped_budget = 0
+    _source_tally = {}           # decisions per discovery source (provenance)
     _skip_examples = []          # so the log can answer "why was X not scanned?"
     _t_loop = time.time()
     for cand in top_candidates:
@@ -639,6 +640,15 @@ def _scan_once_unlocked(watchlist: List[str] = None, force: bool = False) -> Lis
         _ANALYSIS_TIMES.append(time.time())
         _remember_analysis(mint, res)
         if res:
+            # Provenance: which discovery source handed us this coin. The owner's
+            # complaint was "the coins are bad" with no way to tell trenches from
+            # trending from PumpDev, and `market trending` had silently returned
+            # nothing for the bot's whole life - both facts are invisible unless
+            # the source travels with the decision.
+            src = str(cand.get("source") or "unknown")
+            if isinstance(res, dict):
+                res["discovery_source"] = src
+            _source_tally[src] = _source_tally.get(src, 0) + 1
             results.append(res)
         time.sleep(1.0)  # Safe rate pacing between deep scans
 
@@ -647,10 +657,14 @@ def _scan_once_unlocked(watchlist: List[str] = None, force: bool = False) -> Lis
     except Exception:
         _calls_after = _calls_before
     _LAST_CYCLE_STATS.update({
+        "sources": dict(_source_tally),
         "analysed": analysed, "skipped_cooldown": skipped_cool,
         "skipped_budget": skipped_budget, "candidates": total_discovered,
         "gmgn_calls": max(0, _calls_after - _calls_before),
         "seconds": round(time.time() - _t_loop, 1), "ts": time.time()})
+    if _source_tally:
+        _LOGGER.info("Analysed by source: %s", ", ".join(
+            f"{k}={v}" for k, v in sorted(_source_tally.items())))
     _LOGGER.info(
         "Cycle cost: %d GMGN request(s) for %d deep analysis/analyses "
         "(%d skipped by cooldown, %d by the per-minute budget) in %.0fs%s",

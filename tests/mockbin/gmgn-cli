@@ -15,9 +15,13 @@ Reproduced faithfully from the published package (dist/ + skills/ docs):
   * GMGN_API_KEY is REQUIRED - the real tool dies before any request;
   * `token info|security|pool|holders|traders` take --chain/--address (--token is
     an "unknown option" / "required option not specified" error, exit 1);
-  * `market kline` takes --address and --resolution 30s/1m/5m/15m/1h/4h/1d;
+  * `market kline` takes --address and --resolution 30s/1m/5m/15m/1h/4h/1d and
+    returns the documented v1.6.1 shape {data: {list: [{time(ms), open:"str", ...}]}}
+    ({"kline_arrays": true} in the state gives the old bare-array rows);
   * `market trenches` returns {new_creation, near_completion, completed};
-  * `market trending` returns {data: {rank: [...]}};
+  * `market trending` REQUIRES --chain AND --interval (1m/5m/1h/6h/24h) - both are
+    `requiredOption` in the real v1.6.1, and commander aborts before any HTTP call
+    when one is missing - and returns {data: {rank: [...]}};
   * `token holders|traders` accept --limit/--order-by/--direction/--tag;
   * output is JSON on stdout (compact with --raw, pretty without), notices on
     stderr, and errors are `[gmgn-cli] Error: ...` with exit 1.
@@ -428,6 +432,15 @@ elif GROUP == "market":
         maybe_fail("market/trenches")
         emit({"code": 0, "data": default_trenches()}, opts.get("raw"))
     if CMD == "trending":
+        # The real v1.6.1 declares TWO required options for `market trending`:
+        #   .requiredOption("--chain <chain>")
+        #   .requiredOption("--interval <interval>", "1m / 5m / 1h / 6h / 24h")
+        # commander aborts on a missing one BEFORE any HTTP call, which is exactly
+        # how ENZO's trending category returned 0 tokens on every cycle of its life
+        # while 700+ checks stayed green: this mock did not reproduce the
+        # requirement. It does now, so dropping --interval again fails the suite.
+        if "--interval" not in opts:
+            commander_error("required option '--interval <interval>' not specified")
         maybe_fail("market/trending")
         emit({"code": 0, "data": default_trending()}, opts.get("raw"))
     if CMD == "kline":
@@ -435,12 +448,30 @@ elif GROUP == "market":
         res = str(opts.get("--resolution", "1m"))
         if res not in ("30s", "1m", "5m", "15m", "1h", "4h", "1d"):
             commander_error(f"invalid resolution '{res}'")
-        candles = [[NOW - 300 + i * 60, 0.0000080 + i * 0.0000001,
-                    0.0000090 + i * 0.0000001, 0.0000075, 0.0000088,
-                    1_200_000.0] for i in range(5)]
-        if isinstance(ST.get("kline"), list):
-            candles = ST["kline"]
-        emit({"code": 0, "data": candles}, opts.get("raw"))
+        # gmgn-cli v1.6.1's documented kline payload (skills/gmgn-market/SKILL.md):
+        # an OBJECT with a `list` array, each row an OBJECT whose numbers are
+        # STRINGS and whose `time` is Unix MILLISECONDS. Emitting bare array rows
+        # here - as this mock did - let ENZO's provider hand a list of LISTS to
+        # market_structure, where the first c.get("close") raised AttributeError and
+        # the whole decision became ANALYSIS_ERROR from the second scan of a mint on.
+        # Set {"kline_arrays": true} in the mock state to get the OLD array shape,
+        # so both generations stay covered.
+        rows = [{"time": (NOW - 300 + i * 60) * 1000,
+                 "open": "%.9f" % (0.0000080 + i * 0.0000001),
+                 "close": "%.9f" % (0.0000088 + i * 0.0000001),
+                 "high": "%.9f" % (0.0000090 + i * 0.0000001),
+                 "low": "%.9f" % 0.0000075,
+                 "volume": "%.2f" % (1_200_000.0 + i * 100_000.0),
+                 "amount": "%.1f" % (5_379_110.0 + i * 1000.0)} for i in range(5)]
+        if ST.get("kline_arrays"):
+            rows = [[NOW - 300 + i * 60, 0.0000080 + i * 0.0000001,
+                     0.0000090 + i * 0.0000001, 0.0000075,
+                     0.0000088 + i * 0.0000001, 1_200_000.0 + i * 100_000.0]
+                    for i in range(5)]
+        if isinstance(ST.get("kline"), (list, dict)):
+            payload = ST["kline"]
+            emit({"code": 0, "data": payload}, opts.get("raw"))
+        emit({"code": 0, "data": {"list": rows}}, opts.get("raw"))
     if CMD in ("signal", "hot-searches", "search"):
         maybe_fail(f"market/{CMD}")
         emit({"code": 0, "data": ST.get(CMD.replace("-", "_")) or []}, opts.get("raw"))

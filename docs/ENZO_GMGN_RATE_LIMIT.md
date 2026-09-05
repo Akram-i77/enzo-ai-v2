@@ -157,6 +157,8 @@ requires both files to agree):
 | `data_sources.gmgn.reanalysis_cooldown_sec` | — | **900** (new, terminal outcomes only) |
 | `engine.scan_interval_sec` | hidden code default 60 | **60, visible in the YAML** |
 | `data_sources.gmgn.requests_per_sec` | 0.8 | 0.8 (unchanged — pacing was never the problem) |
+| `data_sources.gmgn.discovery_limit` | 50 | **30** per category (the deep path is capped at 6 anyway) |
+| `data_sources.gmgn.trending_interval` | — | **"1m"** (new; `market trending` REQUIRES `--interval` — see below) |
 
 **Visibility**
 
@@ -196,6 +198,37 @@ removed is the half that contradicted the docs:
 | escalate by doubling an unparsable wait | unnecessary: the wait is now read correctly |
 | keep the ban registered / clearable / visible | **kept** (that part was right) |
 
+## 6b. A second rate-limit bug found while verifying the first
+
+`market trending` in gmgn-cli v1.6.1 declares **two** required options:
+
+```js
+.requiredOption("--chain <chain>", ...)
+.requiredOption("--interval <interval>", "Time interval: 1m / 5m / 1h / 6h / 24h")
+```
+
+ENZO built `["market", "trending", "--chain", ch, "--limit", N, "--platform", ...]`
+— no `--interval` — so commander aborted **before any HTTP call** with
+`error: required option '--interval <interval>' not specified`. Consequences:
+
+* the category was listed in the config as a discovery source and returned **zero
+  tokens on every cycle of the bot's life**, with one warning line as the only trace;
+* it still cost a subprocess spawn per cycle, and it made "why are the coins bad?"
+  unanswerable — the coins were never from `trending` at all;
+* 700+ checks stayed green because `tests/mockbin/gmgn-cli` did not reproduce the
+  requirement. It does now, so dropping the flag again fails the suite.
+
+Fixed: `--interval` is sent from the new knob
+`data_sources.gmgn.trending_interval` (owner's choice: **1m**, the tightest window),
+an invalid value is refused locally with the valid list named instead of being sent,
+and `discovery_limit` went 50 → 30 per category.
+
+Note the rate-limit accounting: enabling `trending` adds **no** new requests — the
+call was already being made every cycle and failing at argument parsing. What
+changed is that it now returns tokens, and each decision carries
+`discovery_source` (`gmgn_trenches` / `gmgn_trending` / `pumpdev` / `watchlist`) so
+a source can be judged on its own record.
+
 ## 7. If bans still come back
 
 In this order — each step is one number in `config/enzo-config.yaml`:
@@ -224,8 +257,8 @@ Check the result without guessing:
 ## 8. Tests
 
 ```bash
-python3 tests/test_rate_limit_budget.py   # 56 checks: the caps are real, counted in CLI calls
-python3 tests/test_gmgn_cli_compat.py     # 101 checks, incl. §9: reset_at parsing + fail fast
+python3 tests/test_rate_limit_budget.py   # 59 checks: the caps are real, counted in CLI calls
+python3 tests/test_gmgn_cli_compat.py     # 120 checks, incl. §11 reset_at/fail-fast, §12 --interval, §13 kline
 python3 tests/test_config_wiring.py       # 18 checks: no new dead keys, YAML == DEFAULTS
 ```
 
@@ -237,5 +270,5 @@ issues **zero** calls. It also pins the classification above (a `WAIT` coin is h
 only by the 45s floor, an `IGNORE` coin by the full 900s, a `DATA_ERROR` by neither)
 and the effective-cap rule (`volume_caps` returns the tightest of each pair).
 
-Full suite: **797 checks, 0 failures** across 20 suites (`bash` the list in the
+Full suite: **819 checks, 0 failures** across 20 suites (`bash` the list in the
 README, or run any file alone — no config, network or real wallet needed).

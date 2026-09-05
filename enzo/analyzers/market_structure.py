@@ -52,18 +52,31 @@ def _growth(a, b):
 
 
 def _kline_volume_trend(mint: str, candles: int = 6) -> dict:
+    """Candle-derived signals. MUST NOT raise: this axis is one of six, and an
+    exception here used to escape all the way to run_pipeline and turn the whole
+    decision into ANALYSIS_ERROR (hard_reject ['EXCEPTION']) - from the SECOND
+    scan of a mint onward, because the first scan returns early on
+    "insufficient_samples". A missing candle input is worth 0 information, never a
+    rejected coin. gmgn.kline() now normalizes every payload generation into dict
+    rows; the isinstance guards below keep a future shape change from being fatal.
+    """
     try:
         now = int(time.time())
         kl = gmgn.kline(mint, "5m", from_ts=now - candles * 300 - 60, to_ts=now)
     except Exception:
         return {}
-    if not kl or len(kl) < 2:
+    if not isinstance(kl, (list, tuple)) or len(kl) < 2:
         return {}
     closes = []
     vols = []
-    for c in kl[-candles:]:
-        cl = float(c.get("close") or 0)
-        v = float(c.get("volume") or 0)
+    for c in list(kl)[-candles:]:
+        if not isinstance(c, dict):
+            continue
+        try:
+            cl = float(c.get("close") or 0)
+            v = float(c.get("volume") or 0)
+        except Exception:
+            continue
         if cl > 0:
             closes.append(cl)
             vols.append(v)

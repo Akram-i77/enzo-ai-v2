@@ -78,10 +78,12 @@ mp verify --email you@example.com --code <CODE>
 ## كيف يعمل / How it works
 
 ```
-كل 60 ثانية:
+كل 60 ثانية (engine.scan_interval_sec):
   1. اقرأ رأس المال الحقيقي من محفظة MoonPay
-  2. اكتشف العملات: PumpDev (WebSocket) + GMGN (4 فئات) + قائمة المراقبة
-  3. حلّل أعلى 12 مرشحاً بستة محاور (أمان، سيولة، مطوّر، زخم، هيكل سوق، محافظ)
+  2. اكتشف العملات: PumpDev (WebSocket) + GMGN (trenches وtrending) + قائمة المراقبة
+  3. حلّل أعلى 6 مرشحين بستة محاور (أمان، سيولة، مطوّر، زخم، هيكل سوق، محافظ)
+     — وفي حدود الميزانية: 6 تحليلات/دقيقة، و45 ثانية بين فحصين للعملة نفسها،
+     و15 دقيقة قبل إعادة فحص عملة رُفضت نهائياً
   4. إن كان القرار BUY → تحقّق من قابلية التداول عبر swaps.xyz أولاً
   5. احسب الحجم من رأس المال المُتحقَّق
      (إن كان أصغر من min_trade_usd → يُرفع إليها، ما دامت المحفظة تملكها)
@@ -92,6 +94,34 @@ mp verify --email you@example.com --code <CODE>
   مراقب الخروج يفحص المراكز المفتوحة
   (وقف خسارة، جني أرباح مرحلي، وقف متحرك، خروج الركود، حد زمني)
 ```
+
+### من أين تأتي العملات / Discovery sources
+
+ثلاثة مصادر (+ قائمة المراقبة)، وكل مرشّح **يحمل اسم مصدره** حتى تستطيع الحكم على
+كل مصدر بمفرده (`discovery_source` في القرار، وعدّاد `sources` في إحصاء الدورة،
+ويظهر بين معقوفتين في `./enzoctl scan`):
+
+| المصدر | الأمر الحقيقي المنفَّذ | ماذا يرجّع |
+|---|---|---|
+| GMGN `trenches` | `gmgn-cli market trenches --chain sol --limit 30 --launchpad-platform Pump.fun --min-marketcap 5000 --raw` | عملات pump.fun على منحنى الربط، في ثلاث فئات: `new_creation` و`near_completion` و`completed` |
+| GMGN `trending` | `gmgn-cli market trending --chain sol --limit 30 --interval 1m --platform Pump.fun --min-marketcap 5000 --raw` | أعلى زخم في آخر **دقيقة** على pump.fun |
+| PumpDev | بثّ WebSocket لحظي، ومعطوبان احتياطيان (Frontend API ثم PumpPortal) | إطلاقات جديدة لحظة وقوعها |
+| قائمة المراقبة | `config/enzo-watchlist.json` | عناوين تضعها يدك (أولوية قصوى) |
+
+> **`--interval` إلزامي لأمر `trending`** في gmgn-cli v1.6.1
+> (`.requiredOption("--interval <interval>", "1m / 5m / 1h / 6h / 24h")`).
+> كان البوت يرسل الأمر بدونه، فيُجهضه `commander` **قبل أي اتصال بالشبكة** برسالة
+> `required option '--interval <interval>' not specified` — أي أن فئة `trending`
+> كانت تُعيد **صفراً من العملات في كل دورة** منذ البدء، رغم أنها مكتوبة في
+> الإعداد كمصدر. أُصلح، وصار الفاصلة رقماً تملكه:
+> `data_sources.gmgn.trending_interval: "1m"`، وصارت النسخة المحاكية في
+> `tests/mockbin/gmgn-cli` تشترطه هي الأخرى حتى لا يعود العطب صامتاً.
+
+الفلتر الذي يُبقي pump.fun فقط يعمل في مكانين: **عند المصدر** (العلم
+`--launchpad-platform Pump.fun` لفئة trenches و`--platform Pump.fun` لفئة
+trending، من `data_sources.gmgn.launchpad_platform_filter`)، و**عند القرار**
+(بوابات الطبقة صفر: `NOT_PUMP_V1` و`LAUNCHPAD_UNKNOWN` في
+`enzo/analyzers/analyze.py` — مجهول المنصة = مرفوض لا «ربما pump»).
 
 ### مبدأ السلامة / Safety principle
 
@@ -115,6 +145,13 @@ mp verify --email you@example.com --code <CODE>
   من نفس الـ IP كانا يجعلان pump.dev يحدّ الـ فتجوع الأسعار في كل مكان.
 - **عطل في مركز واحد لا يُسقط دورة الخروج كلها** — قائمة مراحل جني الربح تُطبَّع
   قبل استخدامها، فلا يبقى مركز حقيقي عاجزاً عن الإغلاق.
+- **النظرة الثانية على العملة لا تُسقط القرار:** محور الشموع (`market kline`) كان
+  يرمي `AttributeError` عند ثاني فحص للعملة نفسها، فيهرب الاستثناء إلى أعلى ويصير
+  القرار كله `ANALYSIS_ERROR` — أي تُرفض العملة بخطأ في الكود لا بسبب منها. الآن
+  `kline()` يطبّع شكل الحمولة الموثَّق (`data.list` بأرقام نصّية ووقت بالميلي-ثانية)
+  والشكل القديم (صفوف مصفوفات) معاً، ومحور من ستة محاور **لا يجوز أن يُسقط قراراً**
+  أبداً. ومع النسخة الحقيقية كان المحور **أعمى بصمت** (يرجع قاموساً فيستسلم كل
+  مستهلك) — صار يقرأ فعلاً.
 - **الأرضية تُفرَض عند آخر بوابة أيضاً**: إن وصل حجم دون `min_trade_usd` إلى
   منفّذ الصفقات لأي سبب، يُرفع إلى الأرضية ما دامت المحفظة تملكها — لا يمكن
   لبوابتين أن تتناقضا فيرفض إحداهما ما أمرتَ به.
@@ -421,18 +458,18 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-عشرون حزمة، **797 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+عشرون حزمة، **819 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
 python3 tests/test_dashboard_e2e.py        # 124  اللوحة: خادم حي + نقر كل زر في DOM
-python3 tests/test_gmgn_cli_compat.py      # 101  توافق gmgn-cli v1.6.1 والمسار الكامل + الحظر
+python3 tests/test_gmgn_cli_compat.py      # 120  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + أشكال kline
 python3 tests/test_enzoctl_probe.py        #  61  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
 python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها
 python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
 python3 tests/test_min_trade_floor.py      #  51  min_trade_usd كأرضية لا كعتبة رفض
-python3 tests/test_rate_limit_budget.py    #  56  ميزانية طلبات GMGN: السقوف معدودة بنداءات CLI
+python3 tests/test_rate_limit_budget.py    #  59  ميزانية طلبات GMGN: السقوف معدودة بنداءات CLI
 python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة ومنع NO_ROUTE
 python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف (فشل آمن + كتابة ذرّية)
 python3 tests/test_rug_layers.py           #  25  طبقات الرغّ 1 (نقض) + 3 (وقف مبكر) + 4 (قاطع)

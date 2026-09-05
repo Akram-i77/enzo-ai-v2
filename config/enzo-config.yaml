@@ -226,7 +226,9 @@ data_sources:
     discovery:
     - trenches
     - trending
-    discovery_limit: 50
+    discovery_limit: 30          # لكل فئة. خُفّض من 50: التحليل العميق محدود بـ 6 على أي حال
+    trending_interval: "1m"       # أمر market trending يشترط --interval (1m/5m/1h/6h/24h).
+                                 # كان ناقصاً ⇒ فشل trending في كل دورة ولم يُسهم بأي عملة
     # فلتر المنصة عند المصدر: trenches يقبل --launchpad-platform وtrending يقبل
     # --platform. اتركها فارغة "" لتعطيل الفلتر.
     launchpad_platform_filter: "Pump.fun"
