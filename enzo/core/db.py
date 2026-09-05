@@ -897,6 +897,24 @@ def rl_report_ban(key: str = "gmgn", ban_duration_sec: float = 60.0):
         pass
 
 
+def rl_clear_ban(key: str = "gmgn") -> bool:
+    """Operator escape hatch: drop a registered ban immediately.
+
+    `rl_report_ban` deliberately takes max(existing, new) - a fresh report must
+    never SHORTEN a real ban. The consequence is that a ban can only end by
+    expiring, so a wrongly parsed reset time (the old hardcoded-timezone bug
+    claimed up to 6 h) left the bot blind with no sanctioned way back. This is
+    that way back; `enzoctl unban --confirm` is the only caller.
+    """
+    init_db()
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("UPDATE rate_limiter SET banned_until = 0.0 WHERE key = ?", (key,))
+            return cur.rowcount >= 0
+    except Exception:
+        return False
+
+
 def rl_get_ban_remaining(key: str = "gmgn") -> float:
     init_db()
     try:

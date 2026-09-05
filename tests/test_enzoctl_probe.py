@@ -298,6 +298,77 @@ ok(d.get("ok") is False and "no discovery sweep" in str(d.get("detail")),
    str(d.get("detail"))[:110])
 
 # ─────────────────────────────────────────────────────────────────────────────
+section("unban: the operator's way out of a GMGN ban")
+# During a ban every gate reads "unknown", so the Activity stream fills with
+# SNIPER_DATA_UNAVAILABLE / FEES_UNKNOWN / MCAP_UNKNOWN - rejections that say
+# nothing about the coins. rl_report_ban only ever EXTENDS a ban, so without a
+# sanctioned clear the bot stays blind for the whole (possibly mis-parsed) window.
+
+
+def _ban_sql(action, seconds=0.0):
+    """Touch the SANDBOX db exactly like a real 429 would (separate process,
+    because the db path is captured at import time)."""
+    code = ("import os,sys;os.environ['ENZO_HOME']=sys.argv[1];"
+            "sys.path.insert(0,sys.argv[2]);from enzo.core import db;"
+            "a=sys.argv[3];"
+            "(db.rl_report_ban('gmgn', float(sys.argv[4])) if a == 'set' else"
+            " (db.rl_clear_ban('gmgn') if a == 'clear' else None));"
+            "print(round(db.rl_get_ban_remaining('gmgn'), 1))")
+    r = subprocess.run([PY, "-c", code, SANDBOX, ROOT, action, str(seconds)],
+                       capture_output=True, text=True, timeout=180,
+                       env=dict(os.environ, ENZO_HOME=SANDBOX, NO_COLOR="1"))
+    try:
+        return float((r.stdout.strip().splitlines() or ["0"])[-1])
+    except Exception:
+        return -1.0
+
+
+def set_ban(seconds):
+    return _ban_sql("set", seconds)
+
+
+def ban_left():
+    return _ban_sql("read")
+
+
+_ban_sql("clear")
+rc, js, txt = run_ctl("unban", "--json")
+ok(rc == 0 and js.get("ok") is True and js.get("changed") is False,
+   "with no ban, `unban` says so and changes nothing", f"rc={rc} {str(js)[:80]}")
+rc, js, txt = run_ctl("unban")                      # human output, not JSON
+ok("No GMGN ban" in txt, "and the human output says the same",
+   (txt.strip().splitlines() or [""])[0][:70])
+
+set_ban(90)
+rc, js, txt = run_ctl("unban", "--json")
+ok(rc == 1 and js.get("confirm_required") is True,
+   "with a ban active, `unban` refuses to act without --confirm", f"rc={rc} {str(js)[:70]}")
+ok(abs(float(js.get("ban_remaining_sec") or 0) - 90) < 20,
+   "and reports how long is left", f"{js.get('ban_remaining_sec')}s")
+left = ban_left()
+ok(left > 60, "nothing was cleared by the dry run", f"{left:.0f}s still registered")
+rc, js, txt = run_ctl("unban")                      # human output again
+ok("requests_per_sec" in txt, "the dry run points at the pacing knobs that cause bans",
+   "requests_per_sec mentioned" if "requests_per_sec" in txt else txt[:100])
+
+rc, js, txt = run_ctl("doctor", "--json")
+_d = {c.get("name"): c for c in (js.get("checks") or [])}
+ok("BAN ACTIVE" in str((_d.get("gmgn_rate_config") or {}).get("detail")),
+   "doctor names an active ban in gmgn_rate_config (with the way out)",
+   str((_d.get("gmgn_rate_config") or {}).get("detail"))[:110])
+
+rc, js, txt = run_ctl("unban", "--confirm", "--json")
+ok(rc == 0 and js.get("ok") is True and js.get("changed") is True,
+   "`unban --confirm` clears it", f"rc={rc} {str(js)[:80]}")
+ok(ban_left() <= 0.5, "and the ban is really gone from the db", f"{ban_left():.0f}s left")
+
+set_ban(45)
+rc, js, txt = run_ctl("unban", "--json", "--confirm")
+ok(rc == 0 and js.get("changed") is True,
+   "`--json` after the subcommand still works (the old argparse trap)", f"rc={rc}")
+_ban_sql("clear")
+
+# ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)
 print(f"enzoctl doctor + probe: {PASS} passed, {FAIL} failed")
 shutil.rmtree(SANDBOX, ignore_errors=True)

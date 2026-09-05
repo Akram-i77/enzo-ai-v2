@@ -154,6 +154,23 @@ converter that feeds the activity list dropped them. It now carries them, plus
 
 ---
 
+### When a veto code is about the DATA SOURCE, not the coin
+
+`SNIPER_DATA_UNAVAILABLE`, `FEES_UNKNOWN`, `MCAP_UNKNOWN`, `SELLS_UNKNOWN` and
+`SNIPER_FLOOD_NOT_CHECKED` mean **"I could not read the number"**, not "this coin
+is bad". The usual cause is a GMGN ban or a missing `GMGN_API_KEY`: while a ban is
+active every call is refused, so a whole sweep comes back with these codes at once
+- including for coins that would have passed. Because your rule is
+`on_unknown: reject`, the bot refuses to buy without evidence, which is the safe
+side of the trade, but it is not a verdict on the coin.
+
+Where to look: the dashboard's `⚡ GMGN Data Source` card now has a **Ban** row
+(`ACTIVE - 47s left`) and a red banner explaining exactly this; `./enzoctl doctor`
+prints `BAN ACTIVE 47s left (./enzoctl unban)`; `./enzoctl unban` shows what is
+registered and, with `--confirm`, clears it. If bans keep returning, lower
+`data_sources.gmgn.requests_per_sec` / raise `request_gap_ms` rather than clearing
+them repeatedly - each probe of a live ban can extend it.
+
 ## 4) The two honest limitations
 
 1. **"First 8 transactions" is approximated by "first 8 wallets".**

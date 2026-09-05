@@ -123,7 +123,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 | `EXECUTOR_NOT_READY` | CLI مفقود / غير مُصادَق / المحفظة غير موجودة | الرسالة تحمل السبب المحدد |
 | `PUMPDEV_RETRYING` / `PUMPDEV_DOWN` | تغذية الإطلاقات الجديدة ميتة | تحقق من الشبكة وحزمة `websockets` |
 | `PUMPDEV_STALE` | التغذية متصلة لكن بلا رسائل منذ 90+ ثانية | عادةً تُستأنف تلقائياً |
-| `GMGN_RATE_LIMITED` | حظر مؤقت من GMGN | ينتهي تلقائياً |
+| `GMGN_RATE_LIMITED` | حظر مؤقت من GMGN (كل البوابات تقرأ «مجهول» أثناءه) | ينتهي تلقائياً، أو `./enzoctl unban --confirm`؛ وإن تكرر فخفّف `requests_per_sec` |
 | `GMGN_DISCOVERY_FAILED` | أمر `gmgn-cli` فشل لكل الفئات | ثبّت `gmgn-cli` أو صحّح مساره |
 | `DISCOVERY_FAULT[<مصدر>]` | مصدر اكتشاف معيّن رمى خطأً | السبب مرفق |
 | `DASHBOARD_RENDER_ERROR` | تعذّر توليد اللوحة | `./enzoctl dashboard` لرؤية الخطأ |
@@ -340,6 +340,7 @@ tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
 | رفض شراء متكرر | `./enzoctl logs audit -n 100` | `NO_ROUTE` = عملة على منحنى الربط |
 | الحجم أصغر من المتوقع | `./enzoctl wallet` | رأس المال الحقيقي مقابل `risk_per_trade` |
 | الصفقة دائماً $1.00 | `./enzoctl wallet` | رأس المال صغير → الأرضية مطبَّقة (طبيعي) |
+| `SNIPER_DATA_UNAVAILABLE` / `FEES_UNKNOWN` / `MCAP_UNKNOWN` على عملات كثيرة دفعة واحدة | اللوحة ← بطاقة `⚡ GMGN Data Source` ← سطر **Ban** | حظر من GMGN: ليست أحكاماً على العملات بل غياب بيانات. `./enzoctl unban` يعرض المتبقي، و`--confirm` يمحوه |
 | أمر $1.00 مرفوض بـ`BELOW_MINIMUM_TRADE` | `./enzoctl logs -n 100` | بوابة ENZO لا MoonPay. أُصلحت 2026-09-05: كان الحجم يُشتقّ مرتين (دولار←SOL←دولار) فيرجع `$0.9999999999999999 < $1.00` عند ~18% من أسعار SOL. الآن المرجع هو الحجم المقرّر مع تسامح مليون من الدولار |
 | `SOL/USD is a GUESSED $180.00` في السجل | `./enzoctl logs` | تعذّر قراءة السعر من DexScreener ⇒ الحجم المُرسَل قد لا يساوي الدولار المقصود. تحقّق من خروج HTTPS، والأمر يُسجَّل بمصدر سعره (`sol_price_source`) |
 | `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | `./enzoctl wallet` | المتاح أقل من `min_trade_usd` |

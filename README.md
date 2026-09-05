@@ -38,6 +38,7 @@ bash bootstrap.sh      # 1. ثبّت المتطلبات وتحقق
 ./enzoctl wallet        # الأرصدة الحقيقية + رأس المال القابل للنشر
 ./enzoctl logs -f       # متابعة السجل حيّاً
 ./enzoctl scan --force  # دورة فحص إضافية الآن
+./enzoctl unban         # إن حظرت GMGN المفتاح: كم بقي، ومسحها بـ --confirm
 ./enzoctl probe <MINT>  # ماذا ترى البوابات في عملة واحدة، حيّاً:
                         #   الهوية والطور وأول 8 محافظ والرسوم وتركّز المحافظ
                         #   ثم قرار المحلّل الحقيقي (خروج 1 = مرفوضة)
@@ -393,12 +394,12 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-تسع عشرة حزمة، **705 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+تسع عشرة حزمة، **735 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
-python3 tests/test_dashboard_e2e.py        # 119  اللوحة: خادم حي + نقر كل زر في DOM
-python3 tests/test_gmgn_cli_compat.py      #  80  توافق gmgn-cli v1.6.1 والمسار الكامل
-python3 tests/test_enzoctl_probe.py        #  51  enzoctl probe/doctor (صدق التقارير)
+python3 tests/test_dashboard_e2e.py        # 124  اللوحة: خادم حي + نقر كل زر في DOM
+python3 tests/test_gmgn_cli_compat.py      #  95  توافق gmgn-cli v1.6.1 والمسار الكامل + الحظر
+python3 tests/test_enzoctl_probe.py        #  61  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
 python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها

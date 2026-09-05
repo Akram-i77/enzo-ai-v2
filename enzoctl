@@ -728,10 +728,13 @@ def cmd_doctor(args):
                  f"not a token list") if _bad else f"configured: {list(_cats)}",
                 "edit data_sources.gmgn.discovery in config/enzo-config.yaml",
                 critical=False)
+            _ban_left = float(_gmgn.ban_status() or 0.0)
             add("gmgn_rate_config", True,
                 f"{_g.get('requests_per_sec')} req/s · gap {_g.get('request_gap_ms')}ms · "
                 f"burst {_gmgn._burst_capacity()} · discovery_limit "
-                f"{_g.get('discovery_limit')}", None, critical=False)
+                f"{_g.get('discovery_limit')}"
+                + (f" · BAN ACTIVE {int(_ban_left)}s left (./enzoctl unban)"
+                   if _ban_left > 0 else " · no ban"), None, critical=False)
 
             # ── The money-critical filter settings, in one glance ────────────
             tu = cfg.get("token_universe") or {}
@@ -1170,6 +1173,47 @@ def cmd_trades(args):
     return cmd_positions(args)
 
 
+def cmd_unban(args):
+    """Clear a GMGN ban so data calls resume at once.
+
+    During a ban EVERY gate reads "unknown", so coins are rejected with
+    SNIPER_DATA_UNAVAILABLE / FEES_UNKNOWN / MCAP_UNKNOWN - not because of
+    anything about them. The ban normally expires on its own; this exists for the
+    case where it was registered with a wrong (too long) wait, or the operator
+    has just fixed the cause (new API key, lower request rate) and does not want
+    to sit out the remaining window.
+    """
+    from enzo.core import db
+    from enzo.providers import gmgn as _gmgn
+    left = float(db.rl_get_ban_remaining("gmgn") or 0.0)
+    if left <= 0.0:
+        return _set(args, {"ok": True, "ban_remaining_sec": 0.0, "changed": False},
+                    [green("●  No GMGN ban is registered - data calls are not blocked.")], 0)
+    if not getattr(args, "confirm", False):
+        return _set(args, {"ok": False, "confirm_required": True,
+                           "ban_remaining_sec": round(left, 1)}, [
+            yellow(f"⚠  GMGN ban active: {int(left)}s remaining."),
+            dim("   Every GMGN call is refused until then, so gates read 'unknown'"),
+            dim("   and coins are rejected for lack of data (not on their merits)."),
+            dim("   It expires by itself. Clearing it early means the next call may"),
+            dim("   be rejected again and GMGN may re-ban for longer."),
+            "",
+            dim("   If bans keep coming back, slow the pacing down instead:"),
+            dim("     data_sources.gmgn.requests_per_sec  (now "
+                f"{(_gmgn._rate_per_sec())}) / request_gap_ms"),
+            "",
+            yellow("   Re-run with --confirm to clear:  ./enzoctl unban --confirm"),
+        ], 1)
+    cleared = db.rl_clear_ban("gmgn")
+    left2 = float(db.rl_get_ban_remaining("gmgn") or 0.0)
+    if not cleared or left2 > 0.0:
+        return _set(args, {"ok": False, "ban_remaining_sec": round(left2, 1)},
+                    [red(f"✖  Ban could not be cleared ({left2:.0f}s still registered).")], 1)
+    return _set(args, {"ok": True, "changed": True, "cleared_sec": round(left, 1)},
+                [green(f"●  GMGN ban cleared (was {int(left)}s). Data calls resume;"),
+                 dim("   the next sweep will show whether GMGN accepts them again.")], 0)
+
+
 def cmd_rebase(args):
     """Accept a realised loss as the new starting point and re-arm the breakers.
 
@@ -1519,6 +1563,11 @@ def build_parser():
 
     add("pause", cmd_pause, "pause trading (exits still monitored)")
     add("resume", cmd_resume, "resume trading")
+
+    sp = add("unban", cmd_unban,
+             "clear an active GMGN ban so data calls resume now")
+    sp.add_argument("--confirm", action="store_true",
+                    help="actually clear it (without this flag nothing changes)")
 
     sp = add("rebase", cmd_rebase,
              "accept a realised loss: reset capital base + clear the halt")

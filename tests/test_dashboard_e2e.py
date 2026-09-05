@@ -334,6 +334,29 @@ def seed_db():
         if _saved_home is not None:
             os.environ["HOME"] = _saved_home
 
+    # ── a GMGN ban must be visible as a GLOBAL fault: during a ban every gate
+    #    reads "unknown", so the per-coin vetoes in the feed are not verdicts.
+    try:
+        db.rl_report_ban("gmgn", ban_duration_sec=90)
+        _h7 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="gmgnBanFault"' in _h7, "حظر GMGN سارٍ ⇒ لافتة عامة على اللوحة")
+        ok('id="gmgnBanRemain"' in _h7 and "ACTIVE" in _h7,
+           "وبطاقة مصدر البيانات تعرض الحظر ومتى ينتهي")
+        ok("SNIPER_DATA_UNAVAILABLE" in _h7 and "ليست أحكاماً على العملات" in _h7,
+           "واللافتة تشرح أن رموز «مجهول» سببها المصدر لا العملات")
+        ok("BANNED" in _h7, "ورأس البطاقة يقول BANNED بدل NORMAL")
+        # rl_report_ban only ever EXTENDS a ban (max(banned_until, new)) - a fresh
+        # report must never shorten a real one - so clearing needs rl_clear_ban,
+        # which is what `./enzoctl unban --confirm` calls.
+        db.rl_clear_ban("gmgn")
+        _h8 = open(dashboard.generate(), encoding="utf-8").read()
+        ok('id="gmgnBanFault"' not in _h8, "وبمسح الحظر تختفي اللافتة (لا إنذار دائم)")
+    finally:
+        try:
+            db.rl_clear_ban("gmgn")
+        except Exception:
+            pass
+
     # ── a GUESSED SOL price belongs next to the money, not only in the log:
     #    with base_token=SOL every order size is derived from it, so a fallback
     #    reading means the SOL actually sent is worth more or less than intended.

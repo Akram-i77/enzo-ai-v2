@@ -587,6 +587,107 @@ ok(not (payload or {}).get("positions"),
    "no ledger position was opened for any vetoed coin", str((payload or {}).get("positions")))
 
 # ─────────────────────────────────────────────────────────────────────────────
+section("9. a GMGN ban is read correctly, escalated, and never probed per coin")
+# The operator's live symptom, verbatim in the dashboard's Activity stream:
+#   SNIPER_DATA_UNAVAILABLE: token traders failed: RateLimited:
+#   token/traders: still banned
+# Three defects produced it:
+#   (a) the reset timestamp was parsed with a HARDCODED Africa/Lagos zone by a
+#       pattern that dropped "Z", offsets, fractional seconds and zone names - so
+#       ENZO believed the ban ended up to an hour early (or fell back to a 30s
+#       guess) and retried straight into a live ban;
+#   (b) when the retry was still banned the code raised WITHOUT re-registering the
+#       ban, so the stored ban was already in the past and the NEXT candidate
+#       probed GMGN again - one probe per coin for the whole sweep, which is how a
+#       short ban became a long one;
+#   (c) a ban longer than the wait budget fell through to json.loads() of the
+#       error text and surfaced as a confusing "non-json output".
+reset_provider()
+set_state({})
+
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz  # noqa: E402
+import enzo.core.db as _db  # noqa: E402
+
+
+def _txt(delta_sec, fmt):
+    return fmt(_dt.now(_tz.utc) + _td(seconds=delta_sec))
+
+
+# A stamp with no seconds is truncated to the minute BY THE SENDER, so the
+# expectation is computed from that same truncated instant (±5s of test drift),
+# not from the untruncated +120s.
+_minute = _dt.now(_tz.utc).replace(second=0, microsecond=0) + _td(minutes=2)
+_ban_cases = [
+    ("…T18:30:00.000Z", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z")), 120, "offset", 3),
+    ("…+00:00", _txt(120, lambda d: d.strftime("%Y-%m-%dT%H:%M:%S+00:00")), 120, "offset", 3),
+    ("… 18:30:00 UTC", _txt(120, lambda d: d.strftime("%Y-%m-%d %H:%M:%S UTC")), 120, "offset", 3),
+    ("naive = machine local",
+     (_dt.now().astimezone() + _td(seconds=120)).strftime("%Y-%m-%dT%H:%M:%S"), 120,
+     "naive-local", 3),
+    ("no seconds, Z", _minute.strftime("%Y-%m-%dT%H:%MZ"),
+     (_minute - _dt.now(_tz.utc)).total_seconds(), "offset", 5),
+]
+for _label, _stamp, _want, _how, _tol in _ban_cases:
+    _w, _h = gmgn._ban_wait_seconds(
+        f"[gmgn-cli] Error: 429 RATE_LIMIT — You are BANNED, resets at {_stamp}")
+    ok(abs(_w - _want) <= _tol and _h == _how,
+       f"ban reset read from '{_label}' => {_want:.0f}s", f"{_w:.0f}s / {_h}")
+
+_w, _h = gmgn._ban_wait_seconds("BANNED, resets at 2030-01-01T00:00:00Z")
+ok(abs(_w - gmgn.BAN_MAX_WAIT) < 1.0, "an absurd reset is clamped to 6h, not believed",
+   f"{_w:.0f}s")
+_w, _h = gmgn._ban_wait_seconds("you are BANNED")
+ok(_w == gmgn.BAN_DEFAULT_WAIT and _h == "default",
+   "no timestamp falls back to 30s and reports 'default' (never a silent guess)",
+   f"{_w:.0f}s/{_h}")
+ok(gmgn._escalate_ban(120.0, "BANNED") >= 240.0,
+   "an unparsable reset DOUBLES the previous wait instead of dropping back to 30s",
+   f"{gmgn._escalate_ban(120.0, 'BANNED'):.0f}s")
+
+# ── the live path through the mock CLI: banned, waited, retried, still banned ──
+_ban_txt = ("[gmgn-cli] Error: 429 RATE_LIMIT - You are BANNED, resets at "
+            + _txt(2, lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")))
+_db.rl_report_ban("gmgn", ban_duration_sec=0)              # start from no ban
+set_state({"fail": {"endpoint": "token/traders", "rc": 1, "err": _ban_txt}})
+_before = len(argv_log())
+_raised = None
+try:
+    gmgn.token_traders_raw("BanTest11111111111111111111111111111111111")
+except Exception as _e:                                   # noqa: BLE001
+    _raised = _e
+ok(isinstance(_raised, gmgn.RateLimited), "a banned call raises RateLimited",
+   str(type(_raised).__name__))
+_msg = str(_raised)
+ok("still banned" in _msg and "backing off" in _msg,
+   "and says it retried plus how long it now backs off", _msg[:150])
+ok(len(argv_log()) - _before == 2, "exactly two CLI calls: the call and ONE retry",
+   f"{len(argv_log()) - _before} call(s)")
+_left = gmgn.ban_status()
+ok(_left >= 55, "the ban is RE-REGISTERED after the failed retry (it used to be left "
+   "expired, so every following coin probed GMGN again)", f"{_left:.0f}s left")
+
+_before = len(argv_log())
+_raised2 = None
+try:
+    gmgn.token_traders_raw("BanTest22222222222222222222222222222222222")
+except Exception as _e:                                   # noqa: BLE001
+    _raised2 = _e
+ok(isinstance(_raised2, gmgn.RateLimited) and "rate limited or banned" in str(_raised2),
+   "while the ban stands the NEXT candidate is refused without probing GMGN",
+   str(_raised2)[:80])
+ok(len(argv_log()) == _before, "zero CLI calls for that candidate (no ban-probing sweep)",
+   f"{len(argv_log()) - _before} extra call(s)")
+
+_rep = gmgn.early_sniper_report("BanTest11111111111111111111111111111111111")
+ok(_rep.get("verdict") == "unknown" and "banned" in str(_rep.get("reason")).lower(),
+   "so the sniper report is 'unknown' naming the ban - never a silent pass",
+   str(_rep.get("reason"))[:100])
+
+set_state({})
+_db.rl_report_ban("gmgn", ban_duration_sec=0)
+reset_provider()
+
+# ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)
 for n in NOTICES:
     print(f"  NOTE  {n}")

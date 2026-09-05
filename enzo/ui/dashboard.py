@@ -220,6 +220,18 @@ def generate() -> str:
         _dst = gmgn.discovery_status() or {}
     except Exception:
         _dst = {}
+    # A GMGN ban is the one fault that makes EVERY gate read "unknown" at once,
+    # so the coins rejected during it are not being judged at all. It is a cheap
+    # DB read (no network), and until now the page never showed it - the operator
+    # only saw the per-coin consequence in the Activity stream.
+    try:
+        gmgn_ban_rem = float(gmgn.ban_status() or 0.0)
+    except Exception:
+        gmgn_ban_rem = 0.0
+    gmgn_banned = gmgn_ban_rem > 0.5
+    gmgn_ban_label = (f"ACTIVE — {int(gmgn_ban_rem)}s left · every GMGN call is "
+                      f"refused until then" if gmgn_banned else
+                      "none · calls are paced by the token bucket below")
     gmgn_key_ok = bool(_pst.get("api_key_present"))
     gmgn_last_err = str(_pst.get("last_error") or "")
     gmgn_last_ep = str(_pst.get("last_error_endpoint") or "")
@@ -242,6 +254,8 @@ def generate() -> str:
     gmgn_last_count = _dst.get("last_count")
     if not gmgn_key_ok:
         gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"NO API KEY · {gmgn_rate_label}"
+    elif gmgn_banned:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"BANNED {int(gmgn_ban_rem)}s · {gmgn_rate_label}"
     elif gmgn_dead:
         gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"ALL CATEGORIES FAILED · {gmgn_rate_label}"
     elif gmgn_last_err:
@@ -348,6 +362,24 @@ def generate() -> str:
             'الحيّة؛ اللافتة تختفي وحدها عند أول قراءة ناجحة.</span>'
             f'<span class="fault-hint">capital.sol_price={_esc(str(sol_price_val))} · '
             'source=fallback · ./enzoctl wallet · ./enzoctl logs</span>'
+            '</div>'
+        )
+
+    if gmgn_banned:
+        banner_html += (
+            '<div id="gmgnBanFault" class="fault-banner shown">'
+            '<span class="fault-icon">⚠</span>'
+            f'<span><b>GMGN حظرت مفتاحك/عنوانك</b> — بقي <b>{int(gmgn_ban_rem)} ثانية</b>. '
+            'طالما الحظر سارٍ تُرفض كل النداءات، فتظهر في تدفق النشاط رموز مثل '
+            '<code>SNIPER_DATA_UNAVAILABLE</code> أو <code>FEES_UNKNOWN</code> أو '
+            '<code>MCAP_UNKNOWN</code>. <b>هذه ليست أحكاماً على العملات</b>: البوت لم '
+            'يتمكّن من قراءة بياناتها، وقاعدتك «مجهول = رفض» تمنع الشراء بلا دليل — '
+            'أي أن العملات الجيدة تُرفض أيضاً حتى ينتهي الحظر. إن تكرر الحظر فخفّف '
+            'الوتيرة (<code>data_sources.gmgn.requests_per_sec</code> و'
+            '<code>request_gap_ms</code>) أو قلّل فئات الاكتشاف/عدد المرشّحين لكل دورة.</span>'
+            '<span class="fault-hint">Ban reported by gmgn-cli (429/BANNED) · '
+            'the wait is re-registered and escalated after every failed retry · '
+            './enzoctl doctor</span>'
             '</div>'
         )
 
@@ -1156,6 +1188,7 @@ def generate() -> str:
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
             <div><b>API key:</b> <span id="gmgnKeyStatus" class="{ 'color-pos' if gmgn_key_ok else 'color-neg' }">{ 'present' if gmgn_key_ok else 'MISSING — every call is refused' }</span></div>
+            <div><b>Ban:</b> <span id="gmgnBanRemain" class="{ 'color-neg' if gmgn_banned else 'color-pos' }">{_esc(gmgn_ban_label)}</span></div>
             <div><b>CLI dialect:</b> <span id="gmgnDialect">{_esc(gmgn_dialect_label)}</span></div>
             <div><b>Discovery:</b> <span id="gmgnCats">{_esc(gmgn_cats_label)}</span></div>
             <div><b>Last sweep:</b> <span id="gmgnLastCount">{ 'no sweep yet' if gmgn_last_count is None else str(gmgn_last_count) + ' candidate(s)' }</span></div>

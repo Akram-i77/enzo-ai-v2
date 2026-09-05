@@ -11,7 +11,7 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 
 from enzo.core.config import load_config, GMGN_BAN_FILE_PATH
@@ -131,7 +131,22 @@ _RL_LOCK = threading.Lock()
 _RL_LAST_CALL = 0.0
 _RL_MIN_GAP = 1.2  # fallback only; config data_sources.gmgn.request_gap_ms overrides
 _RL_GRACE = 2.0
-_BAN_RE = re.compile(r"resets at\s+([0-9:\-T ]+)", re.IGNORECASE)
+# GMGN's ban text is not documented, so parse it defensively: a UTC "Z", an
+# explicit ±HH:MM offset, fractional seconds, a trailing zone name ("UTC",
+# "Africa/Lagos") or no zone at all must all work. The old pattern
+# ([0-9:\-T ]+) silently dropped the zone: "…T18:30:00.000Z" parsed as 18:30 and
+# was then re-interpreted in a HARDCODED Africa/Lagos - an hour earlier than the
+# real UTC reset - and "… 18:30:00 UTC" captured a trailing space, failed
+# strptime and fell back to a 30s guess. Both made ENZO retry while GMGN was
+# still banning, which is exactly the "still banned" an operator sees.
+_BAN_RE = re.compile(
+    r"resets?\s+at\s+(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?"
+    r"\s*(?:Z|[+-]\d{2}:?\d{2}|[A-Za-z]{2,5}(?:/[A-Za-z_]+)?)?)",
+    re.IGNORECASE)
+BAN_MAX_WAIT = 21600.0        # never claim more than 6 h from one message
+BAN_DEFAULT_WAIT = 30.0       # unparsable reset text: short first, then escalate
+_TZ_ABBREV = {"UTC": timezone.utc, "GMT": timezone.utc, "Z": timezone.utc,
+              "WAT": timezone(timedelta(hours=1)), "CET": timezone(timedelta(hours=1))}
 
 
 def _rl_min_gap() -> float:
@@ -155,19 +170,77 @@ def ban_status() -> float:
     return db.rl_get_ban_remaining("gmgn")
 
 
-def _ban_wait_seconds(msg):
-    m = _BAN_RE.search(msg)
+def _ban_wait_seconds(msg) -> tuple:
+    """(seconds_until_reset, how) with how in 'offset' | 'naive-local' | 'default'.
+
+    A timestamp WITHOUT a zone is read in the MACHINE's local zone - not a
+    hardcoded foreign one. The CLI runs on this machine and prints local wall
+    time unless it says otherwise; assuming Africa/Lagos shifted every ban by an
+    hour for anyone else and made ENZO retry into a live ban.
+    """
+    m = _BAN_RE.search(str(msg or ""))
     if not m:
-        return 30.0
+        return BAN_DEFAULT_WAIT, "default"
+    body = m.group(1).strip()
     try:
-        fmt = "%Y-%m-%d %H:%M:%S" if " " in m.group(1) else "%Y-%m-%dT%H:%M:%S"
-        reset = datetime.strptime(m.group(1), fmt)
-        import zoneinfo
-        reset = reset.replace(tzinfo=zoneinfo.ZoneInfo("Africa/Lagos"))
-        wait = (reset - datetime.now(zoneinfo.ZoneInfo("Africa/Lagos"))).total_seconds()
-        return max(1.0, wait)
+        tz, how = None, "naive-local"
+        if body[-1:] in ("Z", "z"):
+            tz, how, body = timezone.utc, "offset", body[:-1].strip()
+        else:
+            mo = re.search(r"([+-])(\d{2}):?(\d{2})$", body)
+            if mo:
+                sign = 1 if mo.group(1) == "+" else -1
+                tz = timezone(sign * timedelta(hours=int(mo.group(2)), minutes=int(mo.group(3))))
+                how, body = "offset", body[:mo.start()].strip()
+            else:
+                mo = re.search(r"([A-Za-z]{2,5}(?:/[A-Za-z_]+)?)$", body)
+                if mo:
+                    name, body = mo.group(1), body[:mo.start()].strip()
+                    if name.upper() in _TZ_ABBREV:
+                        tz, how = _TZ_ABBREV[name.upper()], "offset"
+                    elif "/" in name:
+                        try:
+                            import zoneinfo
+                            tz, how = zoneinfo.ZoneInfo(name), "offset"
+                        except Exception:
+                            tz = None          # unknown zone name: treat as naive
+                    else:
+                        tz = None              # unknown abbreviation: ignore it
+        if " " in body:
+            body = body.replace(" ", "T", 1)
+        reset = None
+        for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"):
+            try:
+                reset = datetime.strptime(body, fmt)
+                break
+            except ValueError:
+                continue
+        if reset is None:
+            return BAN_DEFAULT_WAIT, "default"
+        if tz is None:
+            reset = reset.replace(tzinfo=datetime.now().astimezone().tzinfo)
+        else:
+            reset = reset.replace(tzinfo=tz)
+        wait = (reset - datetime.now(timezone.utc)).total_seconds()
+        return max(1.0, min(BAN_MAX_WAIT, wait)), how
     except Exception:
-        return 30.0
+        return BAN_DEFAULT_WAIT, "default"
+
+
+def _escalate_ban(previous_wait: float, raw: str) -> float:
+    """Backoff to register after a retry that was STILL banned.
+
+    A freshly parsed reset time wins; otherwise double the previous wait, with a
+    60s floor. Without this the stored ban had already expired by the time the
+    retry failed, so the NEXT candidate saw "no ban", probed GMGN again, got
+    banned again - one probe per coin for the whole sweep, which is how a short
+    ban became a long one and the activity stream filled with
+    SNIPER_DATA_UNAVAILABLE.
+    """
+    parsed, how = _ban_wait_seconds(raw)
+    prev = max(0.0, float(previous_wait or 0.0))
+    base = parsed if how != "default" else max(60.0, prev * 2.0)
+    return max(60.0, min(BAN_MAX_WAIT, max(base, prev)))
 
 
 _GMGN_BIN_CACHE = {"bin": None, "resolved": False}
@@ -359,16 +432,47 @@ def _run(args, endpoint, timeout=40):
         if proc.returncode != 0:
             if "429" in out or "RATE_LIMIT" in out.upper() or "RATE_LIMIT" in err.upper():
                 if "BANNED" in out.upper() or "BANNED" in err.upper():
-                    wait = _ban_wait_seconds(out + err)
+                    raw = f"{out} {err}".strip()
+                    wait, how = _ban_wait_seconds(raw)
                     db.rl_report_ban("gmgn", ban_duration_sec=wait)
-                    _LOGGER.warning(f"GMGN ban active until reset ({wait:.0f}s) — sleeping")
-                    if wait > 0:
-                        if db.rl_acquire("gmgn", tokens_needed=1.0, max_wait_sec=wait + 5.0):
-                            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env={**os.environ})
-                            out = (proc.stdout or "").strip()
-                            err = (proc.stderr or "").strip()
-                            if proc.returncode != 0:
-                                raise RateLimited(f"{endpoint}: still banned")
+                    _LOGGER.warning(
+                        "GMGN reported a BAN on %s: waiting %.0fs (reset read as "
+                        "'%s' from: %s)", endpoint, wait, how, raw[:200])
+                    retried = False
+                    if wait > 0 and db.rl_acquire(
+                            "gmgn", tokens_needed=1.0, rate_per_sec=_rate_per_sec(),
+                            capacity=_burst_capacity(), min_gap_sec=_rl_min_gap(),
+                            max_wait_sec=wait + 5.0):
+                        retried = True
+                        proc = subprocess.run(cmd, capture_output=True, text=True,
+                                              timeout=timeout, env={**os.environ})
+                        out = (proc.stdout or "").strip()
+                        err = (proc.stderr or "").strip()
+                    if retried and proc.returncode != 0:
+                        retry_raw = f"{out} {err}".strip()
+                        still = ("BANNED" in retry_raw.upper()
+                                 and ("429" in retry_raw or "RATE_LIMIT" in retry_raw.upper()))
+                        # Register the ban AGAIN, escalated. Raising without this
+                        # left the stored ban in the past, so the next candidate
+                        # probed GMGN immediately and the ban never ended.
+                        backoff = _escalate_ban(wait, retry_raw)
+                        db.rl_report_ban("gmgn", ban_duration_sec=backoff)
+                        if still:
+                            raise RateLimited(
+                                f"{endpoint}: still banned after waiting {wait:.0f}s "
+                                f"and retrying — backing off {backoff:.0f}s before the "
+                                f"next GMGN call (reset text: {retry_raw[:110]})")
+                        # The retry died for a DIFFERENT reason: say so instead of
+                        # blaming the ban, or the real fault stays invisible.
+                        raise GMGNError(
+                            f"{endpoint}: rc={proc.returncode} on the post-ban retry "
+                            f"err={err[:200]}")
+                    if not retried:
+                        # Used to fall through and try to json.loads() the error
+                        # text, surfacing as "non-json output" instead of a ban.
+                        raise RateLimited(
+                            f"{endpoint}: banned, GMGN resets in ~{wait:.0f}s — not "
+                            f"retried (longer than the {wait + 5.0:.0f}s wait budget)")
                 else:
                     raise RateLimited(f"{endpoint}: rate limited")
             else:
