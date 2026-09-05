@@ -802,6 +802,16 @@ def discover(chain=None) -> list:
     # refused HERE rather than sent to the CLI, so the reason is readable.
     TRENDING_INTERVALS = ("1m", "5m", "1h", "6h", "24h")
     trending_interval = str(gmgn_cfg.get("trending_interval") or "1m").strip()
+    # `market trenches --type` selects the lifecycle stages to query (repeatable;
+    # default is all three). The owner removed new_creation: brand-new tokens
+    # almost never satisfy the entry gates anyway (min 10 sells, min market cap),
+    # and they are the stage where a dev can dump first. An EMPTY list means "do
+    # not send --type", i.e. the CLI default of all three.
+    TRENCHES_TYPES = ("new_creation", "near_completion", "completed")
+    _tt = gmgn_cfg.get("trenches_types")
+    if isinstance(_tt, str):
+        _tt = [x for x in _tt.replace(",", " ").split() if x]
+    trenches_types = [str(x).strip() for x in (_tt or []) if str(x).strip()]
     platform_filter = str(gmgn_cfg.get("launchpad_platform_filter") or "").strip()
     try:
         limit = max(1, min(int(gmgn_cfg.get("discovery_limit", 50)), 80))
@@ -818,6 +828,17 @@ def discover(chain=None) -> list:
             _DISCOVERY_STATUS["categories_ok"][cat] = {
                 "ok": False, "count": 0, "error": msg, "skipped": True}
             continue
+        if cat == "trenches" and trenches_types:
+            _bad_types = [t for t in trenches_types if t not in TRENCHES_TYPES]
+            if _bad_types:
+                msg = (f"data_sources.gmgn.trenches_types contains {_bad_types} — "
+                       f"`market trenches --type` only accepts "
+                       f"{'/'.join(TRENCHES_TYPES)}; refusing to send a filter GMGN "
+                       f"would reject (or silently ignore)")
+                _LOGGER.error("GMGN discovery category skipped — %s", msg)
+                _DISCOVERY_STATUS["categories_ok"][cat] = {
+                    "ok": False, "count": 0, "error": msg, "skipped": True}
+                continue
         if cat == "trending" and trending_interval not in TRENDING_INTERVALS:
             msg = (f"data_sources.gmgn.trending_interval='{trending_interval}' is not one "
                    f"of {'/'.join(TRENDING_INTERVALS)} — refusing to call `market "
@@ -830,6 +851,10 @@ def discover(chain=None) -> list:
             args = ["market", cat, "--chain", ch, "--limit", str(limit)]
             if cat == "trending":
                 args += ["--interval", trending_interval]
+            if cat == "trenches" and trenches_types:
+                # repeatable flag: --type near_completion --type completed
+                for _t in trenches_types:
+                    args += ["--type", _t]
             if platform_filter:
                 # trenches calls it --launchpad-platform, trending --platform
                 args += ["--launchpad-platform" if cat == "trenches" else "--platform",
@@ -887,13 +912,26 @@ def discover(chain=None) -> list:
 
 
 # `market <category>` shapes differ per command and per CLI generation:
-#   trenches -> {new_creation: [...], near_completion: [...], completed: [...]}
+#   trenches -> {new_creation: [...], pump: [...], completed: [...]}
 #   trending -> {data: {rank: [...]}}
 # The previous parser only knew the trenches keys and, because its conditional
 # expression bound to `isinstance(res, dict)`, it applied them to EVERY dict -
 # so `market trending` silently yielded zero tokens on every cycle.
+#
+# The trenches key list was wrong in a second way, and this one is documented in
+# gmgn-cli's own schema (skills/gmgn-market/SKILL.md):
+#   "In the response, `near_completion` is always returned under the key
+#    `data.pump` regardless of the input `--type`."
+#   "Response fields: data.new_creation, data.pump, data.completed ... `data.pump`
+#    corresponds to `--type near_completion`. The API always returns this category
+#    under the key `pump`, not `near_completion`."
+# ENZO looked for "near_completion", never found it, and dropped the WHOLE
+# near-completion category on every cycle against the real CLI - silently, because
+# _extract_items returns the rows it did find. Both spellings are accepted now:
+# `pump` (what the API sends) and `near_completion` (what older/mocked builds and
+# this file's own comments used to say).
 _LIST_SHAPES = (
-    ("new_creation", "near_completion", "completed"),
+    ("new_creation", "pump", "near_completion", "completed"),
     ("rank",),
     ("list",),
     ("data",),

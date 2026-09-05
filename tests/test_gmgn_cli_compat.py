@@ -237,11 +237,15 @@ finally:
 section("4. every discovery envelope is parsed (trending used to yield 0)")
 reset_provider()
 set_state({
-    "trenches": {"new_creation": [{
+    # near_completion, not new_creation: the shipped trenches_types asks for
+    # near_completion + completed, and the mock (like the real API) filters by
+    # --type and serves near_completion under the `pump` key.
+    "trenches": {"near_completion": [{
         "address": "TrenchMint111111111111111111111111111111111", "symbol": "TRN",
         "launchpad_platform": "Pump.fun", "price": 0.000009, "usd_market_cap": 9000.0,
         "liquidity": 7000.0, "buys_24h": 120, "sells_24h": 40, "volume_24h": 21000.0,
-        "progress": 0.31, "creator": "DevTrench111111111111111111111111111111111"}]},
+        "progress": 0.31, "creator": "DevTrench111111111111111111111111111111111"}],
+     "completed": []},   # isolate the injected stage from the mock's default rows
     "trending": {"rank": [{
         "address": "TrendMint2222222222222222222222222222222222", "symbol": "TRD",
         "launchpad_platform": "Pump.fun", "exchange": "pump_amm", "price": 0.000031,
@@ -252,7 +256,7 @@ items = gmgn.discover("sol")
 cats = gmgn.discovery_status().get("categories_ok") or {}
 tr, td = cats.get("trenches") or {}, cats.get("trending") or {}
 ok(tr.get("ok") is True and int(tr.get("count") or 0) == 1,
-   "trenches parsed (new_creation/near_completion/completed)", str(tr))
+   "trenches parsed (near_completion, served under the API's `pump` key)", str(tr))
 ok(td.get("ok") is True and int(td.get("count") or 0) == 1,
    "trending parsed (data.rank) — the silent-zero bug", str(td))
 srcs = {str(it.get("source")) for it in items}
@@ -898,6 +902,83 @@ _ms.clear(_KM)
 set_yaml("market_structure", min_sample_interval_sec=60)
 reset_provider()
 set_state({})
+
+# ─────────────────────────────────────────────────────────────────────────────
+section("14. trenches stages: --type is sent, and `data.pump` is not dropped")
+# Two defects, both silent, both verified against gmgn-cli's own schema docs:
+#  (a) the API returns the near_completion category under the key **data.pump**
+#      ("In the response, near_completion is always returned under the key data.pump
+#      regardless of the input --type"), and ENZO's _LIST_SHAPES looked for
+#      "near_completion" - so the whole stage was dropped on every cycle against the
+#      real CLI. The bundled mock emitted "near_completion", which the real API never
+#      sends, so no test could ever notice.
+#  (b) `market trenches --type` selects the lifecycle stages (repeatable; default all
+#      three). ENZO never sent it. The owner removed new_creation, so the filter has
+#      to be real: without (a) fixed first, dropping new_creation would have left
+#      ONLY `completed`, silently losing the stage the owner asked to keep.
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+set_gmgn_cfg(discovery=["trenches"], trenches_types=["near_completion", "completed"])
+_items = gmgn.discover("sol")
+_mk = [a for a in argv_log() if len(a) > 1 and a[0] == "market" and a[1] == "trenches"]
+_tr = _mk[0] if _mk else []
+_types = [_tr[i + 1] for i, x in enumerate(_tr) if x == "--type"]
+ok(_types == ["near_completion", "completed"],
+   "trenches is called with the repeatable --type filter the owner configured",
+   str(_tr))
+ok("new_creation" not in _types,
+   "new_creation is NOT requested (the owner's instruction)", str(_types))
+_syms = {str(it.get("symbol")) for it in _items}
+ok("NEAR" in _syms,
+   "the near_completion stage arrives under the API's own key `data.pump` and IS "
+   "parsed (it used to be dropped whole)", str(_syms))
+ok("DONE" in _syms, "and the completed stage arrives too", str(_syms))
+ok("MOCK" not in _syms,
+   "the new_creation-only token is really gone from the candidate list", str(_syms))
+_near = next((it for it in _items if str(it.get("symbol")) == "NEAR"), {})
+ok(str(_near.get("source")) == "trenches", "provenance still says trenches", str(_near.get("source")))
+
+# The legacy spelling must keep working (older builds / injected states).
+reset_provider()
+set_state({"trenches": {"near_completion": [{
+    "address": "LegacyNear444444444444444444444444444444444", "symbol": "LGN",
+    "launchpad_platform": "Pump.fun", "usd_market_cap": 52000.0, "liquidity": 9000.0,
+    "volume_24h": 40000.0, "buys_24h": 300, "sells_24h": 120, "progress": 0.9}]}})
+_leg = gmgn.discover("sol")
+ok(any(str(it.get("symbol")) == "LGN" for it in _leg),
+   "a payload that spells the stage `near_completion` is parsed as well",
+   str({it.get("symbol") for it in _leg}))
+
+# An empty list means "CLI default" - no --type flag at all.
+reset_provider()
+set_state({})
+set_gmgn_cfg(discovery=["trenches"], trenches_types=[])
+gmgn.discover("sol")
+_tr2 = next((a for a in argv_log()
+             if len(a) > 1 and a[0] == "market" and a[1] == "trenches"), [])
+ok("--type" not in _tr2, "an empty trenches_types sends no --type (all three stages)",
+   str(_tr2))
+_syms2 = {str(it.get("symbol")) for it in gmgn.discover("sol")}
+ok({"MOCK", "NEAR", "DONE"} <= _syms2, "and all three stages come back", str(_syms2))
+
+# A stage GMGN does not have must be refused locally, with the valid list named.
+reset_provider()
+set_gmgn_cfg(discovery=["trenches"], trenches_types=["near_completion", "brand_new"])
+_bad = gmgn.discover("sol")
+_cat = (gmgn.discovery_status().get("categories_ok") or {}).get("trenches") or {}
+ok(_cat.get("ok") is False and "new_creation/near_completion/completed"
+   in str(_cat.get("error")),
+   "an unknown stage is refused with the valid stages named", str(_cat.get("error"))[:130])
+ok(not [a for a in argv_log() if len(a) > 1 and a[1] == "trenches"],
+   "and no CLI call is wasted on it", str(argv_log()[:1]))
+
+# Restore the shipped values.
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+set_gmgn_cfg(discovery=["trenches", "trending"], trending_interval="1m",
+             discovery_limit=30, trenches_types=["near_completion", "completed"])
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)

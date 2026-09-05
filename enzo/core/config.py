@@ -293,6 +293,14 @@ DEFAULTS = {
             # the owner's choice: the tightest momentum window, i.e. the closest
             # thing to fresh coins that `market rank` can give.
             "trending_interval": "1m",
+            # Which trenches lifecycle stages to query (`market trenches --type`,
+            # repeatable). new_creation is REMOVED at the owner's instruction:
+            # tokens seconds old almost never clear the entry gates (min 10 sells,
+            # min market cap) and are the stage where a dev dumps first. Keep
+            # near_completion + completed. An empty list restores the CLI default
+            # (all three). Note: fresh launches still arrive through the PumpDev
+            # stream, which is a separate source.
+            "trenches_types": ["near_completion", "completed"],
             # Server-side launchpad filter: trenches takes --launchpad-platform,
             # trending takes --platform. Empty string disables the filter.
             "launchpad_platform_filter": "Pump.fun",

@@ -231,6 +231,10 @@ data_sources:
                                  # كان ناقصاً ⇒ فشل trending في كل دورة ولم يُسهم بأي عملة
     # فلتر المنصة عند المصدر: trenches يقبل --launchpad-platform وtrending يقبل
     # --platform. اتركها فارغة "" لتعطيل الفلتر.
+    trenches_types:               # فئات trenches المطلوبة (--type). new_creation محذوفة بقرار المالك:
+    - near_completion           #   عملة عمرها ثوانٍ نادراً ما تجتاز البوابات (10 عمليات بيع على الأقل)،
+    - completed                 #   وهي المرحلة التي يبيع فيها المطوّر أولاً. الإطلاقات الجديدة ما زالت
+                                #   تصل عبر بثّ PumpDev (مصدر منفصل). قائمة فارغة = الفئات الثلاث.
     launchpad_platform_filter: "Pump.fun"
     max_candidates_per_scan: 40    # مطبَّق الآن في المحرك (كان رقماً في ملف فقط)
     max_depth_analyses: 6          # 12 × ~5 طلبات = ~60 طلباً لكل دورة. 6 هو ما يتحمّله مفتاح عادي

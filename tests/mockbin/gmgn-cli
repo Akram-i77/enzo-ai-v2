@@ -18,7 +18,9 @@ Reproduced faithfully from the published package (dist/ + skills/ docs):
   * `market kline` takes --address and --resolution 30s/1m/5m/15m/1h/4h/1d and
     returns the documented v1.6.1 shape {data: {list: [{time(ms), open:"str", ...}]}}
     ({"kline_arrays": true} in the state gives the old bare-array rows);
-  * `market trenches` returns {new_creation, near_completion, completed};
+  * `market trenches` returns the DOCUMENTED keys {new_creation, pump, completed}
+    where `pump` IS near_completion ("the API always returns this category under the
+    key pump, not near_completion"), and honours the repeatable --type filter;
   * `market trending` REQUIRES --chain AND --interval (1m/5m/1h/6h/24h) - both are
     `requiredOption` in the real v1.6.1, and commander aborts before any HTTP call
     when one is missing - and returns {data: {rank: [...]}};
@@ -89,7 +91,16 @@ while i < len(argv):
         if a == "--raw":
             opts["raw"] = True
         elif i + 1 < len(argv) and not argv[i + 1].startswith("--"):
-            opts[a] = argv[i + 1]
+            # Repeatable flags (--type, --platform, --filter are `<value...>` in the
+            # real CLI) ACCUMULATE in commander instead of overwriting. Overwriting
+            # here made `--type near_completion --type completed` look like
+            # `--type completed`, i.e. the mock silently disagreed with the tool it
+            # is supposed to reproduce.
+            _v = argv[i + 1]
+            if a in opts:
+                opts[a] = (opts[a] if isinstance(opts[a], list) else [opts[a]]) + [_v]
+            else:
+                opts[a] = _v
             i += 1
         else:
             opts[a] = True
@@ -349,10 +360,50 @@ def default_trenches():
         "owner_renounced": "unknown", "buy_tax": "0", "dev_team_hold_rate": "0.0",
         "price": 0.0000085, "smart_degen_count": 4, "hot_level": 3,
     }
-    data = {"new_creation": [dict(base)], "near_completion": [], "completed": []}
+    # The documented v1.6.1 response keys (skills/gmgn-market/SKILL.md):
+    #   data.new_creation, data.pump, data.completed
+    # where **data.pump IS the near_completion category**: "In the response,
+    # near_completion is always returned under the key data.pump regardless of the
+    # input --type." This mock used to emit the key "near_completion", which the
+    # real API never sends - so ENZO's parser could drop the whole category against
+    # the real CLI while every test stayed green.
+    near = dict(base)
+    near.update({"address": "MockNearPump22222222222222222222222222222222",
+                 "symbol": "NEAR", "name": "Mock Near Completion Token",
+                 "progress": 0.87, "usd_market_cap": 48000.0,
+                 "created_timestamp": NOW - 7200, "open_timestamp": NOW - 7190,
+                 "sells_24h": 260, "exchange": "pump_fun"})
+    done = dict(base)
+    done.update({"address": "MockCompleted333333333333333333333333333333333",
+                 "symbol": "DONE", "name": "Mock Graduated Token",
+                 "progress": 1.0, "usd_market_cap": 220000.0, "liquidity": 88000.0,
+                 "created_timestamp": NOW - 86400, "open_timestamp": NOW - 86390,
+                 "sells_24h": 900, "exchange": "pump_amm"})
+    data = {"new_creation": [dict(base)], "pump": [near], "completed": [done]}
     if isinstance(ST.get("trenches"), dict):
         data.update(ST["trenches"])
     return data
+
+
+def trenches_by_type(data):
+    """Apply `--type` (repeatable) exactly like the real CLI: only the requested
+    lifecycle stages come back, and near_completion is served under the key `pump`.
+    """
+    want = opts.get("--type")
+    if isinstance(want, str):
+        want = [want]
+    if not want:
+        return data                      # default: all three
+    out = {}
+    for t in want:
+        if t == "near_completion":
+            # An injected state that spells the stage `near_completion` (the legacy /
+            # pre-doc spelling) must win over the default `pump` row, or the mock
+            # would hide the very payload shape a test is trying to exercise.
+            out["pump"] = data.get("near_completion") or data.get("pump") or []
+        elif t in ("new_creation", "completed"):
+            out[t] = data.get(t) or []
+    return out
 
 
 def default_trending():
@@ -430,7 +481,7 @@ if GROUP == "token":
 elif GROUP == "market":
     if CMD == "trenches":
         maybe_fail("market/trenches")
-        emit({"code": 0, "data": default_trenches()}, opts.get("raw"))
+        emit({"code": 0, "data": trenches_by_type(default_trenches())}, opts.get("raw"))
     if CMD == "trending":
         # The real v1.6.1 declares TWO required options for `market trending`:
         #   .requiredOption("--chain <chain>")

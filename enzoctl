@@ -729,17 +729,31 @@ def cmd_doctor(args):
             _iv = str(_g.get("trending_interval") or "")
             _iv_ok = _iv in ("1m", "5m", "1h", "6h", "24h")
             _need_iv = "trending" in _cats
-            add("gmgn_discovery_categories", not _bad and (_iv_ok or not _need_iv),
+            # `market trenches --type <stage>` (repeatable, default all three) decides
+            # which lifecycle stages are fetched. gmgn.discover() validates it the same
+            # way; doctor shows it so a typo is visible BEFORE a cycle is wasted.
+            _tt_valid = ("new_creation", "near_completion", "completed")
+            _tt = _g.get("trenches_types")
+            if isinstance(_tt, str):
+                _tt = [x.strip() for x in _tt.split(",")]
+            _tt = [str(x).strip() for x in (_tt or []) if str(x).strip()]
+            _tt_bad = [x for x in _tt if x not in _tt_valid]
+            add("gmgn_discovery_categories",
+                not _bad and (_iv_ok or not _need_iv) and not _tt_bad,
                 ((f"unknown categories {_bad} — gmgn-cli v1.6 only has {sorted(_valid)}; "
                   f"smart money and KOL live under `track` and return a wallet's trades, "
                   f"not a token list") if _bad else
                  (f"trending_interval='{_iv}' is not one of 1m/5m/1h/6h/24h — "
                   f"`market trending` would be refused" if (_need_iv and not _iv_ok) else
-                  f"configured: {list(_cats)}"
-                  + (f" · trending --interval {_iv}" if _need_iv else "")
-                  + f" · limit {_g.get('discovery_limit')}/category")),
-                "edit data_sources.gmgn.discovery / trending_interval in "
-                "config/enzo-config.yaml",
+                  (f"trenches_types contains {_tt_bad} — `market trenches --type` only "
+                   f"accepts {'/'.join(_tt_valid)}" if _tt_bad else
+                   f"configured: {list(_cats)}"
+                   + (f" · trending --interval {_iv}" if _need_iv else "")
+                   + (f" · trenches --type {'+'.join(_tt)}" if _tt
+                      else " · trenches: all 3 stages")
+                   + f" · limit {_g.get('discovery_limit')}/category"))),
+                "edit data_sources.gmgn.discovery / trending_interval / trenches_types "
+                "in config/enzo-config.yaml",
                 critical=False)
             _ban_left = float(_gmgn.ban_status() or 0.0)
             add("gmgn_rate_config", True,

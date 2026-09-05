@@ -101,7 +101,7 @@ for _name in ("enzo.engine", "enzo.pump", "enzo.executor", "enzo.gmgn",
     logging.getLogger(_name).setLevel(logging.WARNING)
 
 
-def set_cfg(gmgn_kw=None, pump_kw=None, engine_kw=None, paper=True):
+def set_cfg(gmgn_kw=None, pump_kw=None, engine_kw=None, paper=True, discovery_kw=None):
     """Patch the sandbox YAML and drop the cached config (config.py caches it)."""
     path = os.environ["ENZO_CONFIG_PATH"]
     with open(path, encoding="utf-8") as fh:
@@ -117,6 +117,8 @@ def set_cfg(gmgn_kw=None, pump_kw=None, engine_kw=None, paper=True):
     p.update(pump_kw or {})
     e = doc.setdefault("engine", {})
     e.update(engine_kw or {})
+    d = doc.setdefault("discovery", {})
+    d.update(discovery_kw or {})
     with open(path, "w", encoding="utf-8") as fh:
         yaml.safe_dump(doc, fh, sort_keys=False, allow_unicode=True)
     C._CFG_CACHE.update({"mtime": None, "size": None, "path": None, "cfg": None})
@@ -179,7 +181,13 @@ def seed_candidates(n):
         t["symbol"] = f"MCK{i}"
         t["name"] = f"Mock Budget Token {i}"
         toks.append(t)
-    os.environ["GMGN_MOCK_STATE"] = json.dumps({"trenches": {"new_creation": toks}})
+    # Seed under `near_completion` - a stage the shipped trenches_types actually
+    # asks for. The mock (like the real API, which serves this stage under the key
+    # `data.pump`) filters by --type, so seeding `new_creation` would now be thrown
+    # away before it reached ENZO and this helper would silently seed nothing.
+    # `completed` is emptied so the discovered count is exactly n (+trending).
+    os.environ["GMGN_MOCK_STATE"] = json.dumps(
+        {"trenches": {"near_completion": toks, "completed": []}})
     return len(toks)
 
 
@@ -466,11 +474,22 @@ ok("request(s) since start" in html, "with the lifetime count and per-minute ave
 ok("last cycle" in html, "and what the last cycle cost", "")
 
 # ── provenance: which source handed over each analysed coin ──
-# seed_candidates() replaced the trenches list only, so the mock's default
-# trending token (a distinct address) survives and is attributed to trending.
-set_cfg(gmgn_kw={"max_depth_analyses": 3, "reanalysis_cooldown_sec": 0,
-                 "trending_interval": "1m"},
-        pump_kw={"max_analyses_per_min": 100, "min_analysis_interval_sec": 0})
+# Back to the mock's own defaults: trenches serves one near_completion and one
+# completed token (the shipped --type filter asks for exactly those two stages,
+# and new_creation is no longer fetched), trending serves its own distinct token.
+# With the depth cap at 3 all three get analysed, so BOTH sources must appear -
+# if either stage were dropped silently (the old `data.pump` defect did exactly
+# that) this assertion is what catches it.
+os.environ["GMGN_MOCK_STATE"] = "{}"
+# §5b left discovery.max_depth_tokens_per_cycle=2 in the sandbox YAML. With an
+# effective depth cap of 2 the two trenches rows (near_completion + completed,
+# both richer than the trending default) fill every slot and trending is never
+# analysed - which would look exactly like the silent-drop defect this asserts
+# against. Restore the shipped caps so all three candidates get their turn.
+set_cfg(gmgn_kw={"max_depth_analyses": 3, "max_candidates_per_scan": 40,
+                 "reanalysis_cooldown_sec": 0, "trending_interval": "1m"},
+        pump_kw={"max_analyses_per_min": 100, "min_analysis_interval_sec": 0},
+        discovery_kw={"max_depth_tokens_per_cycle": 6})
 clear_cooldowns()
 reset_calls()
 _prov = engine.scan_once()

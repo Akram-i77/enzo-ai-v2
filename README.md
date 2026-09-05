@@ -103,10 +103,33 @@ mp verify --email you@example.com --code <CODE>
 
 | المصدر | الأمر الحقيقي المنفَّذ | ماذا يرجّع |
 |---|---|---|
-| GMGN `trenches` | `gmgn-cli market trenches --chain sol --limit 30 --launchpad-platform Pump.fun --min-marketcap 5000 --raw` | عملات pump.fun على منحنى الربط، في ثلاث فئات: `new_creation` و`near_completion` و`completed` |
+| GMGN `trenches` | `gmgn-cli market trenches --chain sol --limit 30 --type near_completion --type completed --launchpad-platform Pump.fun --min-marketcap 5000 --raw` | عملات pump.fun على منحنى الربط، في فئتين فقط: `near_completion` (على وشك التخرّج) و`completed` (متخرّجة) — **`new_creation` محذوفة بقرار المالك** |
 | GMGN `trending` | `gmgn-cli market trending --chain sol --limit 30 --interval 1m --platform Pump.fun --min-marketcap 5000 --raw` | أعلى زخم في آخر **دقيقة** على pump.fun |
 | PumpDev | بثّ WebSocket لحظي، ومعطوبان احتياطيان (Frontend API ثم PumpPortal) | إطلاقات جديدة لحظة وقوعها |
 | قائمة المراقبة | `config/enzo-watchlist.json` | عناوين تضعها يدك (أولوية قصوى) |
+
+> **فئات `trenches` صارت رقماً تملكه:** `data_sources.gmgn.trenches_types`
+> (افتراضياً `[near_completion, completed]`). العلم `--type` **قابل للتكرار** في
+> gmgn-cli v1.6.1، وقيمته الوحيدة المقبولة هي
+> `new_creation / near_completion / completed`؛ أي قيمة غيرها تُرفَض محلياً برسالة
+> تسمّي الصالح منها **قبل** حرق أي طلب. قائمة فارغة = افتراضي الـCLI (الفئات الثلاث).
+>
+> **وفخّ في الاستجابة نفسها كان يُسقط فئة كاملة بصمت:** المفاتيح الحقيقية هي
+> `data.new_creation` و`data.pump` و`data.completed`، حيث
+> **`data.pump` هي فئة `near_completion`** («In the response, near_completion is
+> always returned under the key data.pump regardless of the input --type» —
+> `skills/gmgn-market/SKILL.md`). كان المحلّل يبحث عن مفتاح اسمه
+> `near_completion` فلا يجده أبداً ⇒ **الفئة تُرمى كاملة في كل دورة**، والنسخة
+> المحاكية كانت تُصدر المفتاح الخطأ نفسه فبقي العطب غير مرئي في الاختبارات.
+> الآن يُقرأ المفتاحان معاً، والنسخة المحاكية تُصدر الشكل الموثَّق وتحترم
+> `--type` مثل الـCLI الحقيقي.
+>
+> **وحذف `new_creation` لا يعني أن الإطلاقات الجديدة انقطعت:** مصدرها
+> **PumpDev** (بثّ WebSocket لحظي + معطوبان احتياطيان)، وهو مصدر مستقل تماماً عن
+> trenches. الأثر الحقيقي هو أن سكان التحليل العميق القادمين من trenches صاروا
+> عملات في مرحلة التخرّج/ما بعده، أي تُقاس ببوابات **المُهاجَرة**
+> (الكاب ≥ $10,000 و`Global Fees Paid (SOL)` ≥ 2.5) لا ببوابات ما قبل الهجرة.
+> **ولا طلب إضافي واحد:** نفس استدعاء trenches الواحد، بعلمَيْن زائدين.
 
 > **`--interval` إلزامي لأمر `trending`** في gmgn-cli v1.6.1
 > (`.requiredOption("--interval <interval>", "1m / 5m / 1h / 6h / 24h")`).
@@ -458,11 +481,11 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-عشرون حزمة، **819 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+عشرون حزمة، **830 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
 python3 tests/test_dashboard_e2e.py        # 124  اللوحة: خادم حي + نقر كل زر في DOM
-python3 tests/test_gmgn_cli_compat.py      # 120  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + أشكال kline
+python3 tests/test_gmgn_cli_compat.py      # 131  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + أشكال kline + فئات trenches
 python3 tests/test_enzoctl_probe.py        #  61  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)

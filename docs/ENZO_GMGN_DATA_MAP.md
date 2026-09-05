@@ -230,7 +230,7 @@
 
 | القائمة | الحالة الحقيقية (مُتحقَّق منها ضد gmgn-cli v1.6.1) | تغذي |
 |---|---|---|
-| `trenches` | ✅ يعمل — `--chain` إلزامي فقط، و`--launchpad-platform Pump.fun` يُرسل فعلاً | مرشحين (الرئيسي) |
+| `trenches` | ✅ يعمل — `--chain` إلزامي فقط، و`--launchpad-platform Pump.fun` يُرسل فعلاً. **الفئات صارت مُرسلة صراحةً** بـ`--type` (قابل للتكرار) من `data_sources.gmgn.trenches_types` = `[near_completion, completed]` — `new_creation` محذوفة بقرار المالك. **ومفاتيح الاستجابة الحقيقية:** `data.new_creation` / `data.pump` / `data.completed`، حيث **`data.pump` هي `near_completion`** (المفتاح `near_completion` لا يظهر في الاستجابة أبداً) — كان المحلّل يبحث عنه فلا يجده فتُسقط الفئة كاملة بصمت؛ الآن يُقرأ المفتاحان | مرشحين (الرئيسي) |
 | `trending` | ✅ **صار** يعمل — كان يفشل في كل دورة: `--interval` **إلزامي** في v1.6.1 (`1m/5m/1h/6h/24h`) ولم يكن يُرسل، فيُجهض `commander` **قبل أي اتصال بالشبكة** برسالة `required option '--interval <interval>' not specified` ⇒ صفر عملات منذ البدء. الآن يُرسل `--interval` من `data_sources.gmgn.trending_interval` (افتراضياً `1m`) | مرشحين |
 | `hot-searches` | متاح (`--interval` اختياري، افتراضيه `24h`) — غير مفعّل في الإعداد | — |
 | `signal` | متاح (`--chain` إلزامي، بلا `--interval`) — غير مفعّل | — |
