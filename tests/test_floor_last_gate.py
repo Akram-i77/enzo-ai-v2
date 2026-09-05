@@ -22,8 +22,11 @@ if REPO not in sys.path:
     sys.path.insert(0, REPO)
 sys.path.insert(0, os.path.join(REPO, "tests"))
 
-from conftest_paths import install_mock_on_path  # noqa: E402
+from conftest_paths import install_mock_on_path, isolate_home  # noqa: E402
 install_mock_on_path()
+
+# Isolate BEFORE importing enzo (config resolves state paths at import time).
+isolate_home(prefix="enzo-floor-")
 
 from enzo.execution import executor, portfolio  # noqa: E402
 

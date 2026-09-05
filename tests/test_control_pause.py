@@ -34,6 +34,13 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
+sys.path.insert(0, os.path.join(REPO, "tests"))
+from conftest_paths import isolate_home  # noqa: E402
+# Isolate BEFORE importing enzo: enzo.core.config resolves every state path
+# (ledger DB, capital cache, log file) at import time, so a suite that imports
+# first writes into the live workspace no matter what it sets later.
+_ISO_HOME = isolate_home(prefix="enzo-ctl-")
+
 from enzo.ui import botctl  # noqa: E402
 
 PASS = FAIL = 0

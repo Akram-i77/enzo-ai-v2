@@ -8,13 +8,17 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))
 sys.path.insert(0, _HERE)
 
-from conftest_paths import install_mock_on_path, mock_bin_dir
+from conftest_paths import install_mock_on_path, isolate_home, mock_bin_dir
 
 MOCK_DIR = install_mock_on_path()
 if not MOCK_DIR:
     print("\n  \033[31mABORT\033[0m  no mock MoonPay CLI found. Expected tests/mockbin/mp, "
           "or set ENZO_MOCK_BIN_DIR.")
     sys.exit(2)
+
+# Isolate BEFORE importing: this suite drives the real executor against the mock
+# CLI, which writes the trade gate and log into whatever DATA_DIR resolved to.
+isolate_home(prefix="enzo-exec-")
 
 from enzo.core import config as C
 from enzo.execution import executor as X

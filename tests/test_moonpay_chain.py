@@ -38,12 +38,16 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))
 sys.path.insert(0, _HERE)
 
-from conftest_paths import install_mock_on_path
+from conftest_paths import install_mock_on_path, isolate_home
 
 MOCK_DIR = install_mock_on_path()
 if not MOCK_DIR:
     print("\n  ABORT  no mock MoonPay CLI found (expected tests/mockbin/mp).")
     sys.exit(2)
+
+# Isolate BEFORE importing: config resolves state paths at import time, and this
+# suite exercises the trade gate, which writes data/enzo-trade-gate.json.
+isolate_home(prefix="enzo-chain-")
 
 from enzo.core import config as C
 from enzo.execution import executor as X

@@ -54,6 +54,13 @@ def section(t):
     print(f"\n=== {t} ===")
 
 
+sys.path.insert(0, os.path.join(ROOT, "tests"))
+from conftest_paths import isolate_home  # noqa: E402
+# Isolate BEFORE importing enzo: enzo.core.config resolves every state path
+# (ledger DB, capital cache, log file) at import time, so a suite that imports
+# first writes into the live workspace no matter what it sets later.
+_ISO_HOME = isolate_home(prefix="enzo-knob-")
+
 import yaml                                              # noqa: E402
 from enzo.core.config import DEFAULTS                    # noqa: E402
 

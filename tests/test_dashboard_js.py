@@ -39,6 +39,13 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
 
+sys.path.insert(0, os.path.join(REPO, "tests"))
+from conftest_paths import isolate_home  # noqa: E402
+# Isolate BEFORE importing enzo: enzo.core.config resolves every state path
+# (ledger DB, capital cache, log file) at import time, so a suite that imports
+# first writes into the live workspace no matter what it sets later.
+_ISO_HOME = isolate_home(prefix="enzo-dashjs-")
+
 PASS = FAIL = 0
 
 
@@ -116,7 +123,7 @@ def test_generated_js_parses():
             check("dashboard generated", False, f"{type(e).__name__}: {e}")
             return
         finally:
-            os.environ.pop("ENZO_HOME", None)
+            os.environ["ENZO_HOME"] = _ISO_HOME  # never fall back to the live workspace
 
     if not check("dashboard generated", bool(res.get("ok")), str(res.get("error"))):
         return
@@ -152,7 +159,7 @@ def test_activity_stream_wiring():
         try:
             res = D.generate_safe()
         finally:
-            os.environ.pop("ENZO_HOME", None)
+            os.environ["ENZO_HOME"] = _ISO_HOME  # never fall back to the live workspace
     if not res.get("ok"):
         check("dashboard available for wiring check", False, str(res.get("error")))
         return
