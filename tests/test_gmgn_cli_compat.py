@@ -973,12 +973,36 @@ ok(_cat.get("ok") is False and "new_creation/near_completion/completed"
 ok(not [a for a in argv_log() if len(a) > 1 and a[1] == "trenches"],
    "and no CLI call is wasted on it", str(argv_log()[:1]))
 
-# Restore the shipped values.
+# The per-stage breakdown is what makes a silently dropped stage visible: a total
+# of "12 token(s)" looks identical whether near_completion gave 12 or 0.
+reset_provider()
+set_state({})
+_db.rl_clear_ban("gmgn")
+set_gmgn_cfg(discovery=["trenches"], trenches_types=["near_completion", "completed"])
+gmgn.discover("sol")
+_st = ((gmgn.discovery_status().get("categories_ok") or {}).get("trenches") or {}).get("stages") or {}
+ok(_st.get("near_completion") == 1 and _st.get("completed") == 1,
+   "discovery_status reports what EACH requested stage contributed", str(_st))
+ok(((gmgn.discovery_status().get("categories_ok") or {}).get("trenches") or {})
+   .get("requested_types") == ["near_completion", "completed"],
+   "and which stages were asked for", str(((gmgn.discovery_status()
+   .get("categories_ok") or {}).get("trenches") or {}).get("requested_types")))
+_gap = gmgn._trenches_stages({"code": 0, "data": {"completed": []}},
+                            ["near_completion", "completed"])
+ok(_gap.get("near_completion") == "ABSENT from the response" and _gap.get("completed") == 0,
+   "a stage GMGN did not send is NAMED, not folded into a smaller total", str(_gap))
+
+# Restore the shipped values, and check the interval trending was sent with is
+# reported too: --interval is REQUIRED by the CLI (that is defect §12), so the
+# value that actually went out belongs in the status the page reads.
 reset_provider()
 set_state({})
 _db.rl_clear_ban("gmgn")
 set_gmgn_cfg(discovery=["trenches", "trending"], trending_interval="1m",
              discovery_limit=30, trenches_types=["near_completion", "completed"])
+gmgn.discover("sol")
+_iv = ((gmgn.discovery_status().get("categories_ok") or {}).get("trending") or {}).get("requested_interval")
+ok(_iv == "1m", "trending reports the --interval it was sent with", str(_iv))
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)

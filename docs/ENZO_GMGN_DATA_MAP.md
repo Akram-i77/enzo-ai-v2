@@ -236,6 +236,13 @@
 | `signal` | متاح (`--chain` إلزامي، بلا `--interval`) — غير مفعّل | — |
 | `smartmoney` / `kol` | ❌ **ليسا أمرين في v1.6** (المال الذكي وKOL تحت `track` ويعيدان صفقات محفظة لا قائمة عملات) — يُتجاوزان مع سبب مقروء بدل حرق حدّ الطلبات | — |
 
+**وعدد كل مرحلة ظاهر، لا الإجمالي وحده:** `discovery_status()` يعيد لتrenches
+`stages` (كم صفاً أعطته كل فئة مطلوبة) و`requested_types`، واللوحة تطبعهما:
+`trenches: 12 token(s) [near_completion 7 · completed 5] (--type near_completion+completed)`.
+وإن غاب مفتاح فئة مطلوبة من الاستجابة يظهر `ABSENT from the response` ويصير رأس
+بطاقة GMGN تحذيراً — لأن الإجمالي وحده لا يميّز «الفئة أعطت 12» من «الفئة سقطت
+بصمت». واللوحة تعرض كذلك `Analysed by source` (كم عملة فُحصت من كل مصدر).
+
 **مصدر كل مرشّح ظاهر الآن:** كل قرار يحمل `discovery_source`
 (`gmgn_trenches` / `gmgn_trending` / `pumpdev` / `watchlist`)، وإحصاء الدورة يحمل
 عدّاد `sources`، و`./enzoctl scan` يطبعه بين معقوفتين — حتى يُحكم على كل مصدر

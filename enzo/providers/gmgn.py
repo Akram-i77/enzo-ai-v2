@@ -871,8 +871,20 @@ def discover(chain=None) -> list:
                     if mint not in seen_mints:
                         seen_mints.add(mint)
                         items.append(normed)
-            _DISCOVERY_STATUS["categories_ok"][cat] = {
-                "ok": True, "count": len(cat_items_map.get(cat) or []), "error": None}
+            _entry = {"ok": True, "count": len(cat_items_map.get(cat) or []),
+                      "error": None}
+            if cat == "trenches":
+                # Report what each requested stage actually contributed (and name
+                # a stage GMGN did not send) - see _trenches_stages().
+                _st = _trenches_stages(res, trenches_types or list(TRENCHES_TYPES))
+                if _st is not None:
+                    _entry["stages"] = _st
+                _entry["requested_types"] = list(trenches_types) or ["(CLI default: all 3)"]
+            if cat == "trending":
+                # Same reasoning as trenches: --interval is REQUIRED by the CLI, and
+                # the interval that was actually sent belongs on the page.
+                _entry["requested_interval"] = trending_interval
+            _DISCOVERY_STATUS["categories_ok"][cat] = _entry
         except Exception as e:
             # Was _LOGGER.debug(): a GMGN sweep that failed for every category
             # returned [] and was then CACHED as a legitimate empty result for
@@ -936,6 +948,42 @@ _LIST_SHAPES = (
     ("list",),
     ("data",),
 )
+
+
+def _trenches_stages(res, requested):
+    """Per-stage row counts of a `market trenches` response, or None if unknown.
+
+    A trenches sweep can report `ok: True, count: 12` while a whole requested
+    stage is MISSING FROM THE RESPONSE: the near_completion rows live under the
+    key `pump`, and a parser looking for `near_completion` finds nothing and
+    stays quiet about it (that is how the category vanished for so long, and why
+    removing new_creation on top of it would have left `completed` alone). So the
+    count is reported per stage, and a key GMGN did not send is NAMED instead of
+    being folded into a smaller total that looks like a quiet market.
+    """
+    bodies = []
+    if isinstance(res, dict):
+        bodies.append(res)
+        inner = res.get("data")
+        if isinstance(inner, dict):
+            bodies.append(inner)
+    if not bodies:
+        return None
+    out = {}
+    for stage in requested:
+        # `pump` is what the API sends; `near_completion` is the legacy/mock spelling.
+        keys = ("pump", "near_completion") if stage == "near_completion" else (stage,)
+        rows = None
+        for body in bodies:
+            for k in keys:
+                v = body.get(k)
+                if isinstance(v, list):
+                    rows = v
+                    break
+            if rows is not None:
+                break
+        out[stage] = len(rows) if rows is not None else "ABSENT from the response"
+    return out
 
 
 def _extract_items(res, category):

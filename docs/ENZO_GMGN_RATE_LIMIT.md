@@ -258,7 +258,7 @@ Check the result without guessing:
 
 ```bash
 python3 tests/test_rate_limit_budget.py   # 59 checks: the caps are real, counted in CLI calls
-python3 tests/test_gmgn_cli_compat.py     # 131 checks, incl. §11 reset_at/fail-fast, §12 --interval, §13 kline, §14 trenches --type + data.pump
+python3 tests/test_gmgn_cli_compat.py     # 135 checks, incl. §11 reset_at/fail-fast, §12 --interval, §13 kline, §14 trenches --type + data.pump
 python3 tests/test_config_wiring.py       # 18 checks: no new dead keys, YAML == DEFAULTS
 ```
 
@@ -270,5 +270,5 @@ issues **zero** calls. It also pins the classification above (a `WAIT` coin is h
 only by the 45s floor, an `IGNORE` coin by the full 900s, a `DATA_ERROR` by neither)
 and the effective-cap rule (`volume_caps` returns the tightest of each pair).
 
-Full suite: **830 checks, 0 failures** across 20 suites (`bash` the list in the
+Full suite: **842 checks, 0 failures** across 20 suites (`bash` the list in the
 README, or run any file alone — no config, network or real wallet needed).

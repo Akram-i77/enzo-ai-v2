@@ -506,6 +506,26 @@ ok("gmgn_trending" in _srcs and "gmgn_trenches" in _srcs,
    "trenches` to trenches - so 'the coins are bad' can be traced to a source",
    str(_srcs))
 
+# ── the page has to show the same provenance, per discovery stage ──
+# A trenches total alone cannot distinguish "near_completion gave 12" from "the
+# stage was dropped and completed gave 12" - which is exactly the defect class
+# that hid behind the API's `data.pump` key. The page breaks it down per stage,
+# names a stage GMGN did not send, and tallies the analysed coins per source.
+_html2 = ""
+try:
+    _html2 = open(dashboard.generate(), encoding="utf-8").read()
+except Exception as e:                                    # noqa: BLE001
+    _html2 = f"ERROR {e}"
+ok("--type near_completion+completed" in _html2,
+   "the dashboard shows WHICH trenches stages were requested", _html2[:0] or "see page")
+ok(("near_completion " in _html2 and "completed " in _html2),
+   "and how many tokens each stage contributed", "")
+ok('id="gmgnSources"' in _html2 and "gmgn_trenches" in _html2,
+   "and it tallies the analysed coins per discovery source", "")
+ok("Analysed by source" in _html2, "under a readable heading", "")
+ok("--interval 1m" in _html2,
+   "and the --interval trending was sent with (--interval is REQUIRED by the CLI)", "")
+
 api = ""
 try:
     from enzo.ui import serve

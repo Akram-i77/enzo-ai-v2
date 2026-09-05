@@ -252,6 +252,14 @@ def generate() -> str:
         f" (skipped: {_cyc.get('skipped_cooldown', 0)} cooldown, "
         f"{_cyc.get('skipped_budget', 0)} budget)")
     gmgn_volume_ok = float(_cst.get("per_min_avg") or 0.0) <= 35.0
+    # ── WHICH SOURCE handed over the coins that were actually judged. Provenance
+    #    lives in every decision and in cycle_stats()["sources"], and ./enzoctl
+    #    scan prints it, but the page - the operator's main window - never showed
+    #    it, so "the coins are bad" could not be traced to a source from here.
+    _srcs = _cyc.get("sources") or {}
+    gmgn_sources_label = (" · ".join(f"{_k} {_v}" for _k, _v in sorted(_srcs.items()))
+                          if isinstance(_srcs, dict) and _srcs else
+                          "no deep analysis in this process yet")
     gmgn_key_ok = bool(_pst.get("api_key_present"))
     gmgn_last_err = str(_pst.get("last_error") or "")
     gmgn_last_ep = str(_pst.get("last_error_endpoint") or "")
@@ -260,13 +268,33 @@ def generate() -> str:
         or "not negotiated yet (no token call since start)"
     _cats = _dst.get("categories_ok") or {}
     _cat_bits = []
+    # A stage GMGN did not send is the one discovery fault that CANNOT be seen in
+    # a total: `trenches: 12 token(s)` looks the same whether near_completion
+    # contributed 12 or 0 (that is exactly how the `data.pump` key defect hid -
+    # the category was dropped whole while every sweep still reported ok). So the
+    # page breaks the count down per stage and says "ABSENT" out loud.
+    _stage_gap = False
     for _cn, _cv in _cats.items():
         if _cv.get("skipped"):
-            _cat_bits.append(f"{_cn}: skipped (not a gmgn-cli v1.6 command)")
+            _cat_bits.append(f"{_cn}: skipped — {str(_cv.get('error') or 'not sent')[:90]}")
         elif _cv.get("ok"):
-            _cat_bits.append(f"{_cn}: {_cv.get('count')} token(s)")
+            _bit = f"{_cn}: {_cv.get('count')} token(s)"
+            _st = _cv.get("stages") or {}
+            if _st:
+                _parts = []
+                for _sn, _sv in _st.items():
+                    _parts.append(f"{_sn} {_sv}")
+                    if not isinstance(_sv, int):
+                        _stage_gap = True
+                _bit += " [" + " · ".join(_parts) + "]"
+                _req = _cv.get("requested_types") or []
+                if _req:
+                    _bit += f" (--type {'+'.join(str(x) for x in _req)})"
+            elif _cv.get("requested_interval"):
+                _bit += f" (--interval {_cv.get('requested_interval')})"
+            _cat_bits.append(_bit)
         else:
-            _cat_bits.append(f"{_cn}: FAILED")
+            _cat_bits.append(f"{_cn}: FAILED — {str(_cv.get('error') or '')[:70]}")
     gmgn_cats_label = " · ".join(_cat_bits) if _cat_bits else "no discovery sweep in this process yet"
     _cats_tried = [c for c, v in _cats.items() if not v.get("skipped")]
     _cats_failed = [c for c, v in _cats.items() if v.get("ok") is False and not v.get("skipped")]
@@ -278,6 +306,9 @@ def generate() -> str:
         gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"BANNED {int(gmgn_ban_rem)}s · {gmgn_rate_label}"
     elif gmgn_dead:
         gmgn_hdr_cls, gmgn_hdr_txt = "color-neg", f"ALL CATEGORIES FAILED · {gmgn_rate_label}"
+    elif _stage_gap:
+        gmgn_hdr_cls, gmgn_hdr_txt = "color-warn", (
+            f"A DISCOVERY STAGE IS MISSING FROM THE GMGN RESPONSE · {gmgn_rate_label}")
     elif gmgn_last_err:
         gmgn_hdr_cls, gmgn_hdr_txt = "color-warn", f"DEGRADED · {gmgn_rate_label}"
     else:
@@ -1211,7 +1242,8 @@ def generate() -> str:
             <div><b>Ban:</b> <span id="gmgnBanRemain" class="{ 'color-neg' if gmgn_banned else 'color-pos' }">{_esc(gmgn_ban_label)}</span></div>
             <div><b>Requests:</b> <span id="gmgnVolume" class="{ 'color-neg' if not gmgn_volume_ok else '' }">{_esc(gmgn_volume_label)}</span></div>
             <div><b>CLI dialect:</b> <span id="gmgnDialect">{_esc(gmgn_dialect_label)}</span></div>
-            <div><b>Discovery:</b> <span id="gmgnCats">{_esc(gmgn_cats_label)}</span></div>
+            <div><b>Discovery:</b> <span id="gmgnCats" class="{ 'color-warn' if _stage_gap else '' }">{_esc(gmgn_cats_label)}</span></div>
+            <div><b>Analysed by source:</b> <span id="gmgnSources">{_esc(gmgn_sources_label)}</span></div>
             <div><b>Last sweep:</b> <span id="gmgnLastCount">{ 'no sweep yet' if gmgn_last_count is None else str(gmgn_last_count) + ' candidate(s)' }</span></div>
             <div><b>Last error:</b> <span id="gmgnLastError" class="{ 'color-warn' if gmgn_last_err else '' }">{ _esc((gmgn_last_ep + ': ' + gmgn_last_err)[:150]) if gmgn_last_err else 'none' }</span></div>
             <p style="margin-top:2px;">Token bucket with automatic backoff and unban coordination. The pace above is the configured one (requests_per_sec / request_gap_ms / burst_capacity) — not a number derived from the gap.</p>

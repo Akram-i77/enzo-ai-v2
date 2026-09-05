@@ -282,10 +282,21 @@ market_analysis:  {max_holder_percentage: 10.0}   # أعلى محفظة، عدا
 - كل رفض يعرض الآن **سببه ورموزه وأدلّته** (المنصّة/الطور/الرسوم/عدد
   القنّاصين/تركّز أعلى محفظة) — كان يظهر `SYM → IGNORE (conf=0)` بلا تفسير،
   لأن تحويل سجلّ القرارات إلى تدفق النشاط كان يُسقط `reason` و`rejected_signals`.
-- بطاقة **«⚡ مصدر بيانات GMGN»**: وجود المفتاح، لهجة العناوين
-  (`--address`/`--token`)، فئات الاكتشاف وعدد كل فئة، آخر مسح، وآخر خطأ من
-  المزوّد. ولافتتان حمراوان: **بلا `GMGN_API_KEY`** (كل البوابات تقرأ «مجهول»)
-  وحين **تموت فئات الاكتشاف كلها**.
+- بطاقة **«⚡ مصدر بيانات GMGN»**: وجود المفتاح، حالة الحظر وكم بقي منه، صفّ
+  **Requests** (كم طلباً منذ البدء، المعدّل في الدقيقة، تكلفة آخر الدورة)، لهجة
+  العناوين (`--address`/`--token`)، آخر مسح، وآخر خطأ من المزوّد (لا يُبتلع).
+- **سطر Discovery فيها يفصّل كل فئة، لا إجماليها فقط:**
+  `trenches: 2 token(s) [near_completion 1 · completed 1] (--type near_completion+completed) · trending: 1 token(s)`.
+  السبب: الإجمالي وحده **لا يميّز** بين «الفئة أعطت 12» و«الفئة سقطت بصمت
+  و12 جاءت من غيرها» — وهو بالضبط العطب الذي كان يخفيه مفتاح `data.pump`. وإن
+  أرسلت GMGN استجابةً بلا مفتاح فئةٍ مطلوبة، يظهر اسمها صراحةً
+  `ABSENT from the response` ويصير رأس البطاقة تحذيراً:
+  `A DISCOVERY STAGE IS MISSING FROM THE GMGN RESPONSE`.
+- **وسطر `Analysed by source`** فيها: كم عملة فُحصت بعمق من كل مصدر
+  (`gmgn_trenches 2 · gmgn_trending 1`) — إسناد المهمة 43 يصل إلى اللوحة نفسها،
+  لا إلى السجل و`./enzoctl scan` وحدهما.
+- ثلاث لافتات في رأس البطاقة: **بلا `GMGN_API_KEY`** (كل البوابات تقرأ «مجهول»)،
+  و**BANNED Ns left** (وأثناء الحظر: صفر طلبات)، وحين **تموت فئات الاكتشاف كلها**.
 
 ## حماية الرغ: ثلاث طبقات / Rug protection layers
 
@@ -363,11 +374,13 @@ rug_protection:
 | `discovery.max_depth_tokens_per_cycle` | 6 | السقف الآخر نفسه — **الأضيق هو الذي يُطبَّق** |
 | `data_sources.gmgn.reanalysis_cooldown_sec` | 900 | عملة نتيجتها **نهائية** (`IGNORE`/`NOT_TRADABLE`): لا تُفحص قبل 15 دقيقة. أما `WAIT` فتبقى قابلة للفحص بعد 45 ثانية حتى لا تضيع فرصة |
 | `data_sources.gmgn.max_candidates_per_scan` | 40 | كم مرشّحاً يُنظر فيه أصلاً |
+| `data_sources.gmgn.discovery_limit` | 30 | حمولة كل فئة اكتشاف في النداء الواحد (كانت 50؛ التحليل العميق محدود بـ6 على أي حال) |
 | `engine.scan_interval_sec` | 60 | التباعد بين الدورات (دورة أطول منه = بثّ متواصل) |
 | `data_sources.gmgn.requests_per_sec` | 0.8 | الوتيرة المحلّية (لم تكن هي المشكلة) |
 
 أين ترى الحقيقة: صفّ **Requests** في بطاقة GMGN في اللوحة (كم طلباً منذ البدء،
-المعدّل في الدقيقة، تكلفة آخر دورة وكم مرشّحاً تجاوزته الميزانية)،
+المعدّل في الدقيقة، تكلفة آخر دورة وكم مرشّحاً تجاوزته الميزانية)، وصفّ
+**Discovery** فيها بعدد كل فئة وكل مرحلة داخل trenches،
 و`./enzoctl doctor` → صفّ `gmgn_request_budget` (السقف المحسوب + السقوف الفعّالة)،
 و`./enzoctl scan` يطبع تكلفة الدورة في نهايتها.
 
@@ -481,18 +494,18 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-عشرون حزمة، **830 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+عشرون حزمة، **842 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
-python3 tests/test_dashboard_e2e.py        # 124  اللوحة: خادم حي + نقر كل زر في DOM
-python3 tests/test_gmgn_cli_compat.py      # 131  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + أشكال kline + فئات trenches
+python3 tests/test_dashboard_e2e.py        # 127  اللوحة: خادم حي + نقر كل زر في DOM
+python3 tests/test_gmgn_cli_compat.py      # 135  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + أشكال kline + فئات trenches
 python3 tests/test_enzoctl_probe.py        #  61  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
 python3 tests/test_exit_rules.py           #  44  قواعد الخروج: وقف/متحرك/ركود + أولوياتها
 python3 tests/test_engine_e2e.py           #  43  المسار الكامل: اكتشاف ← قرار ← تنفيذ حي
 python3 tests/test_min_trade_floor.py      #  51  min_trade_usd كأرضية لا كعتبة رفض
-python3 tests/test_rate_limit_budget.py    #  59  ميزانية طلبات GMGN: السقوف معدودة بنداءات CLI
+python3 tests/test_rate_limit_budget.py    #  64  ميزانية طلبات GMGN: السقوف معدودة بنداءات CLI
 python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة ومنع NO_ROUTE
 python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف (فشل آمن + كتابة ذرّية)
 python3 tests/test_rug_layers.py           #  25  طبقات الرغّ 1 (نقض) + 3 (وقف مبكر) + 4 (قاطع)
