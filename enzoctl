@@ -493,8 +493,12 @@ def cmd_doctor(args):
                        "fix": fix, "critical": bool(critical)})
 
     # 1. Python + deps
-    add("python_version", sys.version_info >= (3, 9), f"Python {sys.version.split()[0]}",
-        "ENZO needs Python 3.9+")
+    # Floor must match bootstrap.sh (>= 3.10). It used to be 3.9 here, so on a
+    # 3.9 host doctor said OK while bootstrap.sh said FAIL - two tools, two
+    # answers, and a deployment that could not be trusted either way. Verified
+    # interpreters: 3.11, 3.12, 3.14.
+    add("python_version", sys.version_info >= (3, 10), f"Python {sys.version.split()[0]}",
+        "ENZO needs Python 3.10+ (same floor bootstrap.sh enforces)")
     try:
         import yaml  # noqa: F401
         add("pyyaml", True, f"PyYAML {getattr(yaml, '__version__', '?')}")
@@ -652,12 +656,26 @@ def cmd_doctor(args):
             from enzo.execution import portfolio
             cap = portfolio.sync_capital_base(force=True, cfg=cfg)
             usd = float(cap.get("usd") or 0)
-            min_trade = float((cfg.get("execution") or {}).get("min_trade_usd", 1.0))
-            ok = cap.get("ok") and (usd > 0 if cfg.get("paper_mode") else usd >= min_trade)
-            add("capital", ok,
-                f"${usd:,.2f} deployable ({cap.get('source')})"
-                + ("" if cap.get("ok") else f" — {cap.get('detail')}"),
-                "fund the MoonPay wallet, or check auth: mp login / mp consent accept")
+            ex_cfg = cfg.get("execution") or {}
+            min_trade = float(ex_cfg.get("min_trade_usd", 1.0))
+            grace = float(ex_cfg.get("capital_sync_grace_sec", 300))
+            # A stale reading is NOT healthy capital: the wallet could not be
+            # read and this number is a memory of an older balance. A green tick
+            # here is how a bot ends up sizing live trades against money that is
+            # no longer there.
+            stale = bool(cap.get("stale"))
+            ok = bool(cap.get("ok")) and not stale and (
+                usd > 0 if cfg.get("paper_mode") else usd >= min_trade)
+            if stale:
+                detail = (f"STALE ${usd:,.2f} — the wallet could not be read; this is a "
+                          f"{float(cap.get('age_sec') or 0):,.0f}s-old memory, tolerated "
+                          f"for {grace:.0f}s then trading is blocked")
+            else:
+                detail = (f"${usd:,.2f} deployable ({cap.get('source')})"
+                          + ("" if cap.get("ok") else f" — {cap.get('detail')}"))
+            add("capital", ok, detail,
+                "check the wallet: mp wallet list · mp login · mp consent accept",
+                critical=stale or not cap.get("ok"))
         except Exception as e:
             add("capital", False, f"{type(e).__name__}: {e}")
 

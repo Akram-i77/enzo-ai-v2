@@ -1,0 +1,38 @@
+# ENZO — what must never be committed.
+#
+# This file did not exist, so regenerated and runtime artifacts were committed
+# alongside the source: 74 .pyc/node_modules files, a 4.5 MB audit backup, a
+# 2.6 MB log. Nothing here deletes what is already tracked (use
+# `git rm --cached <path>` for that); it stops NEW junk from being added.
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-*/
+venv/
+
+# Node (only needed for the MoonPay CLI, never part of the bot)
+node_modules/
+
+# Runtime artifacts — regenerated on every run
+data/logs/
+data/run/
+data/*.bak
+data/*.bak.*
+data/*.last-good
+data/enzo-dashboard.html
+data/enzo-cache.json
+
+# Secrets: the bot reads this file, git must not carry it.
+# The owner's Telegram token was committed before this rule existed and is
+# therefore compromised - revoke it via @BotFather, then:
+#   git rm --cached config/enzo-secrets.json
+config/enzo-secrets.json
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

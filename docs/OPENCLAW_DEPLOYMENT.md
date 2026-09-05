@@ -11,6 +11,44 @@
 
 ## 1. التشغيل لأول مرة / First run
 
+### 1.0 قبل أي شيء: أداتان خارجيتان إلزاميتان / two external CLIs
+
+البوت لا يحمل بيانات السوق ولا ينفّذ الصفقات بنفسه — هما أداتان منفصلتان، وغياب
+إحداهما يعطّل كل شيء (مع فشل آمن صريح، لا تخمين):
+
+```bash
+# أ) MoonPay CLI — تنفيذ الصفقات الحقيقية (إلزامي في وضع LIVE)
+npm i -g @moonpay/cli
+mp consent accept
+mp login --email you@example.com
+mp verify --email you@example.com --code <CODE>
+mp wallet list                 # يجب أن تظهر المحفظة: enzo-trading
+
+# ب) gmgn-cli — مصدر بيانات السوق والاكتشاف الوحيد
+#    ثبّته ثم تأكد أنه على PATH، أو ضع مساره الكامل في الإعداد:
+#      data_sources.gmgn.cli: /full/path/to/gmgn-cli
+which gmgn-cli || echo "غير موجود — الاكتشاف سيعيد 0 عملة"
+```
+
+بدون `mp`: لا تُنفَّذ أي صفقة، ويحجب البوت تحديد حجم المركز برسالة
+`LIVE position sizing is BLOCKED`. وبدون `gmgn-cli`: لا يرى السوق إطلاقاً
+(0 مرشَّحين كل دورة). كلاهما يظهر بنداً ✖ في `./enzoctl doctor`.
+
+### 1.0.1 إن تعذّرت قراءة المحفظة / when the wallet cannot be read
+
+رأس المال في وضع LIVE يُقرأ من محفظة MoonPay الحقيقية. إن فشلت القراءة
+(غياب `mp`، انتهاء الجلسة، انقطاع الشبكة):
+
+- يُستخدم آخر رقم ناجح **لمدة `execution.capital_sync_grace_sec` (300 ثانية) فقط**،
+  ويُعلَّم `stale`، ويظهر في `doctor` كـ `✖ capital STALE $…` — **لا علامة خضراء**.
+- بعد انتهاء النافذة: **حجم المركز محجوب** (`LIVE position sizing is BLOCKED`)
+  ويُكتب حدث `RISK/ERROR` في سجلّ التدقيق. البوت لا يخمّن رصيداً أبداً.
+- الختم الزمني لآخر قراءة ناجحة **لا يُجدَّد** عند الفشل، فالنافذة تنتهي في
+  موعدها فعلاً (كان تجديدها يجعل القراءة القديمة صالحة للأبد — أُصلح ومُختبَر في
+  `tests/test_capital_staleness.py`).
+
+### 1.1 التشغيل / first run
+
 ```bash
 cd <workspace>/enzo-ai-v2
 bash bootstrap.sh          # يثبّت المتطلبات ويتحقق (لا يلمس أموالك ولا إعداداتك)

@@ -144,7 +144,10 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
 
     snap = _read_capital_file()
     age = time.time() - float(snap.get("ts") or 0.0)
-    if not force and snap.get("ok") and age < ttl:
+    # A snapshot flagged `stale` is a FAILED read tolerated inside the grace
+    # window. It must never be re-served as if it were fresh, or a wallet that
+    # became unreadable would keep funding LIVE position sizing forever.
+    if not force and snap.get("ok") and not snap.get("stale") and age < ttl:
         return {**snap, "age_sec": round(age, 1)}
 
     cap = executor.sync_wallet_capital(force=force, cfg=cfg)
@@ -180,7 +183,18 @@ def sync_capital_base(force: bool = False, cfg: dict = None, rebase: bool = Fals
                                 data={"detail": str(detail)[:300]})
             except Exception:
                 pass
-        _write_capital_file({**out, "ts": time.time(), "iso": _now_iso()})
+        # MONEY SAFETY: when the reading is stale, keep the ORIGINAL timestamp of
+        # the last SUCCESSFUL wallet read. This used to write time.time()
+        # unconditionally, which reset the grace window on every failed attempt:
+        # the window never expired, a balance from days ago stayed "deployable",
+        # and `enzoctl doctor` showed healthy capital while the wallet could not
+        # be read at all. Now grace closes capital_sync_grace_sec after the last
+        # real read and sizing is blocked loudly from then on.
+        _stale = bool(out.get("stale"))
+        _last_good = float(snap.get("ts") or 0.0)
+        _write_ts = _last_good if (_stale and _last_good > 0) else time.time()
+        _write_capital_file({**out, "ts": _write_ts, "iso": _now_iso(),
+                             "last_good_ts": _last_good if _stale else _write_ts})
         return out
 
     usd = float(cap.get("total_usd", 0.0) or 0.0)

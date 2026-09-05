@@ -357,11 +357,38 @@ def test_dashboard_knobs_wired():
         shutil.rmtree(sbx, ignore_errors=True)
 
 
+def test_python_floor_agreement():
+    section("5. الحد الأدنى لبايثون: كلمة واحدة في كل الأدوات")
+    readme = io.open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
+    boot = io.open(os.path.join(ROOT, "bootstrap.sh"), encoding="utf-8").read()
+    ctl = io.open(os.path.join(ROOT, "enzoctl"), encoding="utf-8").read()
+    # README states it in prose, bootstrap.sh compares an integer, enzoctl
+    # compares a tuple. They disagreed once (3.9 vs 3.10), so a host could pass
+    # doctor and fail bootstrap - two tools, two answers.
+    rm = re.search(r"Python\s+(\d+)\.(\d+)\+", readme)
+    bs = re.search(r"-ge\s+(\d)(\d\d)\b", boot)
+    ct = re.search(r"sys\.version_info\s*>=\s*\((\d+),\s*(\d+)\)", ctl)
+    ok(bool(rm) and bool(bs) and bool(ct), "الأدوات الثلاث تذكر حداً أدنى قابلاً للقراءة",
+       f"README={rm.groups() if rm else None} bootstrap={bs.groups() if bs else None} "
+       f"enzoctl={ct.groups() if ct else None}")
+    if rm and bs and ct:
+        floors = {"README": f"{rm.group(1)}.{rm.group(2)}",
+                  # bootstrap.sh compares major*100+minor, so 310 == 3.10 and
+                  # 309 == 3.9: the last two digits ARE the minor version.
+                  "bootstrap.sh": f"{bs.group(1)}.{int(bs.group(2))}",
+                  "enzoctl doctor": f"{ct.group(1)}.{ct.group(2)}"}
+        ok(len(set(floors.values())) == 1, "الحد الأدنى متطابق في README وbootstrap وdoctor",
+           str(floors))
+        ok(list(floors.values())[0] == "3.10", "الحد المعلن هو 3.10 (لم يُتحقق من 3.9)",
+           list(floors.values())[0])
+
+
 def main():
     test_parity()
     test_dead_keys()
     test_factory_penalty_wiring()
     test_dashboard_knobs_wired()
+    test_python_floor_agreement()
     print("\n" + "=" * 68)
     print(f"  RESULT: {PASS} passed, {FAIL} failed")
     print("=" * 68)

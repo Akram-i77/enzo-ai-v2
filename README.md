@@ -51,7 +51,7 @@ bash bootstrap.sh      # 1. ثبّت المتطلبات وتحقق
 
 | المتطلب | السبب | التحقق |
 |---|---|---|
-| Python 3.9+ | تشغيل البوت | `python3 --version` |
+| Python 3.10+ | تشغيل البوت (مُثبت على 3.11 و3.12 و3.14) | `python3 --version` |
 | **PyYAML** | قراءة `enzo-config.yaml` — **إلزامي** | `./enzoctl doctor` |
 | websockets | تغذية إطلاقات PumpDev الحية | `./enzoctl doctor` |
 | `@moonpay/cli` (`mp`) | تنفيذ الصفقات الحقيقية | `mp wallet list` |
