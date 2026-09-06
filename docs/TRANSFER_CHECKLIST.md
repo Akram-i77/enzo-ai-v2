@@ -122,7 +122,7 @@ export GMGN_API_KEY="<مفتاحك من gmgn.ai>"      # في البيئة ال�
 | `exec.moonpay_cli_installed` · `exec.mode` · `exec.wallet_exists` · `exec.balances_readable` · `exec.capital_sufficient` | الأداة مثبّتة · `LIVE (real trades)` · المحفظة موجودة · الأرصدة مقروءة · `deployable $X` | ✖ أيٌّ منها ⇒ **لا شراء إطلاقاً** في LIVE (والسبب مسمّى بالتحديد لا «سوق هادئ») |
 | `capital` | `$X deployable (wallet)` | المحفظة غير مقروءة ⇒ **التحجيم محجوب** |
 | `ledger_baseline` | `wallet-anchored` | الأساس ما زال 10,000 الوهمية ⇒ `./enzoctl rebase --confirm` |
-| `code_revision` | `commit <hash>` (من `TRANSFER_REVISION.txt` في نسخة بلا git) | ⚠ `cannot identify the running code` ⇒ انسخ `TRANSFER_REVISION.txt` من المصدر |
+| `code_revision` | `commit <sha>` — في نسخة النقل (بلا `.git`) يُقرأ الـsha من سطر `الالتزام :` في `TRANSFER_REVISION.txt` | ⚠ `cannot identify the running code` ⇒ انسخ `TRANSFER_REVISION.txt` من المصدر (كان هذا البند يطبع أول 12 حرفاً من عنوان البطاقة ويمنح ✔ بلا معنى) |
 | `base_token_funding` | جزء من الرصيد قابل للإنفاق كـ SOL | كل المال USDC ⇒ كل شراء يُرفض |
 | `telegram_token` | ⚠ `missing` إن لم تضعه بعد | التنبيهات لا تصل — **لا يمنع التداول** |
 | `secrets_not_in_git` | (تحذير) | التوكن متتبَّع في git |
@@ -183,7 +183,7 @@ export GMGN_API_KEY="<مفتاحك من gmgn.ai>"      # في البيئة ال�
 ## 5) الاختبارات (اختياري لكن مُوصى به بعد النقل)
 
 ```bash
-for t in tests/test_*.py; do python3 "$t"; done    # 20 حزمة · 882 تحقّقاً (~4 دقائق)
+for t in tests/test_*.py; do python3 "$t"; done    # 20 حزمة · 887 تحقّقاً (~4 دقائق)
 ```
 
 كلها تعمل في صناديق `ENZO_HOME` معزولة: **لا تلمس** قاعدة بياناتك ولا أموالك —
@@ -193,15 +193,16 @@ for t in tests/test_*.py; do python3 "$t"; done    # 20 حزمة · 882 تحقّ
 وهمي قد يعتمده المحرك 300 ثانية عند فشل قراءة المحفظة).
 اختبار اللوحة يشغّل خادماً حقيقياً على منفذ حر وينقر كل زر داخل DOM.
 
-في نسخة النقل (بلا `.git`) يُظهر `test_executor` **44** بدل 48 (المجموع **882**
-بدل **886**): التحقّقات الأربعة الباقية تقارن السلوك بالكود القديم المسترجَع من
+في نسخة النقل (بلا `.git`) يُظهر `test_executor` **44** بدل 48 (المجموع **887**
+بدل **891**): التحقّقات الأربعة الباقية تقارن السلوك بالكود القديم المسترجَع من
 تاريخ git، وتُتخطّى تلقائياً عند غياب التاريخ. **صفر فشل** هو المطلوب في الحالتين.
 
 الحزم التي تخصّ مرشّحات 2026-09 ومصدر البيانات: `test_token_universe_gates`
 (48 — كل رموز الرفض والطورين والقيم الحدّية)، `test_gmgn_cli_compat` (**161** —
 توافق gmgn-cli v1.6.1 + المسار الكامل **بلا أي استبدال**، ومنها §15 نوافذ الزخم
 1m/5m و§16 أن النافذة المجهولة في هيكل السوق ليست نافذة مسطّحة)،
-و`test_enzoctl_probe` (**67** — أداتا التشخيص `doctor` و`probe`).
+و`test_enzoctl_probe` (**72** — أداتا التشخيص `doctor` و`probe`، ومنها قراءة بصمة
+النسخة من `TRANSFER_REVISION.txt` في نسخة بلا git).
 
 > اللوحة نفسها تحذّرك قبل أول تشغيل: إن رأيت لافتة «رأس المال المعروض
 > ($10,000) هو الرقم الافتراضي لا رصيدك الحقيقي» فمعناها أن الدفتر جديد ولم

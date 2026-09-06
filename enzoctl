@@ -33,6 +33,7 @@ bot itself uses.
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -45,6 +46,39 @@ if ROOT not in sys.path:
 
 # ── Colours (disabled when not a TTY or when NO_COLOR is set) ────────────────
 _TTY = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+
+
+def _revision_stamp(path: str) -> str:
+    """Which revision a COPIED (git-less) workspace was built from.
+
+    TRANSFER_REVISION.txt is a human card, not a bare hash: its first line is a
+    title, so `read().strip()[:12]` reported "ENZO — حزمة " as the commit - a
+    green ✔ naming nothing, which is worse than no row at all for remote
+    diagnosis. Look for the real stamp instead: a labelled line first
+    (الالتزام / commit / revision / sha), then any 7-40 hex token anywhere in
+    the card, and only then the first non-empty line.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            txt = fh.read()
+    except Exception:
+        return ""
+    lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
+    if not lines:
+        return ""
+    for ln in lines[:12]:
+        low = ln.lower()
+        if any(k in low for k in ("الالتزام", "commit", "revision", "sha")):
+            m = re.search(r"\b[0-9a-f]{7,40}\b", ln)
+            if m:
+                return m.group(0)
+            tail = (ln.split(":")[-1] or "").strip() or ln.split()[-1]
+            if tail:
+                return tail[:40]
+    m = re.search(r"\b[0-9a-f]{7,40}\b", txt)
+    if m:
+        return m.group(0)
+    return lines[0][:40]
 
 
 def _c(code, s):
@@ -564,13 +598,7 @@ def cmd_doctor(args):
             # remote diagnosis needs to see. The package carries the revision
             # it was built from, so read that first.
             marker = os.path.join(_cwd, "TRANSFER_REVISION.txt")
-            stamp = ""
-            if os.path.exists(marker):
-                try:
-                    with open(marker, encoding="utf-8") as fh:
-                        stamp = (fh.read().strip() or "")[:12]
-                except Exception:
-                    stamp = ""
+            stamp = _revision_stamp(marker)
             if stamp:
                 add("code_revision", True,
                     f"commit {stamp} (no git metadata here - read from "

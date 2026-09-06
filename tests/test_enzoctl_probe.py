@@ -392,6 +392,45 @@ ok(rc == 0 and js.get("changed") is True,
    "`--json` after the subcommand still works (the old argparse trap)", f"rc={rc}")
 _ban_sql("clear")
 
+# ── code_revision in a COPIED workspace (no .git): the stamp must be the sha ──
+# The transfer package ships WITHOUT .git on purpose (so a stray `git checkout`
+# can never resurrect an old ledger), and doctor then reads TRANSFER_REVISION.txt.
+# That file is a human card whose first line is a TITLE, and the old code did
+# `read().strip()[:12]` - so the row printed a green ✔ "commit ENZO — حزمة ",
+# naming nothing. An unidentifiable build is exactly what remote diagnosis needs
+# to see, so the stamp is parsed properly and pinned here.
+import importlib.machinery
+import importlib.util
+_ld = importlib.machinery.SourceFileLoader("enzoctl_mod", os.path.join(ROOT, "enzoctl"))
+_ctl = importlib.util.module_from_spec(importlib.util.spec_from_loader("enzoctl_mod", _ld))
+_ld.exec_module(_ctl)
+
+_TMPD = tempfile.mkdtemp()
+_CARD = os.path.join(_TMPD, "TRANSFER_REVISION.txt")
+
+
+def _stamp(body):
+    with open(_CARD, "w", encoding="utf-8") as fh:
+        fh.write(body)
+    return _ctl._revision_stamp(_CARD)
+
+
+_SHA = "b208cd18a3d4c1a71c75f400090ad7edcdddebdb"
+ok(_stamp(f"ENZO — حزمة النقل / transfer package\nالالتزام : {_SHA}\nالفرع: arena/x\n") == _SHA,
+   "a titled card yields the COMMIT SHA, not the first 12 characters of the title",
+   _stamp(f"ENZO — حزمة النقل\nالالتزام : {_SHA}\n"))
+ok(_stamp(_SHA + "\narena/01a067ae-enzo-ai-v2\n") == _SHA,
+   "the older bare-hash card still reads correctly (no format lock-in)", "")
+ok(_stamp("ENZO transfer package\nBuilt from commit 5c7e5eb (branch arena/x)\n") == "5c7e5eb",
+   "and an English 'Built from commit <sha>' line is found too", "")
+_bad = _stamp("ENZO — حزمة النقل / transfer package\nالتاريخ: 2026-09-06\n")
+ok(bool(_bad) and len(_bad) <= 40 and not all(c in "0123456789abcdef" for c in _bad),
+   "no sha anywhere: the row names something real instead of inventing a hash", _bad)
+ok(_stamp("   \n\n") == "" and _ctl._revision_stamp(os.path.join(_TMPD, "missing.txt")) == "",
+   "an empty or missing card yields '' -> doctor prints the honest ✖ "
+   "'cannot identify the running code' rather than a green ✔", "")
+shutil.rmtree(_TMPD, ignore_errors=True)
+
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)
 print(f"enzoctl doctor + probe: {PASS} passed, {FAIL} failed")
