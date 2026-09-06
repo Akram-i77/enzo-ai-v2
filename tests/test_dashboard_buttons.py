@@ -124,14 +124,21 @@ srv = None
 
 try:
     section("0. the harness and its dependencies")
-    ok(os.path.exists(JS), "tests/dashboard_browser_test.js is present")
-    ok(bool(node), "node is available", str(node or "NOT FOUND"))
-    ok(bool(jsdom), "jsdom is resolvable", str(jsdom or "NOT FOUND"))
     if not (node and jsdom and os.path.exists(JS)):
-        print("\n  \033[33m⚠ SKIPPED\033[0m  the button harness needs node + jsdom "
-              "(set ENZO_JSDOM_PATH to a directory containing jsdom).")
+        # node/jsdom are an OPTIONAL dependency: a machine without them must see a
+        # loud SKIP that contributes 0/0, not a red FAIL it cannot do anything
+        # about (and not a silent pass either).
+        print("  \033[33m⚠ SKIPPED\033[0m  the button harness needs node + jsdom:")
+        print(f"           node   : {node or 'NOT FOUND'}")
+        print(f"           jsdom  : {jsdom or 'NOT FOUND (set ENZO_JSDOM_PATH to a directory containing jsdom)'}")
+        print(f"           harness: {JS if os.path.exists(JS) else 'MISSING'}")
         print("           No button was checked by this run — this is NOT a pass.")
+        print("           Install once:  mkdir -p /tmp/jsdom-env && cd /tmp/jsdom-env "
+              "&& npm init -y && npm i jsdom")
     else:
+        ok(os.path.exists(JS), "tests/dashboard_browser_test.js is present")
+        ok(bool(node), "node is available", str(node))
+        ok(bool(jsdom), "jsdom is resolvable", str(jsdom))
         # ── build the workspace ───────────────────────────────────────────────
         section("1. a workspace seeded through the real APIs")
         home = tempfile.mkdtemp(prefix="enzo-buttons-")
