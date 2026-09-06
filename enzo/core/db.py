@@ -415,6 +415,38 @@ def _sync_json_cache():
 
 
 # ================================================================ Atomic DB Transactions
+# Position fields that have their own column in open_positions. Anything else a
+# caller puts on a position (rug_flags, entry_liq, entry_holders,
+# entry_top10_sells, capital_base_usd, risk_pct_used, security_status,
+# scam_score, weighted_confidence, discovery_source, ...) is preserved in
+# extra_json and merged back by _pos_row_to_dict().
+_KNOWN_POS_COLS = {
+    "mint", "symbol", "entry_price", "entry_market_cap", "current_market_cap",
+    "size_usd", "initial_size_usd", "amount", "initial_amount", "stop_loss_mc",
+    "take_profit_mc", "trailing_active", "trailing_stop_mc", "peak_price",
+    "peak_market_cap", "realized_pnl_total", "unrealized_pnl", "opened_at",
+    "max_holding_hours", "stages_hit", "signals", "axis_scores", "features",
+}
+
+
+def _pos_extra_json(pos: dict) -> str:
+    """Every position field with no dedicated column, as JSON.
+
+    BOTH writers must use this. save_full_state() used to INSERT OR REPLACE the
+    row without extra_json, which set the column to NULL - so one full-state save
+    erased the extension fields of every open position. The one that matters is
+    `rug_flags`: portfolio.py arms the tighter Layer-1 early stop only when
+    `pos.get("rug_flags")` is non-empty, and the dashboard draws the 🚩 badge
+    from the same list. Losing it silently disarmed rug protection on a
+    suspicious entry and made the badge disappear.
+    """
+    return json.dumps(
+        {k: v for k, v in (pos or {}).items()
+         if k not in _KNOWN_POS_COLS and not k.endswith("_json")},
+        default=str,
+    )
+
+
 def atomic_open_position(pos: dict):
     """Atomically insert an open position into SQLite."""
     init_db()
@@ -426,17 +458,7 @@ def atomic_open_position(pos: dict):
     # risk_pct_used, security_status, scam_score, weighted_confidence — were
     # silently dropped on insert, so the dashboard and the learning engine could
     # never see how a position had been sized.
-    _KNOWN_POS_COLS = {
-        "mint", "symbol", "entry_price", "entry_market_cap", "current_market_cap",
-        "size_usd", "initial_size_usd", "amount", "initial_amount", "stop_loss_mc",
-        "take_profit_mc", "trailing_active", "trailing_stop_mc", "peak_price",
-        "peak_market_cap", "realized_pnl_total", "unrealized_pnl", "opened_at",
-        "max_holding_hours", "stages_hit", "signals", "axis_scores", "features",
-    }
-    extra_json = json.dumps(
-        {k: v for k, v in pos.items() if k not in _KNOWN_POS_COLS and not k.endswith("_json")},
-        default=str,
-    )
+    extra_json = _pos_extra_json(pos)
 
     with db_cursor(commit=True) as cur:
         cur.execute("""
@@ -749,8 +771,8 @@ def save_full_state(state: dict):
                         take_profit_mc, trailing_active, trailing_stop_mc, peak_price,
                         peak_market_cap, realized_pnl_total, unrealized_pnl, opened_at,
                         max_holding_hours, stages_hit_json, signals_json, axis_scores_json,
-                        features_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        features_json, extra_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     mint,
                     pos.get("symbol", "UNKNOWN"),
@@ -774,7 +796,10 @@ def save_full_state(state: dict):
                     json.dumps(pos.get("stages_hit", [])),
                     json.dumps(pos.get("signals", [])),
                     json.dumps(pos.get("axis_scores", {})),
-                    json.dumps(pos.get("features", {}))
+                    json.dumps(pos.get("features", {})),
+                    # without this the INSERT OR REPLACE nulls extra_json and
+                    # wipes rug_flags & co. from every open position
+                    _pos_extra_json(pos)
                 ))
 
             # Full-state saves are resets: replace the closed-trade ledger with

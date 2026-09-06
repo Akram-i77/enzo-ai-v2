@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 
 from enzo.core.config import (
     DASHBOARD_HTML_PATH,
+    DASHBOARD_ERROR_PATH,
+    DATA_DIR,
     WORKSPACE_ROOT,
     HEALTH_PATH,
     PID_PATH,
@@ -51,6 +53,110 @@ def beat(status: str = None, candidates: int = None, interval: float = None):
         ENGINE_HEARTBEAT["interval_sec"] = float(interval)
 
 
+# ASCII-only: it goes into an HTTP header, and a workspace path may not be ASCII.
+_DATA_DIR_ASCII = DATA_DIR.encode("ascii", "replace").decode("ascii")
+
+
+def mark_dashboard_error(host, port, error, hint: str = "") -> None:
+    """Persist WHY the dashboard server is not serving.
+
+    The supervisor catches the bind failure and prints it to a log nobody reads
+    at 3am; `start` then reported success. The reason is written next to the PID
+    file so `status`, `health` and the next `start` can all tell the truth.
+    """
+    try:
+        os.makedirs(os.path.dirname(DASHBOARD_ERROR_PATH), exist_ok=True)
+        with open(DASHBOARD_ERROR_PATH, "w", encoding="utf-8") as f:
+            json.dump({"ts": time.time(),
+                       "iso": datetime.now(timezone.utc).isoformat(),
+                       "pid": os.getpid(),
+                       "host": str(host), "port": int(port),
+                       "error": str(error)[:400],
+                       "hint": str(hint)[:400]}, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def clear_dashboard_error() -> None:
+    """The server really is listening (or a new supervisor is starting)."""
+    try:
+        if os.path.exists(DASHBOARD_ERROR_PATH):
+            os.remove(DASHBOARD_ERROR_PATH)
+    except Exception:
+        pass
+
+
+def read_dashboard_error() -> dict:
+    """The recorded failure, or {} - with its age, because a stale marker from a
+    previous run must be readable AS stale rather than believed as current."""
+    try:
+        if not os.path.exists(DASHBOARD_ERROR_PATH):
+            return {}
+        with open(DASHBOARD_ERROR_PATH, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        if isinstance(d, dict):
+            d["age_sec"] = round(time.time() - float(d.get("ts") or 0), 1)
+            return d
+    except Exception:
+        pass
+    return {}
+
+
+def probe_dashboard(port: int = None, host: str = "127.0.0.1", timeout: float = 1.5) -> dict:
+    """Ask the port WHO is answering.
+
+    A 200 on /health proves nothing by itself: an older ENZO (or any other
+    process) can hold the port and serve a page full of somebody else's state -
+    which is exactly how "OpenClaw says the dashboard is running" turned out to
+    be a stranger's page. Every ENZO response carries X-Enzo-Pid / X-Enzo-Data,
+    so the answer can be attributed. A 503 still counts as "answers" (the server
+    is up and honestly reporting a degraded bot).
+    """
+    import urllib.error
+    import urllib.request
+    cfg_port = None
+    try:
+        cfg_port = int(((load_config().get("dashboard") or {}).get("port")) or PORT)
+    except Exception:
+        cfg_port = PORT
+    port = int(port or cfg_port or PORT)
+    url = f"http://{host}:{port}/health"
+    out = {"answers": False, "status": None, "pid": None, "data_dir": None,
+           "health": None, "port": port, "url": url, "error": None}
+    try:
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            out["status"] = int(r.status)
+            hdrs = r.headers
+            body = r.read(4096).decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:            # 503 = alive but degraded
+        out["status"] = int(e.code)
+        hdrs = e.headers
+        try:
+            body = e.read(4096).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+    except Exception as e:
+        out["error"] = f"{type(e).__name__}: {e}"[:200]
+        rec = read_dashboard_error()
+        if rec:
+            out["recorded_error"] = str(rec.get("error"))[:200]
+            out["recorded_age_sec"] = rec.get("age_sec")
+        return out
+    out["answers"] = True
+    try:
+        pid = hdrs.get("X-Enzo-Pid")
+        out["pid"] = int(pid) if pid else None
+    except Exception:
+        out["pid"] = None
+    out["data_dir"] = hdrs.get("X-Enzo-Data")
+    try:
+        out["health"] = (json.loads(body) or {}).get("status")
+    except Exception:
+        out["health"] = None
+    return out
+
+
 def _gmgn_call_stats() -> dict:
     """GMGN request volume since the process started. A ban is a RATE-LIMIT ban,
     so the API exposes the load itself, not only its symptom."""
@@ -83,6 +189,28 @@ def _gmgn_discovery() -> dict:
             "last_error": st.get("last_error")}
 
 
+def _failure_payload(exc) -> tuple:
+    """(status, body) for an API handler that blew up.
+
+    A broken config.yaml made /api/state and /api/activity answer **HTTP 500**
+    with a YAML parse message. 500 reads as "the dashboard server crashed", so a
+    monitor (or OpenClaw) restarted a healthy server forever while the real
+    problem was a file the owner can fix. When the config is the cause we now
+    answer **503 + reason=CONFIG_UNREADABLE** - the same contract /health uses -
+    so the two failure kinds can be told apart; anything else stays a 500.
+    """
+    try:
+        load_config()          # the exact call the handlers make
+        cfg_err = None
+    except Exception as ce:
+        cfg_err = f"{type(ce).__name__}: {ce}"
+    if cfg_err:
+        return 503, {"status": "error", "reason": "CONFIG_UNREADABLE",
+                     "message": f"Config file is broken: {cfg_err}",
+                     "detail": str(exc), "fix": "run: ./enzoctl doctor"}
+    return 500, {"status": "error", "message": str(exc)}
+
+
 def health_snapshot() -> dict:
     """Single source of truth for liveness — used by /health, /api/health,
     `enzoctl status` and the on-disk heartbeat file."""
@@ -94,12 +222,23 @@ def health_snapshot() -> dict:
     # only call it stale after several missed intervals.
     scan_stale = bool(scan_age is not None and scan_age > max(180.0, interval * 4))
 
+    # A snapshot that cannot be built must still SAY WHY. Returning
+    # {"status": "error"} with an empty `problems` list is what a supervisor
+    # (OpenClaw) polls: "error" with no reason is indistinguishable from a bug in
+    # the health endpoint itself, and the minimal /health body only prints
+    # `problems`. Config and state are separated so the message names the file
+    # that is actually broken.
+    try:
+        cfg = load_config()
+    except Exception as e:
+        return {"status": "error", "ts": now, "reason": f"config unreadable: {e}",
+                "problems": [f"CONFIG_UNREADABLE: {str(e)[:180]}"]}
     try:
         state = pf.get_state()
-        cfg = load_config()
         paused = botctl.is_paused()
     except Exception as e:
-        return {"status": "error", "reason": f"state read failed: {e}", "ts": now}
+        return {"status": "error", "ts": now, "reason": f"state read failed: {e}",
+                "problems": [f"STATE_UNREADABLE: {str(e)[:180]}"]}
 
     monitor_running = False
     try:
@@ -119,6 +258,15 @@ def health_snapshot() -> dict:
         problems.append("ENGINE_NEVER_SCANNED")
     if has_open and not monitor_running:
         problems.append("EXIT_MONITOR_DOWN_WITH_OPEN_POSITIONS")
+    # The dashboard server thread can die (port taken) while the engine keeps
+    # trading. Nothing else reports it: /health is served BY that thread, so the
+    # owner only sees it through `enzoctl status` / `enzoctl health`.
+    _dash_err = read_dashboard_error()
+    if _dash_err:
+        problems.append("DASHBOARD_SERVER_DOWN: "
+                        f"{str(_dash_err.get('error') or 'not serving')[:110]}"
+                        f" (port {_dash_err.get('port')}, "
+                        f"{_dash_err.get('age_sec')}s ago)")
     ban = 0.0
     try:
         ban = max(0.0, gmgn.ban_status())
@@ -284,6 +432,21 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
         if not full.startswith(os.path.abspath(WORKSPACE_ROOT)):
             return DASHBOARD_HTML_PATH
         return full
+
+    def end_headers(self):
+        """Stamp WHO is answering on every response.
+
+        Without this, `enzoctl start` cannot tell "my dashboard is up" from "some
+        other process holds the port and serves a page that looks alive" - and the
+        second one is the failure the owner reported (OpenClaw said the dashboard
+        was running; it was an older instance's page).
+        """
+        try:
+            self.send_header("X-Enzo-Pid", str(os.getpid()))
+            self.send_header("X-Enzo-Data", _DATA_DIR_ASCII)
+        except Exception:
+            pass
+        super().end_headers()
 
     def _send_html(self, content: bytes, status: int = 200):
         self.send_response(status)
@@ -570,7 +733,9 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                 }
                 return self._send_json(res)
             except Exception as e:
-                return self._send_json({"status": "error", "message": str(e)}, status=500)
+                _LOGGER.error("/api/state failed: %s", e)
+                _code, _payload = _failure_payload(e)
+                return self._send_json(_payload, status=_code)
 
         # 2. Real-Time Bot Activity & Decisions Stream API
         if parsed.path == "/api/activity":
@@ -693,7 +858,9 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                     "stream_tokens": recent_stream_tokens
                 })
             except Exception as e:
-                return self._send_json({"status": "error", "message": str(e)}, status=500)
+                _LOGGER.error("/api/activity failed: %s", e)
+                _code, _payload = _failure_payload(e)
+                return self._send_json(_payload, status=_code)
 
         # 3. Fast Prices Poller API
         if parsed.path == "/api/prices":
@@ -800,8 +967,17 @@ class EnzoDashboardHandler(http.server.SimpleHTTPRequestHandler):
                         res = engine.scan_once()
                         beat(status="manual_scan", candidates=len(res or []))
                     except Exception as e:
+                        # The button answers "Scan initiated in background"
+                        # immediately, so if the scan then dies the owner sees a
+                        # green toast and NOTHING else. Write the failure to the
+                        # audit log too - that is what the Activity panel reads.
                         _LOGGER.error("manual scan failed: %s", e)
                         beat(status=f"error: {e}")
+                        try:
+                            audit.log_event(category="ENGINE", level="ERROR",
+                                            message=f"Manual scan failed: {type(e).__name__}: {e}")
+                        except Exception:
+                            pass
                     finally:
                         dashboard.generate_safe()
 
@@ -851,7 +1027,15 @@ def run_server(host: str = None, port: int = None):
                     f"  Check:  python3 enzo.py status\n"
                     f"  Stop:   python3 enzo.py stop\n"
                     f"  Or use another port:  python3 enzo.py serve --port {port + 1}")
+        # Persist the reason BEFORE raising: the supervisor catches this and the
+        # message used to end its life in a log file, while `start` printed the
+        # dashboard URL and exited 0.
+        mark_dashboard_error(host, port, f"{type(e).__name__}: {e}", hint.strip())
         raise RuntimeError(f"Cannot bind dashboard server on {host}:{port}: {e}{hint}") from e
+
+    # This process really owns the port now - a marker left by an earlier failure
+    # would otherwise keep accusing a healthy server.
+    clear_dashboard_error()
 
     # Render once at startup so the very first request is not the one that pays
     # for it (and so a broken template is reported immediately, not on page load).

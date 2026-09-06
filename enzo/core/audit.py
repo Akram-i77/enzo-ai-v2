@@ -231,56 +231,94 @@ def log_event(category: str, level: str, message: str, data: dict = None):
         pass
 
 
+def _ts_hhmmss(ts) -> str:
+    """HH:MM:SS out of an audit timestamp, without ever raising.
+
+    ts is normally an ISO string, but a hand-written or half-flushed row can hold
+    a number (or None), and slicing that raised "'float' object is not
+    subscriptable" - which took the WHOLE /api/activity endpoint down (HTTP 500)
+    and left the dashboard Activity panel blank with no visible reason.
+    """
+    if isinstance(ts, str):
+        s = ts
+    elif ts is None:
+        s = ""
+    else:
+        s = str(ts)
+    return s[11:19] if len(s) >= 19 else s
+
+
+def _row_to_activity(r):
+    """One audit row -> one activity item. Raises only if the row is unusable."""
+    # Already in activity shape (logged via log_event)
+    if "category" in r and "level" in r and "message" in r:
+        return {
+            "ts": r.get("ts", ""),
+            "time_str": _ts_hhmmss(r.get("ts")),
+            "category": r.get("category", "SYSTEM"),
+            "level": r.get("level", "INFO"),
+            "message": r.get("message", ""),
+            "data": r.get("data", {}),
+        }
+
+    # Decision audit row — convert into activity shape
+    dec = (r.get("decision") or "INFO").upper()
+    cat = "SYSTEM"
+    if dec == "BUY":
+        cat = "TRADE"
+    elif dec in ("WAIT", "IGNORE"):
+        cat = "ANALYSIS"
+    elif dec == "CLOSED":
+        cat = "EXIT"
+
+    sym = r.get("symbol") or "?"
+    try:
+        conf = float(r.get("confidence") or 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    msg = f"{sym} → {dec} (conf={conf:.0f})" if sym else str(r.get("reason", "") or "")[:80]
+    rejected = r.get("rejected_signals") or []
+    if not isinstance(rejected, list):
+        rejected = [rejected]
+    return {
+        "ts": r.get("ts", ""),
+        "time_str": _ts_hhmmss(r.get("ts")),
+        "category": cat,
+        "level": "SUCCESS" if dec == "BUY" else ("ERROR" if dec == "IGNORE" else "WARNING" if dec == "WAIT" else "INFO"),
+        "message": msg,
+        "data": {
+            "axes": r.get("axes") or {},
+            "market_cap_usd": r.get("market_cap_usd"),
+            # The audit row HAS the reason and the veto codes, but they
+            # were dropped here - so the Activity feed showed
+            # "SYMBOL -> IGNORE (conf=0)" with no explanation at all.
+            # For a bot trading real money, "why not?" is the question
+            # the owner asks most often.
+            "reason": r.get("reason"),
+            "momentum_windows": r.get("momentum_windows"),
+            "rejected_signals": rejected[:6],
+            "universe": r.get("universe"),
+            "top_holder_pct": r.get("top_holder_pct"),
+            "mint": r.get("mint"),
+        }
+    }
+
+
 def get_recent_activities(limit: int = 100) -> list:
     """Return recent activity items formatted for the dashboard activity stream."""
     rows = load_audit(n=limit * 3)  # over-fetch, then filter
     activities = []
     for r in rows:
-        # Already in activity shape (logged via log_event)
-        if "category" in r and "level" in r and "message" in r:
+        # ONE unreadable row must not blank the whole feed: any exception here
+        # used to travel up to /api/activity and answer HTTP 500, so the panel
+        # showed nothing at all. Show the damaged row as a WARNING instead.
+        try:
+            activities.append(_row_to_activity(r))
+        except Exception as e:
             activities.append({
-                "ts": r.get("ts", ""),
-                "time_str": (r.get("ts", "") or "")[11:19],
-                "category": r.get("category", "SYSTEM"),
-                "level": r.get("level", "INFO"),
-                "message": r.get("message", ""),
-                "data": r.get("data", {}),
-            })
-        else:
-            # Decision audit row — convert into activity shape
-            dec = (r.get("decision") or "INFO").upper()
-            cat = "SYSTEM"
-            if dec == "BUY":
-                cat = "TRADE"
-            elif dec in ("WAIT", "IGNORE"):
-                cat = "ANALYSIS"
-            elif dec == "CLOSED":
-                cat = "EXIT"
-
-            sym = r.get("symbol") or "?"
-            conf = r.get("confidence") or 0
-            msg = f"{sym} → {dec} (conf={float(conf):.0f})" if sym else (r.get("reason", "") or "")[:80]
-            activities.append({
-                "ts": r.get("ts", ""),
-                "time_str": (r.get("ts", "") or "")[11:19],
-                "category": cat,
-                "level": "SUCCESS" if dec == "BUY" else ("ERROR" if dec == "IGNORE" else "WARNING" if dec == "WAIT" else "INFO"),
-                "message": msg,
-                "data": {
-                    "axes": r.get("axes") or {},
-                    "market_cap_usd": r.get("market_cap_usd"),
-                    # The audit row HAS the reason and the veto codes, but they
-                    # were dropped here - so the Activity feed showed
-                    # "SYMBOL -> IGNORE (conf=0)" with no explanation at all.
-                    # For a bot trading real money, "why not?" is the question
-                    # the owner asks most often.
-                    "reason": r.get("reason"),
-                    "momentum_windows": r.get("momentum_windows"),
-                    "rejected_signals": (r.get("rejected_signals") or [])[:6],
-                    "universe": r.get("universe"),
-                    "top_holder_pct": r.get("top_holder_pct"),
-                    "mint": r.get("mint"),
-                }
+                "ts": "", "time_str": "", "category": "SYSTEM", "level": "WARNING",
+                "message": f"unreadable audit row skipped ({type(e).__name__}: {e})",
+                "data": {},
             })
         if len(activities) >= limit:
             break

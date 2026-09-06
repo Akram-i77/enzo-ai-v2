@@ -68,6 +68,11 @@ DASHBOARD_HTML_PATH = os.path.join(DATA_DIR, "enzo-dashboard.html")
 # Supervisor / control-plane artefacts (used by enzoctl + the health endpoint)
 PID_PATH = os.path.join(RUN_DIR, "enzo.pid")
 HEALTH_PATH = os.path.join(RUN_DIR, "enzo-health.json")
+# Written when the dashboard server thread could not start (the port is taken by
+# an older ENZO or another app). `enzoctl start` used to print the dashboard URL
+# and exit 0 anyway, so the owner opened a page served by SOMEBODY ELSE and
+# believed the bot was up. The reason has to survive the swallowed exception.
+DASHBOARD_ERROR_PATH = os.path.join(RUN_DIR, "enzo-dashboard-error.json")
 SUPERVISOR_LOG_PATH = os.path.join(LOGS_DIR, "supervisor.log")
 TRADE_GATE_PATH = os.path.join(DATA_DIR, "enzo-trade-gate.json")
 

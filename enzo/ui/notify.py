@@ -32,10 +32,18 @@ def _cooldown_ok(event: str, mint: str) -> bool:
     if last is not None and (now - last) < _NOTIFY_COOLDOWN_SEC:
         return False
     _NOTIFY_LAST[key] = now
-    # prevent unbounded growth of the cooldown map
+    # Prevent unbounded growth of the cooldown map. It used to compute a cutoff
+    # and then `clear()` the whole map, so every still-cooling event lost its
+    # cooldown at once and the next alert for it was sent again - a duplicate
+    # Telegram message for something the owner had just been told about. Prune
+    # the expired entries instead, and only fall back to a full clear if the map
+    # is still huge (i.e. the live entries themselves are the problem).
     if len(_NOTIFY_LAST) > 2000:
         cutoff = now - _NOTIFY_COOLDOWN_SEC
-        _NOTIFY_LAST.clear()
+        for _k in [k for k, v in _NOTIFY_LAST.items() if v < cutoff]:
+            _NOTIFY_LAST.pop(_k, None)
+        if len(_NOTIFY_LAST) > 4000:
+            _NOTIFY_LAST.clear()
         _NOTIFY_LAST[key] = now
     return True
 

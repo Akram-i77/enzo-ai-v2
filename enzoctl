@@ -154,6 +154,140 @@ def _pid():
     return pid, alive, cmd
 
 
+def _forget_dashboard_error(pid=None):
+    """Drop the recorded dashboard failure that belongs to `pid` (default: a pid
+    that is no longer alive).
+
+    Without this a stopped bot keeps being accused: `status` and `/health` read
+    the marker from disk, and "DASHBOARD_SERVER_DOWN" on a bot nobody started is
+    noise that trains the owner to ignore the line that matters.
+    """
+    C = _paths()
+    try:
+        from enzo.ui import serve
+        rec = serve.read_dashboard_error()
+    except Exception:
+        rec = {}
+    if not rec:
+        return False
+    rec_pid = rec.get("pid")
+    if pid is not None:
+        if rec_pid != int(pid):
+            return False
+    else:
+        # No pid given: only forget it when the process that wrote it is gone.
+        try:
+            if rec_pid and os.kill(int(rec_pid), 0) is None:
+                return False
+        except Exception:
+            pass
+    try:
+        if os.path.exists(C.DASHBOARD_ERROR_PATH):
+            os.remove(C.DASHBOARD_ERROR_PATH)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _verify_dashboard(port, pid, budget=12.0):
+    """Poll the dashboard port until THIS bot answers, the budget runs out, or a
+    recorded bind failure says waiting is pointless.
+
+    `start` used to print the dashboard URL as soon as the PID file appeared. If
+    the serve thread could not bind (an older ENZO or another app holding the
+    port) the supervisor swallowed the error into a log, `start` exited 0, and
+    the URL opened SOMEBODY ELSE's page - which reads exactly as "the dashboard
+    is up and running" while this bot serves nothing.
+    """
+    try:
+        from enzo.ui import serve
+    except Exception as e:
+        return {"answers": False, "ours": False, "port": port,
+                "error": f"serve module unavailable: {type(e).__name__}: {e}"}
+    deadline = time.time() + max(3.0, float(budget))
+    last = {"answers": False, "ours": False, "port": port}
+    while True:
+        try:
+            last = serve.probe_dashboard(port=port, timeout=1.5) or {}
+        except Exception as e:
+            last = {"answers": False, "port": port, "error": f"{type(e).__name__}: {e}"}
+        if last.get("answers"):
+            last["ours"] = bool(pid) and last.get("pid") == int(pid)
+            return last
+        if last.get("recorded_error"):
+            last["ours"] = False
+            return last
+        if time.time() >= deadline:
+            last["ours"] = False
+            return last
+        time.sleep(0.5)
+
+
+def _dashboard_lines(cfg):
+    """The dashboard row for `status`: verified against the port, never assumed.
+
+    Returns (lines, payload). Three honest outcomes: this bot is serving, another
+    process holds the port (the page you would open is NOT this bot), or nothing
+    answers at all.
+    """
+    C = _paths()
+    pid, alive, _ = _pid()
+    dash = (cfg or {}).get("dashboard") or {}
+    try:
+        port = int(dash.get("port", 8077) or 8077)
+    except Exception:
+        port = 8077
+    host = str(dash.get("host") or "0.0.0.0")
+    try:
+        from enzo.ui import serve
+        probe = serve.probe_dashboard(port=port, timeout=1.5)
+    except Exception as e:
+        return [dim(f"   dashboard : cannot probe port {port} ({type(e).__name__}: {e})")], \
+               {"dashboard": {"port": port, "probe_error": str(e)}}
+
+    if not alive:
+        # The bot is stopped: a red "NOT SERVING" would blame the dashboard for
+        # something nobody started. But a port that IS answered while this bot is
+        # stopped is worth naming - that is an older instance still holding it,
+        # and it is what makes the next `start` look successful while serving a
+        # stranger's page.
+        if probe.get("answers"):
+            who = f"pid {probe.get('pid')}" if probe.get("pid") else "another process"
+            return [dim(f"   dashboard : not running — but port {port} IS answered by {who}"),
+                    dim(f"               that process serves: {probe.get('data_dir') or '?'}"),
+                    dim("               (an older instance still holding the port? "
+                        "the next ./enzoctl start will fail to bind)")], \
+                   {"dashboard": {"serving": False, "running": False, "port": port,
+                                  "foreign_pid": probe.get("pid"),
+                                  "foreign_data_dir": probe.get("data_dir")}}
+        return [dim("   dashboard : not running (./enzoctl start)")], \
+               {"dashboard": {"serving": False, "running": False, "port": port}}
+
+    if probe.get("answers"):
+        if alive and pid and probe.get("pid") == pid:
+            return [f"   dashboard : {green('serving')} http://{host}:{port}/ "
+                    f"(this bot · pid {pid} · health={probe.get('health') or '?'})"], \
+                   {"dashboard": {"serving": True, "ours": True, "port": port,
+                                  "health": probe.get("health")}}
+        who = f"pid {probe.get('pid')}" if probe.get("pid") else \
+              "a process that does not identify itself as ENZO"
+        return [red(f"   dashboard : ✖ port {port} is answered by {who} — "
+                    f"THIS bot's page is not up"),
+                dim(f"               that process serves: {probe.get('data_dir') or '?'}"),
+                dim(f"               this bot's data    : {C.DATA_DIR}")], \
+               {"dashboard": {"serving": True, "ours": False, "port": port,
+                              "foreign_pid": probe.get("pid"),
+                              "foreign_data_dir": probe.get("data_dir")}}
+    why = probe.get("recorded_error") or probe.get("error") or "no answer on the port"
+    lines = [red(f"   dashboard : ✖ NOT SERVING on port {port} — {str(why)[:120]}")]
+    if alive:
+        lines.append(dim("               the engine is running; only the web page is down "
+                         "(./enzoctl logs · data/logs/supervisor.log)"))
+    return lines, {"dashboard": {"serving": False, "ours": False, "port": port,
+                                 "error": str(why)[:200]}}
+
+
 def _health():
     """Health snapshot — from the live process if we are it, else from disk."""
     C = _paths()
@@ -256,19 +390,80 @@ def cmd_start(args):
 
     dash = cfg.get("dashboard", {}) or {}
     mode = "PAPER" if cfg.get("paper_mode", True) else "LIVE"
-    lines = [
-        green(f"✔  ENZO started — PID {p2}"),
-        f"   mode        : {bold(mode)}",
-        f"   dashboard   : http://{dash.get('host','0.0.0.0')}:{dash.get('port',8077)}/enzo-dashboard.html",
-        f"   health      : http://{dash.get('host','0.0.0.0')}:{dash.get('port',8077)}/health",
-        f"   log         : {C.SUPERVISOR_LOG_PATH}",
-        "",
-        dim("   ./enzoctl status   ·   ./enzoctl logs -f   ·   ./enzoctl stop"),
-    ]
+    dhost = str(dash.get("host") or "0.0.0.0")
+    try:
+        dport = int(dash.get("port") or 8077)
+    except Exception:
+        dport = 8077
+    no_dash = bool(getattr(args, "no_dashboard", False))
+
+    lines = [green(f"✔  ENZO started — PID {p2}")]
     if mode == "LIVE":
-        lines.insert(1, yellow("   ⚠  LIVE MODE — real money will be traded."))
-    return _set(args, {"started": True, "pid": p2, "mode": mode,
-                       "dashboard_port": dash.get("port", 8077)}, lines, 0)
+        lines.append(yellow("   ⚠  LIVE MODE — real money will be traded."))
+    lines.append(f"   mode        : {bold(mode)}")
+
+    payload = {"started": True, "pid": p2, "mode": mode, "dashboard_port": dport}
+    exit_code = 0
+
+    if no_dash:
+        # Printing a dashboard URL for a bot started with --no-dashboard invites
+        # the owner to open a port that either serves nothing or serves a
+        # stranger. Say what was actually started.
+        lines.append(dim("   dashboard   : disabled (--no-dashboard) — no page is being served"))
+        payload.update({"dashboard_serving": False, "dashboard_disabled": True})
+    else:
+        probe = _verify_dashboard(dport, p2, float(getattr(args, "wait", 20) or 20))
+        payload["dashboard_serving"] = bool(probe.get("ours"))
+        payload["dashboard_probe"] = probe
+        if probe.get("ours"):
+            lines += [f"   dashboard   : http://{dhost}:{dport}/enzo-dashboard.html",
+                      f"   health      : http://{dhost}:{dport}/health",
+                      green(f"   verified    : the page answered on port {dport} and "
+                            f"identified itself as THIS bot (pid {p2})")]
+        elif probe.get("answers"):
+            exit_code = 1
+            other = probe.get("pid") or "a process that does not identify itself"
+            lines += [
+                red(f"✖  THE DASHBOARD IS NOT THIS BOT's — port {dport} is answered by {other}"),
+                dim(f"   that process serves : {probe.get('data_dir') or 'unknown'}"),
+                dim(f"   this bot's data     : {C.DATA_DIR}"),
+                yellow("   Opening the URL below would show ANOTHER instance's numbers"),
+                yellow("   (usually an older ENZO still holding the port) and read as"),
+                yellow("   \"the dashboard is running\" while this bot serves nothing."),
+                "",
+                green(f"   The engine IS running (PID {p2}) — it was NOT stopped, because"),
+                green("   killing it with open positions would also kill the exit monitor."),
+                dim(f"   Fix:  kill {probe.get('pid') or '<that pid>'}   then ./enzoctl restart"),
+                dim(f"   Or serve on another port: dashboard.port in {C.CONFIG_PATH}"),
+                dim(f"   Or run without a page:  ./enzoctl restart --no-dashboard"),
+                dim(f"   URL that is NOT this bot: http://{dhost}:{dport}/enzo-dashboard.html"),
+            ]
+        else:
+            exit_code = 1
+            why = probe.get("recorded_error") or probe.get("error") or "no answer on the port"
+            tail = ""
+            try:
+                with open(C.SUPERVISOR_LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
+                    tail = "".join(f.readlines()[-8:])
+            except Exception:
+                pass
+            lines += [
+                red(f"✖  THE DASHBOARD IS NOT SERVING on port {dport} — {str(why)[:140]}"),
+                dim(f"   supervisor log: {C.SUPERVISOR_LOG_PATH}"),
+            ]
+            if tail.strip():
+                lines += [dim("   last lines:")] + [dim("     " + ln.rstrip()) for ln in tail.splitlines()[-6:]]
+            lines += [
+                "",
+                green(f"   The engine IS running (PID {p2}) — it was NOT stopped (open positions"),
+                green("   would lose their exit monitor)."),
+                dim("   Fix:  ./enzoctl stop  ·  free the port  ·  ./enzoctl start"),
+                dim(f"   Or serve on another port: dashboard.port in {C.CONFIG_PATH}"),
+            ]
+
+    lines += [f"   log         : {C.SUPERVISOR_LOG_PATH}", "",
+              dim("   ./enzoctl status   ·   ./enzoctl logs -f   ·   ./enzoctl stop")]
+    return _set(args, payload, lines, exit_code)
 
 
 def cmd__supervise(args):
@@ -300,11 +495,27 @@ def cmd__supervise(args):
 
     threads = []
     if not args.no_dashboard:
+        # A marker left by an earlier failed start would otherwise keep reporting
+        # a dead dashboard for a server that is about to bind successfully.
+        serve.clear_dashboard_error()
+
         def _serve():
             try:
                 serve.run_server()
             except Exception as e:
                 print(f"[supervisor] dashboard server died: {type(e).__name__}: {e}", flush=True)
+                try:
+                    # run_server already recorded the precise reason (with the
+                    # port hint) before raising; do not overwrite it with the
+                    # wrapper message.
+                    _rec = serve.read_dashboard_error()
+                    if not _rec or _rec.get("pid") != os.getpid():
+                        _d = (cfg.get("dashboard") or {})
+                        serve.mark_dashboard_error(
+                            _d.get("host") or "0.0.0.0", int(_d.get("port") or 8077),
+                            f"{type(e).__name__}: {e}")
+                except Exception:
+                    pass
         t = threading.Thread(target=_serve, daemon=True, name="enzo-serve")
         t.start()
         threads.append(t)
@@ -341,6 +552,7 @@ def cmd__supervise(args):
                         os.remove(C.PID_PATH)
         except Exception:
             pass
+        _forget_dashboard_error(os.getpid())
         print(f"[supervisor] ENZO stopped pid={os.getpid()}", flush=True)
     return exit_code
 
@@ -349,12 +561,14 @@ def cmd_stop(args):
     C = _paths()
     pid, alive, _ = _pid()
     if not alive or not pid:
-        # Clean up a stale PID file so `start` is not blocked by it.
+        # Clean up a stale PID file so `start` is not blocked by it, and a stale
+        # dashboard accusation left by a process that is no longer alive.
         try:
             if os.path.exists(C.PID_PATH):
                 os.remove(C.PID_PATH)
         except Exception:
             pass
+        _forget_dashboard_error()
         return _set(args, {"stopped": False, "reason": "not_running"},
                     [yellow("⏹  ENZO is not running.")], 0)
 
@@ -373,6 +587,7 @@ def cmd_stop(args):
         try:
             os.kill(pid, 0)
         except OSError:
+            _forget_dashboard_error(pid)
             return _set(args, {"stopped": True, "pid": pid, "signal": "SIGTERM"},
                         [green(f"✔  ENZO stopped (PID {pid}) — clean SIGTERM shutdown.")], 0)
         time.sleep(0.3)
@@ -389,6 +604,7 @@ def cmd_stop(args):
         os.remove(C.PID_PATH)
     except Exception:
         pass
+    _forget_dashboard_error(pid)
     return _set(args, {"stopped": True, "pid": pid, "signal": "SIGKILL",
                        "note": "did not exit within the grace period"},
                 [yellow(f"⚠  ENZO did not exit within {grace:.0f}s — sent SIGKILL to PID {pid}."),
@@ -485,6 +701,13 @@ def cmd_status(args):
     else:
         lines.append(dim("   health    : unavailable (engine has not published a snapshot yet)"))
 
+    # The dashboard row is verified against the port, not assumed from the PID
+    # file - and it is printed even when no health snapshot exists yet, which is
+    # exactly when a dead dashboard is most likely to be mistaken for a live one.
+    _dl, _dp = _dashboard_lines(cfg)
+    lines += _dl
+    payload.update(_dp)
+
     try:
         from enzo.core import engine as _eng
         faults = _eng.discovery_faults()
@@ -502,6 +725,25 @@ def cmd_status(args):
     lines.append(dim(f"   data   {C.DATA_DIR}"))
 
     exit_code = 0 if alive else 1
+
+    # The exit code must agree with the row that was just printed. A dashboard
+    # answered by ANOTHER process (or not answered at all while the engine runs)
+    # is printed as a red ✖ - but status still exited 0, so a supervisor that
+    # only reads the exit code (OpenClaw does) kept believing the bot was fully
+    # up. That is the reported symptom: "it says it opened and runs, but it does
+    # not". `start` already exits 1 for exactly this; status now agrees.
+    # --no-dashboard is a deliberate choice, not a failure, so it is exempt -
+    # the recorded command line in the PID file says whether it was used.
+    _dash_pl = (_dp or {}).get("dashboard") or {}
+    _dash_wanted = "--no-dashboard" not in (cmd or "")
+    if alive and _dash_wanted and _dash_pl:
+        if _dash_pl.get("serving") and not _dash_pl.get("ours"):
+            exit_code = 1
+            payload["dashboard_foreign"] = True
+        elif not _dash_pl.get("serving") and _dash_pl.get("error"):
+            exit_code = 1
+            payload["dashboard_down"] = True
+
     payload.update({"mode": mode, "paused": paused, "running": alive})
     return _set(args, payload, lines, exit_code)
 
@@ -1010,6 +1252,58 @@ def _tracked_by_git(path):
 # ─────────────────────────────────────────────────────────────────────────────
 # logs
 # ─────────────────────────────────────────────────────────────────────────────
+_LOG_TAIL_BLOCK = 65536
+
+
+def _tail_raw(path: str, max_lines: int) -> list:
+    """Last `max_lines` RAW lines of a file, read from the end (no full load).
+
+    cmd_logs used enzo.core.audit._tail_lines(), whose contract is "parsed audit
+    ROWS": it json-decodes every line and silently drops the ones that are not
+    JSON. Used as a log reader that broke `logs` twice over -
+
+      * `logs audit`        -> AttributeError: 'dict' object has no attribute
+                               'rstrip' (the pretty-printer expected strings and
+                               got dicts) on ANY non-empty audit log;
+      * `logs engine|super` -> printed (almost) NOTHING, because a text log has
+                               no JSON lines at all, so every real line - including
+                               the traceback the owner came to read - was dropped.
+
+    A log viewer must show the bytes the process actually wrote.
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return []
+    if size == 0:
+        return []
+    out: list = []
+    try:
+        with open(path, "rb") as f:
+            pos = size
+            buf = b""
+            while pos > 0 and len(out) <= max_lines:
+                step = min(_LOG_TAIL_BLOCK, pos)
+                pos -= step
+                f.seek(pos)
+                buf = f.read(step) + buf
+                parts = buf.split(b"\n")
+                # parts[0] is a partial line unless we reached offset 0
+                buf = parts[0] if pos > 0 else b""
+                chunk = parts[1:] if pos > 0 else parts
+                for raw in reversed(chunk):
+                    if raw.strip():
+                        out.append(raw.decode("utf-8", errors="replace"))
+                        if len(out) >= max_lines:
+                            break
+            if pos == 0 and buf.strip() and len(out) < max_lines:
+                out.append(buf.decode("utf-8", errors="replace"))
+    except OSError:
+        return out
+    out.reverse()
+    return out
+
+
 def cmd_logs(args):
     C = _paths()
     which = args.which or "enzo"
@@ -1036,17 +1330,24 @@ def cmd_logs(args):
         return 0
 
     try:
-        from enzo.core.audit import _tail_lines
-        lines = _tail_lines(path, n)
+        lines = _tail_raw(path, n)
     except Exception:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()[-n:]
+            lines = [l.rstrip("\n") for l in f.readlines()[-n:]]
+
+    if not lines:
+        # An empty log printed as NOTHING AT ALL, which is indistinguishable from
+        # a command that never ran. Name the file and say it has no lines yet.
+        return _set(args, {"path": path, "lines": [], "empty": True},
+                    [dim(f"{path} exists but has no lines yet")], 0)
 
     if which == "audit" and not args.json:
         pretty = []
         for raw in lines:
             try:
-                d = json.loads(raw)
+                d = raw if isinstance(raw, dict) else json.loads(raw)
+                if not isinstance(d, dict):
+                    raise ValueError("audit row is not an object")
                 lvl = str(d.get("level", ""))
                 colour = {"ERROR": red, "WARNING": yellow}.get(lvl, lambda x: x)
                 ts = dim(str(d.get("ts", ""))[:19])
@@ -1054,10 +1355,14 @@ def cmd_logs(args):
                 cat = blue(f"{str(d.get('category', ''))[:11]:<11s}")
                 pretty.append(f"{ts} {lv} {cat} {str(d.get('message', ''))[:120]}")
             except Exception:
-                pretty.append(raw.rstrip())
+                # Not JSON (or not an object): show it raw rather than dropping
+                # the line - a half-written row is exactly what you want to see.
+                pretty.append(raw.rstrip() if isinstance(raw, str)
+                              else json.dumps(raw)[:200])
         lines = pretty
     else:
-        lines = [l.rstrip("\n") for l in lines]
+        lines = [l.rstrip("\n") if isinstance(l, str) else json.dumps(l)
+                 for l in lines]
 
     return _set(args, {"path": path, "lines": lines}, lines, 0)
 
@@ -1240,19 +1545,41 @@ def _age_of(iso):
 def cmd_wallet(args):
     from enzo.execution import executor, portfolio
     cfg = _cfg()
-    snap = executor.get_balance_snapshot(cfg=cfg)
-    lines = [bold(f"Wallet: {executor.get_wallet_name(cfg)}"), ""]
-    items = (snap or {}).get("items") or []
+    # This called `executor.get_balance_snapshot`, a function that has never
+    # existed - so `./enzoctl wallet` died with an AttributeError on every run
+    # since it was written, and no test covered the command. The real one-call
+    # snapshot is get_wallet_snapshot(), and the amount/symbol/address parsing
+    # below is the EXECUTOR's own, so the report and the trading path can never
+    # disagree about what the wallet holds.
+    try:
+        snap = executor.get_wallet_snapshot(cfg=cfg) or {}
+    except Exception as e:
+        return _set(args, {"ok": False, "error": f"{type(e).__name__}: {e}"},
+                    [red(f"✖  wallet snapshot failed: {type(e).__name__}: {e}"),
+                     yellow("  check: mp login · mp consent accept · mp wallet list")], 1)
+    lines = [bold(f"Wallet: {snap.get('wallet') or executor.get_wallet_name(cfg)}"), ""]
+    items = snap.get("items") or []
     if not items:
-        lines.append(red(f"  could not read balances — {(snap or {}).get('error') or 'no data'}"))
+        lines.append(red(f"  could not read balances — the MoonPay CLI returned "
+                         f"{snap.get('rows', 0)} row(s)"))
         lines.append(yellow("  check: mp login · mp consent accept · mp wallet list"))
         return _set(args, {"ok": False, "snapshot": snap}, lines, 1)
     for it in items:
-        bal = it.get("balance") or {}
-        amt = bal.get("amount") if isinstance(bal, dict) else bal
-        lines.append(f"  {str(it.get('symbol','?')):<8s} {float(amt or 0):>18,.6f}   "
-                     f"{dim(str(it.get('address',''))[:20])}")
-    cap = portfolio.sync_capital_base(force=True, cfg=cfg)
+        try:
+            sym = executor._item_symbol(it) or "?"
+            amt = executor._item_amount(it)
+            addr = executor._item_address(it) or ""
+        except Exception:
+            bal = it.get("balance") or {}
+            sym = str(it.get("symbol", "?"))
+            amt = (bal.get("amount") if isinstance(bal, dict) else bal) or 0
+            addr = str(it.get("address", ""))
+        lines.append(f"  {str(sym):<8s} {float(amt or 0):>18,.6f}   {dim(str(addr)[:20])}")
+    try:
+        cap = portfolio.sync_capital_base(force=True, cfg=cfg) or {}
+    except Exception as e:
+        cap = {"ok": False, "usd": 0, "source": "error",
+               "detail": f"{type(e).__name__}: {e}"}
     lines += ["", bold("Deployable capital"),
               f"  ${float(cap.get('usd') or 0):,.2f}   (source: {cap.get('source')}"
               f"{'' if cap.get('ok') else ', ' + red('FAILED')})"]
@@ -1261,7 +1588,10 @@ def cmd_wallet(args):
     ex = cfg.get("execution") or {}
     lines.append(dim(f"  SOL fee reserve {ex.get('sol_fee_reserve')} · min trade "
                      f"${ex.get('min_trade_usd')} · max trade ${ex.get('max_trade_usd')}"))
-    return _set(args, {"balances": items, "capital": cap}, lines, 0 if cap.get("ok") else 1)
+    return _set(args, {"ok": True, "balances": items, "capital": cap,
+                       "wallet": snap.get("wallet"), "sol": snap.get("sol"),
+                       "usdc": snap.get("usdc"), "symbols": snap.get("symbols")},
+                lines, 0 if cap.get("ok") else 1)
 
 
 def cmd_config(args):

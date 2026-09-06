@@ -17,6 +17,14 @@ from enzo.core.config import load_config, clamp
 from enzo.analyzers import security, dev, wallet, market_structure
 from enzo.providers import gmgn
 from enzo.core import learn
+from enzo.core import log as _log
+
+# This module logged through `_LOGGER` in one except branch without ever defining
+# it, so the moment `cached_holder_distribution()` raised, the handler raised
+# NameError instead - turning "holder data unavailable" (which the gate reports
+# honestly as `holder concentration UNKNOWN - cap NOT enforced`) into a crash
+# that escaped as ANALYSIS_ERROR. A logger is not optional in an error path.
+_LOGGER = _log.get_logger("enzo.analyze")
 
 
 def _liquidity_axis(sig: dict, sec: dict, ma: dict) -> dict:

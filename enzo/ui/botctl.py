@@ -338,6 +338,16 @@ class TelegramBotListener:
         self._thread.start()
         _LOGGER.info("Telegram Interactive Bot Listener started.")
 
+    def is_alive(self) -> bool:
+        """True only while the polling thread is actually running.
+
+        start() spawns a daemon thread that returns IMMEDIATELY when no bot token
+        is configured (or dies on the first fatal API error), so "we called
+        start()" is not evidence that Telegram commands are being received. The
+        supervisor used to print "Listener Active" unconditionally.
+        """
+        return bool(self._thread and self._thread.is_alive())
+
     def stop(self):
         self._stop_event.set()
         if self._thread:

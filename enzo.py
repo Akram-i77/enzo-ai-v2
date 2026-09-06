@@ -41,10 +41,12 @@ def cmd_start(args):
     print("=" * 65)
     print("         ⚡ ENZO QUANT PROTOCOL — SYSTEM SUPERVISOR ⚡")
     print("=" * 65)
-    print(f"  • Live Dashboard: http://0.0.0.0:{port}/enzo-dashboard.html")
-    print(f"  • Telegram Bot:   Interactive Control Listener Active")
+    # Nothing here is claimed before it is verified. This block used to print
+    # "Live Dashboard: http://0.0.0.0:<port>" and "Telegram ... Active" BEFORE
+    # either was started, so a port already held by another process still
+    # produced a confident banner while the thread died in the background - the
+    # exact "OpenClaw says it opened and runs, but it does not" report.
     print(f"  • Trading Engine: Autonomous Scan Loop ({interval}s interval)")
-    print("=" * 65)
 
     # 1. Start Dashboard Web Server in daemon thread
     t_serve = threading.Thread(target=lambda: serve.run_server(host="0.0.0.0", port=port), daemon=True, name="enzo-serve")
@@ -53,6 +55,44 @@ def cmd_start(args):
     # 2. Start Telegram Botctl Listener in daemon thread
     listener = botctl.get_telegram_listener()
     listener.start()
+
+    # 3. VERIFY the dashboard by asking the port WHO answers (X-Enzo-Pid). A 200
+    #    proves nothing on its own: an older ENZO or any other process can hold
+    #    the port and serve somebody else's page.
+    probe = serve.probe_dashboard(port=port, host="127.0.0.1")
+    deadline = time.time() + 8.0
+    while not probe.get("answers") and t_serve.is_alive() and time.time() < deadline:
+        time.sleep(0.5)
+        probe = serve.probe_dashboard(port=port, host="127.0.0.1")
+    if probe.get("answers") and probe.get("pid") == os.getpid():
+        print(f"  • Live Dashboard: http://0.0.0.0:{port}/enzo-dashboard.html"
+              f"  [verified: pid={probe.get('pid')} health={probe.get('health')}]")
+    elif probe.get("answers"):
+        # Same wording as `./enzoctl start`: a responder with no X-Enzo-Pid is an
+        # ENZO from before identity headers, or another program entirely.
+        other = probe.get("pid") or "a process that does not identify itself"
+        print(f"  ✗ Live Dashboard: NOT SERVED BY THIS PROCESS — port {port} is"
+              f" answered by {other} (data={probe.get('data_dir') or 'unknown'})")
+        print(f"    The page at http://0.0.0.0:{port}/ belongs to that other process.")
+        print(f"    Free the port or set dashboard.port in config/enzo-config.yaml.")
+    else:
+        reason = probe.get("recorded_error") or probe.get("error") or "server thread is not answering"
+        print(f"  ✗ Live Dashboard: DOWN on port {port} — {reason}")
+        print(f"    Trading continues; fix the port and restart to get the page back.")
+
+    # 4. Same honesty for Telegram: the listener thread exits at once when no
+    #    token is configured, which used to be reported as "Active".
+    if listener.is_alive():
+        print("  • Telegram Bot:   Interactive Control Listener Active")
+    else:
+        try:
+            has_token = bool((config.load_secrets() or {}).get("telegram_bot_token"))
+        except Exception:
+            has_token = False
+        why = ("no telegram_bot_token in config/enzo-secrets.json"
+               if not has_token else "listener thread stopped - see data/logs/enzo.log")
+        print(f"  ✗ Telegram Bot:   NOT ACTIVE — {why}")
+    print("=" * 65)
 
     # 3. Run Autonomous Trading Loop in main thread
     try:

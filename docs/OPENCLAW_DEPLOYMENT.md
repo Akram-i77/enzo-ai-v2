@@ -76,7 +76,9 @@ bash bootstrap.sh          # يثبّت المتطلبات ويتحقق (لا ي
 | إيقاف/استئناف | `POST /api/control/toggle` | يُحفظ ذرّياً في `config/enzo-control.json` مع المصدر والوقت |
 | فحص فوري | `POST /api/scan` | يشغّل دورة اكتشاف في الخلفية ويعيد الرد فوراً |
 | من الطرفية | `./enzoctl health` | نفسها، بلا HTTP |
-| حالة مقروءة | `./enzoctl status` | **exit 0** = يعمل، **exit 1** = لا يعمل |
+| حالة مقروءة | `./enzoctl status` | **exit 0** = البوت يعمل **واللوحة التي على المنفذ لوحته فعلاً**؛ **exit 1** = متوقف، أو اللوحة ليست له / لا تعمل |
+| **من يردّ على المنفذ؟** | ترويسات `X-Enzo-Pid` و`X-Enzo-Data` | كل ردّ من لوحة ENZO يحملهما. بهما تُنسب الصفحة إلى عملية ومجلّد بيانات محددين — فلا تُحتسب صفحة عملية أخرى على أنها بوتك |
+| سبب فشل اللوحة | `data/run/enzo-dashboard-error.json` | يُكتب فور فشل ربط المنفذ (قبل رمي الخطأ)، ويُمحى عند `stop` أو عند إقلاع لوحة سليمة |
 | فحص شامل | `./enzoctl doctor` | **exit 0** = سليم، **exit 1** = مشكلة حرجة |
 | لأي آلة | أي أمر + `--json` | مثال: `./enzoctl status --json` |
 | من القرص مباشرة | `data/run/enzo-health.json` | يُكتب تلقائياً — يُقرأ حتى لو ماتت العملية |
@@ -89,6 +91,47 @@ bash bootstrap.sh          # يثبّت المتطلبات ويتحقق (لا ي
 code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 [ "$code" = "200" ] || echo "ENZO degraded or down"
 ```
+
+### 2.1 تصديق اللوحة قبل تصديق أنها تعمل / Dashboard liveness contract
+
+**ردّ `200` على المنفذ لا يثبت شيئاً.** قد يكون المنفذ محجوزاً من نسخة أقدم من
+ENZO أو من أي برنامج آخر، فتُفتح صفحة مليئة بأرقام عملية أخرى — وهذا بالضبط ما
+يُقرأ على أنه «اللوحة تعمل» بينما بوتك لا يقدّم شيئاً. لذلك:
+
+1. كل ردّ من لوحة ENZO يحمل `X-Enzo-Pid` (رقم العملية) و`X-Enzo-Data` (مجلّد
+   البيانات الذي بُنيت منه الصفحة).
+2. `./enzoctl start` **يتحقّق** من المنفذ بعد الإقلاع: يقارن `X-Enzo-Pid` برقم
+   المشرف في `data/run/enzo.pid`.
+   * التطابق ← يطبع `verified : the page answered … identified itself as THIS bot`
+     ويخرج بـ**exit 0**.
+   * المنفذ يردّ لكن من عملية أخرى ← يطبع `✖ THE DASHBOARD IS NOT THIS BOT's`
+     مع رقم العملية الغريبة ومجلّد بياناتها، ويخرج بـ**exit 1**. **المحرك لا
+     يُقتل**: إيقافه ومعه مراكز مفتوحة يعني إيقاف مراقب الخروج أيضاً.
+   * لا أحد يردّ ← يطبع `✖ THE DASHBOARD IS NOT SERVING` مع السبب المسجَّل في
+     `data/run/enzo-dashboard-error.json` وآخر أسطر `data/logs/supervisor.log`،
+     ويخرج بـ**exit 1**.
+3. `./enzoctl status` يطبع الحكم نفسه في سطر `dashboard`، و**رمز خروجه يوافقه**
+   (فالخروج 0 مع لوحة غريبة هو الكذبة نفسها بصيغة أخرى). الاستثناء: الإقلاع
+   بـ`--no-dashboard` قرار مقصود وليس عطلاً، فيبقى exit 0 ويطبع
+   `dashboard : disabled (--no-dashboard) — no page is being served`.
+4. الفشل يُسجَّل في `data/run/enzo-dashboard-error.json` ويظهر في `problems[]`
+   تحت الرمز `DASHBOARD_SERVER_DOWN`، ويُمحى عند `stop` حتى لا يبقى بوتٌ متوقف
+   متهماً بلوحة ميتة.
+
+فحص مقترح لـOpenClaw — «هل الصفحة التي سأفتحها هي صفحة هذا البوت؟»:
+
+```bash
+pid=$(cat data/run/enzo.pid 2>/dev/null)
+hdr=$(curl -s -D - -o /dev/null http://127.0.0.1:8077/health | tr -d '\r')
+said=$(printf '%s\n' "$hdr" | awk -F': ' '/^X-Enzo-Pid/{print $2}')
+if [ -n "$pid" ] && [ "$said" = "$pid" ]; then
+  echo "the dashboard IS this bot (pid $pid)"
+else
+  echo "the page on 8077 is NOT this bot (X-Enzo-Pid='${said:-none}', our pid='${pid:-none}')"
+fi
+```
+
+أو ببساطة: `./enzoctl status` — فرمز الخروج يحمل الحكم نفسه.
 
 ---
 
@@ -127,6 +170,9 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 | `GMGN_DISCOVERY_FAILED` | أمر `gmgn-cli` فشل لكل الفئات | ثبّت `gmgn-cli` أو صحّح مساره |
 | `DISCOVERY_FAULT[<مصدر>]` | مصدر اكتشاف معيّن رمى خطأً | السبب مرفق |
 | `DASHBOARD_RENDER_ERROR` | تعذّر توليد اللوحة | `./enzoctl dashboard` لرؤية الخطأ |
+| `CONFIG_UNREADABLE: <الملف: الخطأ>` | `config/enzo-config.yaml` لا يمكن قراءته (خطأ YAML غالباً). `/health` يعيد **503** و`/api/state` و`/api/activity` يعيدان **503** مع `reason=CONFIG_UNREADABLE` — لا 500 غامضاً | افتح الملف على السطر المذكور، ثم `./enzoctl doctor` |
+| `STATE_UNREADABLE: <السبب>` | تعذّرت قراءة الحالة (قاعدة البيانات تالفة مثلاً) — عطلٌ مختلف عن عطل الإعدادات ويُسمّى باسمه | `./enzoctl doctor`؛ وإن لزم فاستعد `data/` من نسخة احتياطية |
+| `DASHBOARD_SERVER_DOWN: <السبب> (port …)` | خيط اللوحة مات (المنفذ محجوز غالباً) **بينما المحرك يتداول**. التفاصيل في `data/run/enzo-dashboard-error.json` | حرّر المنفذ أو غيّر `dashboard.port` ثم `./enzoctl restart` |
 
 ---
 
@@ -296,18 +342,48 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8077/health)
 
 ## 9. الاختبارات / Tests
 
-ثماني حزم، **258 تحقّقاً**. لا حاجة لضبط `PATH` — واجهة MoonPay الوهمية مرفقة
-في `tests/mockbin/` وتُحلّ تلقائياً عبر `tests/conftest_paths.py`:
+**23 حزمة، 1057 تحقّقاً** (آخر تشغيل: 1057 نجح / 0 فشل). لا حاجة لضبط `PATH` —
+واجهة MoonPay الوهمية مرفقة في `tests/mockbin/` وتُحلّ تلقائياً عبر
+`tests/conftest_paths.py`:
 
 ```bash
-python3 tests/test_executor.py             #  47  تنفيذ MoonPay
-python3 tests/test_engine_e2e.py           #  43  المسار الكامل (صندوق معزول)
-python3 tests/test_exit_rules.py           #  44  قواعد الخروج وأولوياتها
-python3 tests/test_min_trade_floor.py      #  34  min_trade_usd كأرضية
-python3 tests/test_moonpay_chain.py        #  30  ترجمة اسم الشبكة / NO_ROUTE
-python3 tests/test_control_pause.py        #  25  سلامة مفتاح الإيقاف
-python3 tests/test_base_token_capital.py   #  23  رأس المال بحسب عملة الأساس
-python3 tests/test_dashboard_js.py         #  12  صحة JS المولَّد في اللوحة
+for t in tests/test_*.py; do python3 "$t" || echo "FAILED: $t"; done
+```
+
+| الحزمة | تحقّقات | ماذا تثبت |
+|---|---|---|
+| `test_gmgn_cli_compat.py` | 161 | توافق gmgn-cli v1.6: المفاتيح، اللهجات، الميزانية، الحظر |
+| `test_dashboard_e2e.py` | 144 | اللوحة من الحالة إلى HTML: كل بطاقة وجدول وبانر |
+| `test_enzoctl_probe.py` | 72 | `doctor` (34 بنداً) و`probe <mint>`: صدق ✔/⚠/✖ |
+| `test_rate_limit_budget.py` | 64 | ميزانية الطلبات وأوزانها و`429` |
+| **`test_dashboard_buttons.py`** | **55** | **كل زر في اللوحة يُنقر في DOM حقيقي (jsdom) ضد خادم حي: 14 زراً، التبويبات، الفلاتر، الإيقاف/الاستئناف، الفحص اليدوي، التحديث، شارة الرغّ، نوافذ الزخم** |
+| **`test_cli_honesty.py`** | **53** | **`wallet` و`logs` يعملان فعلاً + حارس ساكن يفحص كل `module.attribute` في المشروع (332 وصولاً) فلا تتكرر كارثة `get_balance_snapshot` + عقد 503/500 عند كسر الإعدادات** |
+| **`test_dashboard_liveness.py`** | **53** | **نسبة الصفحة إلى صاحبها (`X-Enzo-Pid`)، ورموز خروج `start`/`status` عند ميناء محجوز أو حرّ أو `--no-dashboard`، ودورة حياة ملف الفشل، وصدق `enzo.py start`** |
+| `test_min_trade_floor.py` | 51 | `min_trade_usd` أرضية لا عتبة رفض |
+| `test_token_universe_gates.py` | 48 | بوابات الطبقة صفر: Pump V1، الأرضيات، القنّاصون، الرسوم |
+| `test_executor.py` | 48 | تنفيذ MoonPay وترجمة الأخطاء |
+| `test_exit_rules.py` | 44 | قواعد الخروج وأولوياتها |
+| `test_engine_e2e.py` | 43 | المسار الكامل في صندوق معزول |
+| `test_moonpay_chain.py` | 30 | ترجمة اسم الشبكة / `NO_ROUTE` |
+| `test_control_pause.py` | 25 | سلامة مفتاح الإيقاف |
+| `test_rug_layers.py` | 25 | طبقات الحماية 1 و3 و4 |
+| `test_fresh_start_baseline.py` | 24 | بدء نظيف: ماذا يرى البوت في workspace جديد |
+| `test_base_token_capital.py` | 23 | رأس المال بحسب عملة الأساس |
+| `test_capital_staleness.py` | 21 | فترة السماح والقراءة القديمة |
+| `test_rug_gate.py` | 19 | بوابة الرغّ قبل الشراء |
+| `test_config_wiring.py` | 18 | كل مفتاح في YAML موصول فعلاً بالكود |
+| `test_dashboard_js.py` | 17 | صحة JS المولَّد (`node --check`) |
+| `test_suite_isolation.py` | 11 | لا حزمة تكتب في `data/` الحقيقي |
+| `test_floor_last_gate.py` | 8 | الأرضية آخر بوابة قبل الإرسال |
+
+حزمتا `test_dashboard_buttons.py` و`test_dashboard_js.py` تحتاجان `node`
+(والأولى `jsdom`). عند غيابهما تُعلنان **التخطي بصوت مرتفع** (`⚠ SKIPPED … No
+button was checked by this run — this is NOT a pass`) بدل أن تُحتسبا نجاحاً.
+لتجهيز jsdom مرة واحدة:
+
+```bash
+mkdir -p /tmp/jsdom-env && cd /tmp/jsdom-env && npm init -y >/dev/null && npm i jsdom >/dev/null
+ENZO_JSDOM_PATH=/tmp/jsdom-env/node_modules python3 tests/test_dashboard_buttons.py
 ```
 
 `test_engine_e2e.py` يعمل في **صندوق معزول** (`ENZO_HOME` مؤقت) — لا يلمس قاعدة
@@ -315,7 +391,7 @@ python3 tests/test_dashboard_js.py         #  12  صحة JS المولَّد ف�
 بوابة القابلية → تحجيم على رأس المال الحقيقي → تنفيذ MoonPay → مركز مربوط بـ
 tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
 
-**قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم الثماني وتأكد من `0 failed` في كلٍّ منها.
+**قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم الثلاث والعشرين وتأكد من `0 failed` في كلٍّ منها.
 
 ### قواعد الخروج المُختبَرة / Exit rules under test
 
@@ -344,3 +420,8 @@ tx_hash → تنبيه تيليجرام → لوحة → نبض للمشرف.
 | أمر $1.00 مرفوض بـ`BELOW_MINIMUM_TRADE` | `./enzoctl logs -n 100` | بوابة ENZO لا MoonPay. أُصلحت 2026-09-05: كان الحجم يُشتقّ مرتين (دولار←SOL←دولار) فيرجع `$0.9999999999999999 < $1.00` عند ~18% من أسعار SOL. الآن المرجع هو الحجم المقرّر مع تسامح مليون من الدولار |
 | `SOL/USD is a GUESSED $180.00` في السجل | `./enzoctl logs` | تعذّر قراءة السعر من DexScreener ⇒ الحجم المُرسَل قد لا يساوي الدولار المقصود. تحقّق من خروج HTTPS، والأمر يُسجَّل بمصدر سعره (`sol_price_source`) |
 | `INSUFFICIENT_CAPITAL_FOR_MINIMUM_TRADE` | `./enzoctl wallet` | المتاح أقل من `min_trade_usd` |
+| «OpenClaw يقول إن اللوحة فُتحت وتعمل، لكنها لا تعمل» | `./enzoctl status` | المنفذ محجوز من عملية أخرى (غالباً نسخة أقدم من ENZO). `start` و`status` يخرجان الآن بـ**exit 1** ويطبعان `✖ THE DASHBOARD IS NOT THIS BOT's` مع رقم العملية الغريبة. قارن `X-Enzo-Pid` بـ`data/run/enzo.pid` |
+| اللوحة تعرض أرقاماً/مراكز لا تعرفها | `curl -sD - -o /dev/null http://127.0.0.1:8077/health` | اقرأ `X-Enzo-Pid` و`X-Enzo-Data`: إن اختلفا عن بوتك فالصفحة لعملية أخرى (القسم 2.1) |
+| `./enzoctl logs` لا يطبع شيئاً مع أن السجل غير فارغ | `./enzoctl logs -n 100` | **أُصلح 2026-09-06**: كان يقرأ السطور عبر `audit._tail_lines` الذي يعيد صفوف JSON جاهزة ويسقط كل سطر غير JSON — فـ`logs audit` كان ينهار (`'dict' object has no attribute 'rstrip'`) و`logs enzo/supervisor` كان لا يطبع شيئاً إطلاقاً. الآن يعرض السطور كما كُتبت (بما فيها الـtraceback)، والسجل الفارغ يقول «يوجد لكن بلا أسطر بعد» |
+| `./enzoctl wallet` يرمي `AttributeError` | `./enzoctl wallet` | **أُصلح 2026-09-06**: كان يستدعي `executor.get_balance_snapshot` — دالة لم توجد قط — فينهار الأمر في كل تشغيل. الآن يستدعي `executor.get_wallet_snapshot` نفسها التي يقرأ بها مسار التداول، ويعرض الأرصدة ورأس المال القابل للنشر، ولا يرمي traceback عند غياب الـCLI |
+| شارة 🚩 لا تظهر على مركز مشبوه | `./enzoctl positions` | **أُصلح 2026-09-06**: `db.save_full_state` كان يعيد كتابة صف المركز بلا `extra_json` فيمحو `rug_flags` (ومعه الوقف المبكر المشدّد للطبقة الأولى) عند أي حفظ كامل للحالة |

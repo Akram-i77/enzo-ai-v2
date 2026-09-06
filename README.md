@@ -509,7 +509,7 @@ enzo/
 config/      enzo-config.yaml · enzo-control.json · enzo-watchlist.json
 data/        enzo.db (الدفتر) · run/ (pid + health) · logs/ · audit
 docs/        OPENCLAW_DEPLOYMENT.md · ENZO_FULL_DIAGNOSIS.md
-tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay الوهمية) ·
+tests/       23 حزمة (1057 تحقّقاً) · mockbin/ (واجهة MoonPay الوهمية) ·
              conftest_paths.py
 ```
 
@@ -528,10 +528,20 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 | اللوحة | `GET /enzo-dashboard.html` |
 | إيقاف/استئناف التداول | `POST /api/control/toggle` |
 | دورة فحص فورية | `POST /api/scan` |
+| **من يردّ على المنفذ؟** | ترويسات `X-Enzo-Pid` + `X-Enzo-Data` في كل ردّ |
+| سبب موت اللوحة | `data/run/enzo-dashboard-error.json` (يُمحى عند `stop`) |
 | من القرص (لو ماتت العملية) | `data/run/enzo-health.json` |
 
 المنفذ الافتراضي **8077** (`./enzoctl dashboard` أو `python3 -m enzo.ui.serve <port>`).
 يرتبط بـ `0.0.0.0` فيقبل الطلبات من أي واجهة مضيفة.
+
+**ردّ `200` على المنفذ لا يثبت أن اللوحة لوحتك.** قد يكون المنفذ محجوزاً من نسخة
+أقدم أو من برنامج آخر، فتُفتح صفحة بأرقام عملية أخرى وتُقرأ على أنها «البوت
+يعمل». لذلك تتحقّق `./enzoctl start` و`./enzoctl status` من الترويسات وتقارن
+`X-Enzo-Pid` بـ`data/run/enzo.pid`، و**رمز الخروج يوافق الحكم**: `1` إذا كانت
+الصفحة ليست لهذا البوت أو لا توجد صفحة (مع استمرار المحرك في التداول — لا يُقتل
+ومعه مراكز مفتوحة). العقد كامل في
+[`docs/OPENCLAW_DEPLOYMENT.md` §2.1](docs/OPENCLAW_DEPLOYMENT.md#21-تصديق-اللوحة-قبل-تصديق-أنها-تعمل--dashboard-liveness-contract).
 
 كل حالة `degraded` تحمل قائمة `problems[]` برموز محددة وأسبابها —
 الجدول الكامل في [`docs/OPENCLAW_DEPLOYMENT.md`](docs/OPENCLAW_DEPLOYMENT.md#3-ما-الذي-تعنيه-الحالات--what-the-statuses-mean).
@@ -540,11 +550,14 @@ tests/       8 حزم (258 تحقّقاً) · mockbin/ (واجهة MoonPay ال�
 
 ## الاختبارات / Tests
 
-عشرون حزمة، **896 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
+ثلاث وعشرون حزمة، **1057 تحقّقاً**، كلها تعمل بلا إعداد وبلا شبكة وبلا محفظة حقيقية:
 
 ```bash
-python3 tests/test_dashboard_e2e.py        # 144  اللوحة: خادم حي + نقر كل زر في DOM
 python3 tests/test_gmgn_cli_compat.py      # 161  توافق gmgn-cli v1.6.1: المسار الكامل + الحظر + kline + فئات trenches + نوافذ الزخم + هيكل السوق
+python3 tests/test_dashboard_e2e.py        # 144  اللوحة: خادم حي + نقر كل زر في DOM (بذر عبر مسار التداول)
+python3 tests/test_dashboard_buttons.py    #  55  الأزرار نفسها في DOM حقيقي، لكن البذر عبر save_full_state — المسار الآخر للكتابة
+python3 tests/test_cli_honesty.py          #  53  wallet/logs يعملان فعلاً + حارس ساكن لكل module.attribute (332 وصولاً) + عقد 503 عند كسر الإعدادات
+python3 tests/test_dashboard_liveness.py   #  53  نسبة الصفحة إلى صاحبها (X-Enzo-Pid) ورموز خروج start/status وحالة --no-dashboard
 python3 tests/test_enzoctl_probe.py        #  72  enzoctl probe/doctor/unban (صدق التقارير)
 python3 tests/test_token_universe_gates.py #  48  بوابات الطبقة 0: Pump V1/الطور/الرسوم/القنّاصون
 python3 tests/test_executor.py             #  48  تنفيذ MoonPay (شراء/بيع/رسوم/أخطاء)
@@ -571,11 +584,12 @@ python3 tests/test_floor_last_gate.py      #   8  الأرضية كآخر بوا
 `tests/test_engine_e2e.py` يعمل في صندوق معزول عبر `ENZO_HOME` — لا يلمس قاعدة
 بياناتك ولا أموالك. وهو يثبت المسار الكامل من الاكتشاف حتى التنفيذ الحي.
 
-> **قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم التسع عشرة وتأكد من `0 failed`.
-> فحص المتصفّح الفعلي (نقر كل زر على خادم حي) يحتاج `npm i jsdom` ثم
-> `ENZO_JSDOM_PATH=/path/to/node_modules python3 tests/test_dashboard_e2e.py`؛
-> بدونه يُتخطّى ذلك الجزء وحده وتبقى بقية الحزمة تعمل. الفحص الثابت في
-> `test_dashboard_js.py` يغطي الصحة النحوية وربط الأزرار دون أي اعتماديات.
+> **قبل أي تشغيل بأموال حقيقية:** نفّذ الحزم الثلاث والعشرين وتأكد من `0 failed`.
+> فحص المتصفّح الفعلي (نقر كل زر على خادم حي) يحتاج `node` و`npm i jsdom` ثم
+> `ENZO_JSDOM_PATH=/path/to/node_modules python3 tests/test_dashboard_buttons.py`؛
+> بدونه تُعلن الحزمة **التخطي صراحةً** («No button was checked by this run — this is
+> NOT a pass») ولا تُحتسب نجاحاً. الفحص الثابت في `test_dashboard_js.py` يغطي الصحة
+> النحوية وربط الأزرار دون أي اعتماديات.
 
 ---
 
