@@ -33,6 +33,27 @@ def _classify(decision: dict):
     return hits, first, reached_confidence
 
 
+def _momentum_windows(ax: dict):
+    """The price windows behind the momentum axis score, or None if absent.
+
+    `axis_scores["momentum"]` is a full axis dict (score/flags/detail) in real
+    decisions and a bare number in older rows and some fixtures - both are
+    handled, and nothing is invented when the detail is missing.
+    """
+    mom = ax.get("momentum")
+    det = (mom or {}).get("detail") if isinstance(mom, dict) else None
+    if not isinstance(det, dict) or not det:
+        return None
+    return {
+        "1m": det.get("pc1m"),
+        "5m": det.get("pc5m"),
+        "scored": det.get("windows_scored") or [],
+        "1h_context": det.get("pc1h"),
+        "24h_context": det.get("pc24"),
+        "buy_pressure_pct": det.get("buy_pressure"),
+    }
+
+
 def _ax(d, k):
     v = d.get(k)
     return (v or {}).get("score") if isinstance(v, dict) else v
@@ -69,6 +90,12 @@ def record(decision: dict, extra: dict = None):
                 "market_structure": _ax(ax, "market_structure"),
                 "liquidity": _ax(ax, "liquidity"),
             },
+            # The momentum score cannot be judged from the score alone: 28 can
+            # mean "falling right now" or "no window measurable". Persist the
+            # windows behind it so the Activity feed can show WHY, and so an old
+            # row can be re-read without re-querying GMGN. None stays None -
+            # an unmeasurable window is not 0.00%.
+            "momentum_windows": _momentum_windows(ax),
             "rejected_signals": decision.get("rejected_signals"),
             "supporting_signals": decision.get("supporting_signals"),
             # Layer-0 evidence, persisted so any rejection can be audited later
@@ -248,6 +275,7 @@ def get_recent_activities(limit: int = 100) -> list:
                     # For a bot trading real money, "why not?" is the question
                     # the owner asks most often.
                     "reason": r.get("reason"),
+                    "momentum_windows": r.get("momentum_windows"),
                     "rejected_signals": (r.get("rejected_signals") or [])[:6],
                     "universe": r.get("universe"),
                     "top_holder_pct": r.get("top_holder_pct"),

@@ -265,7 +265,12 @@ def seed_db():
         "decision": "IGNORE", "confidence_score": 0,
         "decision_reason": "Rejected by quality gate: SNIPER_FLOOD_EARLY",
         "market_cap_usd": 42000.0,
-        "axis_scores": {"security": 70, "momentum": 60},
+        "axis_scores": {"security": 70,
+                        "momentum": {"score": 28, "flags": ["1m=-7.41% 5m=-20.00% buy_pressure=69.0%"],
+                                     "detail": {"pc1m": -7.41, "pc5m": -20.0, "pc1h": 68.0,
+                                                "pc24": 292.0, "windows_scored": ["1m", "5m"],
+                                                "weights": {"1m": 8.0, "5m": 3.0},
+                                                "buy_pressure": 69.0}}},
         "rejected_signals": ["SNIPER_FLOOD_EARLY: 4 of the first 8 wallets are sniper-tagged "
                              "and bought $5,800 combined > $5,000 threshold",
                              "HOLDER_CONCENTRATION: top wallet 12.0% > max 10.0%"],
@@ -291,19 +296,70 @@ def seed_db():
         ok(_va.get("category") == "ANALYSIS", "وتصنيفه ANALYSIS (يظهر تحت 6-Axis Scans)",
            str(_va.get("category")))
 
+    # ── WHY the momentum score is what it is. A score of 28 cannot be judged on
+    #    its own: it may mean "falling right now" or "no window measurable". The
+    #    audit row and the feed now carry the two scored windows, the 1h/24h
+    #    context and the buy pressure - and None stays None (never 0.00%).
+    if _va:
+        _mw = (_va.get("data") or {}).get("momentum_windows") or {}
+        ok(_mw.get("1m") == -7.41 and _mw.get("5m") == -20.0,
+           "نوافذ الزخم المحتسبة (1m/5m) تصل إلى تدفق النشاط مع القرار",
+           str(_mw)[:120])
+        ok(_mw.get("scored") == ["1m", "5m"], "ومعها أي نافذة احتُسبت فعلاً", str(_mw.get("scored")))
+        ok(_mw.get("1h_context") == 68.0 and _mw.get("24h_context") == 292.0,
+           "وسياق 1h/24h يصل موسوماً كسياق لا كنقاط", str(_mw)[:120])
+        ok((_va.get("data") or {}).get("axes", {}).get("momentum") == 28,
+           "ونتيجة المحور نفسها ما زالت تصل (28 لا 60)", str((_va.get("data") or {}).get("axes")))
+
+    # A row whose momentum axis is a bare number (older rows / partial decisions)
+    # must NOT invent windows - the feed then simply shows no window line. Checked
+    # at unit level so the seeded activity feed above is not disturbed.
+    ok(audit._momentum_windows({"momentum": 50}) is None
+       and audit._momentum_windows({}) is None
+       and audit._momentum_windows({"momentum": {"score": 50, "detail": {}}}) is None,
+       "صف قديم بلا تفصيل للمحور لا يُختلق له نوافذ (None لا أصفار)",
+       str(audit._momentum_windows({"momentum": 50})))
+
     # ── the page must carry the new cards, the new filter and the thresholds ──
     _h2 = open(dashboard.generate(), encoding="utf-8").read()
+
+    # ── the six axis weights on the page must BE the config's weighted_confidence.
+    #    They used to be literals (30/20/20/15/10/5) that happened to match the
+    #    shipped file; an owner who edits the weights would then read a page that
+    #    describes a scoring the bot does not do.
+    import re as _re
+    from enzo.core.config import load_config as _lc
+    _wc = (_lc().get("weighted_confidence") or {})
+    _pairs = _re.findall(
+        r'<span class="axis-name">([^<]+)</span>\s*'
+        r'<span class="axis-score color-info">([0-9.]+)% Weight', _h2)
+    _KEY = {"🛡": "security", "👛": "wallet_behavior", "👨": "dev_behavior",
+            "🔥": "momentum", "📊": "market_structure", "💧": "liquidity"}
+    _mismatch = []
+    for _nm, _wv in _pairs:
+        _k = next((v for _e, v in _KEY.items() if _e in _nm), None)
+        if _k and abs(float(_wv) - float(_wc.get(_k, -1))) > 1e-9:
+            _mismatch.append(f"{_k}: page {_wv} vs config {_wc.get(_k)}")
+    ok(len(_pairs) == 6 and not _mismatch,
+       "أوزان المحاور الستة المعروضة = weighted_confidence في الإعداد حرفياً",
+       f"{len(_pairs)} بطاقات، اختلافات: {_mismatch}")
+
     for needle, why in (
             ('id="universeGateCard"', "بطاقة «الكون المسموح · الطبقة 0»"),
             ('id="universeGateStatus"', "وحالة تسليحها N/5"),
             ('filterActivity(\'UNIVERSE\')', "زر تصفية أعتاب الدخول"),
             ('id="gmgnSourceCard"', "بطاقة صحة مصدر البيانات"),
+            ('excluded and announced, never counted as a flat hour',
+             "وبطاقة هيكل السوق تعترف بأن النافذة المجهولة تُستبعد لا تُحسب صفراً"),
             ('id="gmgnKeyStatus"', "وحالة مفتاح GMGN_API_KEY فيها"),
             ('id="gmgnLastError"', "وآخر خطأ من المزوّد (لا يُبتلع)"),
             ('id="gmgnCats"', "وسطر الاكتشاف بعدد كل فئة"),
             ('id="gmgnSources"', "وسطر «من أي مصدر جاءت العملات المفحوصة»"),
             ('Analysed by source', "بعنوانه المقروء"),
             ('Scored windows: 1m', "وبطاقة الزخم تسمّي النوافذ المحتسبة فعلاً (1m/5m)"),
+            ('data.momentum_windows', "وتدفق النشاط يعرض نوافذ الزخم وراء النتيجة"),
+            ('context (not scored) 1h', "ويفصل السياق (1h/24h) عن المحتسب"),
+            ('n/a', "و«غير قابل للقياس» يظهر n/a لا رقماً مخترعاً"),
             ('NOT scored', "وتعترف بأن 1h/24h سياق لا نقاط"),
             ('$5,000', "حدّ ما قبل الترحيل"),
             ('$10,000', "حدّ ما بعد الترحيل"),

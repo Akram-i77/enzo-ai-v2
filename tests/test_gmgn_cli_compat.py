@@ -1143,6 +1143,62 @@ reset_provider()
 set_state({})
 _db.rl_clear_ban("gmgn")
 
+# ── §16: market_structure had the SAME blind spot ──────────────────────────────
+# `pc1h = float(sig.get("price_change_1h") or 0)` turned an unmeasurable window
+# into "the hour was flat": the imbalance term scored a constant 50 into the
+# average and the flag printed `1h_momentum=+0.00%` - a measurement that never
+# happened. Now the window is excluded and announced.
+print("\n── §16 market_structure: an unknown window is not a flat window ──")
+set_yaml("market_structure", min_sample_interval_sec=0)
+reset_provider(); set_state({}); _db.rl_clear_ban("gmgn")
+_MSB = "MSblind111111111111111111111111111111111"
+_MSS = "MSseen11111111111111111111111111111111111"
+_BLIND = {"signals": {"market_cap_usd": 50000.0, "liquidity_usd": 9000.0,
+                      "volume_24h_usd": 20000.0},
+          "security": {"unique_wallet_5m": 12}}
+_SEEN = {"signals": dict(_BLIND["signals"], price_change_1h=42.86, price_change_5m=11.1),
+         "security": _BLIND["security"]}
+
+_ms.clear(_MSB); _ms.clear(_MSS)
+_b1 = _ms.analyze(_MSB, _BLIND)
+_b2 = _ms.analyze(_MSB, _BLIND)
+ok(_b2.get("available") is True and int((_b2.get("detail") or {}).get("samples") or 0) >= 2,
+   "two samples of a coin with NO price window: the axis really ran",
+   str(_b2.get("detail"))[:120])
+_bd = _b2.get("detail") or {}
+ok(_bd.get("price_change_1h") is None and _bd.get("imbalance_score") is None,
+   "the unmeasurable window stays None in the detail - never written as 0.0 "
+   "(zero is the claim 'the price did not move')", str(_bd)[:150])
+_f1h = [f for f in (_b2.get("flags") or []) if "1h_momentum" in str(f)]
+ok(bool(_f1h) and "UNKNOWN" in _f1h[0] and "+0.00%" not in _f1h[0],
+   "and its flag says UNKNOWN out loud instead of printing a fake flat hour",
+   str(_f1h)[:150])
+
+_s1 = _ms.analyze(_MSS, _SEEN)
+_s2 = _ms.analyze(_MSS, _SEEN)
+_sd = _s2.get("detail") or {}
+ok(int(_sd.get("imbalance_score") or 0) == 100 and _sd.get("price_change_1h") == 42.86,
+   "with a real window the imbalance term is really computed (50 + 42.86*2 -> 100)",
+   str(_sd)[:150])
+ok(any("1h_momentum=+42.86%" in str(f) for f in (_s2.get("flags") or [])),
+   "and the flag prints the measured number", str(_s2.get("flags"))[:150])
+ok(int(_s2.get("score") or 0) > int(_b2.get("score") or 0),
+   "so a coin rising on the hour scores above one whose hour cannot be read - "
+   "they used to be identical", f"seen={_s2.get('score')} blind={_b2.get('score')}")
+
+_f_blind = _ms.analyze("MSfirstB111111111111111111111111111111111", _BLIND)
+_f_seen = _ms.analyze("MSfirstS111111111111111111111111111111111", _SEEN)
+ok(int(_f_blind.get("score") or 0) == 35 and _f_blind.get("available") is False,
+   "first sample with no readable window: the conservative 35, not a fake pump",
+   f"{_f_blind.get('score')} {_f_blind.get('flags')}")
+ok(int(_f_seen.get("score") or 0) == 40,
+   "first sample after a violent hour is still capped at 40 (the cap did not move)",
+   f"{_f_seen.get('score')}")
+
+_ms.clear()
+set_yaml("market_structure", min_sample_interval_sec=60)
+reset_provider(); set_state({}); _db.rl_clear_ban("gmgn")
+
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n" + "─" * 78)
 for n in NOTICES:

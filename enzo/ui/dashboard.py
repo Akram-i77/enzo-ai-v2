@@ -282,6 +282,29 @@ def generate() -> str:
         f"pressure (40% of the axis), hot level and smart-trader inflows. A window "
         f"that cannot be measured is reported n/a, never as 0.")
 
+    # The six axis cards printed their weights as literals (30/20/20/15/10/5).
+    # They happened to match the shipped config - but `weighted_confidence` is an
+    # owner setting, and a page that says "30% Weight" while the bot really
+    # scores 40 is the same class of lie this dashboard exists to remove. The
+    # cards now read the weights the analyzer actually uses.
+    _wc = cfg.get("weighted_confidence") or {}
+    _DEF_W = {"security": 30, "wallet_behavior": 20, "dev_behavior": 20,
+              "momentum": 15, "market_structure": 10, "liquidity": 5}
+
+    def _axis_w(axis: str) -> str:
+        try:
+            v = float(_wc.get(axis, _DEF_W[axis]))
+        except (TypeError, ValueError):
+            return f"{_DEF_W[axis]}% Weight · config value is NOT a number"
+        return f"{v:g}% Weight"
+
+    w_security = _axis_w("security")
+    w_wallet = _axis_w("wallet_behavior")
+    w_dev = _axis_w("dev_behavior")
+    w_momentum = _axis_w("momentum")
+    w_market = _axis_w("market_structure")
+    w_liquidity = _axis_w("liquidity")
+
     _cats = _dst.get("categories_ok") or {}
     _cat_bits = []
     # A stage GMGN did not send is the one discovery fault that CANNOT be seen in
@@ -1075,42 +1098,42 @@ def generate() -> str:
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">🛡️ Security & Authorities</span>
-            <span class="axis-score color-info">30% Weight</span>
+            <span class="axis-score color-info">{_esc(w_security)}</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Renounced Mint & Freeze, Honeypot detection, Top 10 holder concentration limits.</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">👛 Wallet Quality & Smart Money</span>
-            <span class="axis-score color-info">20% Weight</span>
+            <span class="axis-score color-info">{_esc(w_wallet)}</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Smart degen / whale tracking, bundler detection, insider rat identification, dumping velocity.</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">👨‍💻 Dev Reputation & Factory Smell</span>
-            <span class="axis-score color-info">20% Weight</span>
+            <span class="axis-score color-info">{_esc(w_dev)}</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Creator holding rate, serial-launcher factory detection, historical ATH performance tracking.</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">🔥 Momentum & Volume Pressure</span>
-            <span class="axis-score color-info">15% Weight</span>
+            <span class="axis-score color-info">{_esc(w_momentum)}</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">{_esc(momentum_card_label)}</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">📊 Market Structure & Growth</span>
-            <span class="axis-score color-info">10% Weight</span>
+            <span class="axis-score color-info">{_esc(w_market)}</span>
           </div>
-          <p style="font-size: 12px; color: var(--text-secondary);">Rolling multi-sample mcap growth, liquidity acceleration, 5m kline green-candle trend.</p>
+          <p style="font-size: 12px; color: var(--text-secondary);">Rolling multi-sample growth of market cap, liquidity and unique 5m buyers, the 1h price window as an imbalance term, and the 5m kline green-candle ratio. A lone first sample is capped at 40; a price window that cannot be measured is excluded and announced, never counted as a flat hour.</p>
         </div>
         <div class="axis-card">
           <div class="axis-header">
             <span class="axis-name">💧 Liquidity Health</span>
-            <span class="axis-score color-info">5% Weight</span>
+            <span class="axis-score color-info">{_esc(w_liquidity)}</span>
           </div>
           <p style="font-size: 12px; color: var(--text-secondary);">Tradeable liquidity pool depth check, slippage tolerance, pool backing verification.</p>
         </div>
@@ -1570,6 +1593,28 @@ def generate() -> str:
           '<span>💧 Liq: ' + ax('liquidity') + '</span>' +
           (data.market_cap_usd ? '<span>💰 MC: $' + Number(data.market_cap_usd).toLocaleString('en-US') + '</span>' : '') +
           '</div>';
+
+        // WHY the momentum score is what it is. The score alone cannot tell a
+        // dump from a blind axis: both can print the same number. So the feed
+        // prints the two windows that are really scored (1m/5m), the 1h/24h
+        // context that is NOT scored, and 'n/a' - never a fake 0.00% - when
+        // GMGN published no level for a window.
+        var mw = data.momentum_windows || null;
+        if (mw) {{
+          var pctw = function(v) {{
+            return (typeof v === 'number') ? ((v >= 0 ? '+' : '') + v.toFixed(2) + '%') : 'n/a';
+          }};
+          var scoredW = (mw.scored || []).join(' + ') || 'none measurable';
+          detailsStr += '<div class="act-details">' +
+            '<span>⏱ 1m ' + pctw(mw['1m']) + '</span>' +
+            '<span>⏱ 5m ' + pctw(mw['5m']) + '</span>' +
+            '<span>scored: ' + scoredW + '</span>' +
+            '<span>context (not scored) 1h ' + pctw(mw['1h_context']) +
+              ' · 24h ' + pctw(mw['24h_context']) + '</span>' +
+            ((typeof mw.buy_pressure_pct === 'number')
+              ? '<span>buy pressure ' + mw.buy_pressure_pct.toFixed(1) + '%</span>' : '') +
+            '</div>';
+        }}
       }}
 
       // WHY it was turned down. The audit row always carried the reason and the

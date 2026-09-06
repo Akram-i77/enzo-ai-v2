@@ -103,22 +103,31 @@ export GMGN_API_KEY="<مفتاحك من gmgn.ai>"      # في البيئة ال�
 |---|---|---|
 | `python_version` | 3.10 أو أحدث | لن يعمل `bootstrap` |
 | `pyyaml` / `websockets` | مثبّتان | الإعداد يُتجاهل / الاكتشاف لا يرى إطلاقات |
+| `config_file` / `config_sections` | مسار ملفك · `29 sections loaded` | ✖ إعداد لا يُقرأ أصلاً |
 | `config_valid` | no problems | إعداد تالف — لا تشغّل |
+| `not_paused` | `running` | البوت موقوف يدوياً ⇒ `./enzoctl resume` |
+| `watchlist` | `0 mint(s) — empty (discovery only)` | (معلومة) قائمة مراقبة يدوية إن أضفتَ عناوين |
 | `mode` | LIVE (real money) | إن كان PAPER فلن ينفّذ صفقات حقيقية |
 | `gmgn_cli` | مسار الأداة | لا بيانات سوق إطلاقاً |
 | `gmgn_api_key` | `GMGN_API_KEY found` | **✖ حرج**: v1.6 يرفض كل نداء بدونه ⇒ 0 مرشَّحين وكل البوابات عمياء |
 | `gmgn_cli_dialect` | `1.6.x — token commands take --address` | ⚠ الأداة لا تقبل `--address` ولا `--token` ⇒ حدّثها: `npm i -g gmgn-cli@latest` |
 | `gmgn_discovery` | `last sweep returned N token(s)` | ⚠ `no discovery sweep has run yet` ⇒ نفّذ `./enzoctl scan --force` ثم أعد الفحص |
 | `gmgn_discovery_categories` | `configured: ['trenches','trending']` | ⚠ فئة غير موجودة في v1.6 (مثل `smartmoney`/`kol`) تحرق طلباً وتُسجّل فشلاً كل دورة |
-| `gmgn_rate_config` | `0.8 req/s · gap 350ms · burst 2.5` | (معلومة) هذه هي الوتيرة الفعلية التي سيعمل بها البوت |
+| `momentum_windows` | `scored windows: 1m (x8 pts per +1%) + 5m (x3) · 1h/24h context only · unmeasurable window = n/a, never 0` | **✖**: وزن غير رقمي في `market_analysis.momentum` ⇒ المحور يعود للافتراضي. المهم أن ترى **1m و5m** محتسبتين و1h/24h سياقاً فقط |
+| `gmgn_rate_config` | `0.8 req/s · gap 350ms · burst 2.5 · discovery_limit 30 · no ban` | (معلومة) هذه هي الوتيرة الفعلية التي سيعمل بها البوت |
+| `gmgn_request_budget` | `~32 requests/min ceiling …` | (معلومة) السقف الفعلي؛ **لا يعدّ** حركة حارس الخروج (tripwire) فوق المراكز المفتوحة |
 | `universe_gates` | `Pump V1 only=True · pre cap>=$5000 and sells>=10 · migrated cap>=$10000 and fees>=2.5 SOL` | **✖**: مرشّحات الدخول مطفأة أو ناقصة ⇒ سيشتري ما لا تريده |
 | `holder_concentration_cap` | `top-1 WALLET must hold <= 10.0%` | **✖**: `max_holder_percentage` مفقود أو صفر ⇒ السقف مطفأ |
 | `moonpay_cli` | مسار الأداة | لا تنفيذ لأي صفقة |
+| `exec.moonpay_cli_installed` · `exec.mode` · `exec.wallet_exists` · `exec.balances_readable` · `exec.capital_sufficient` | الأداة مثبّتة · `LIVE (real trades)` · المحفظة موجودة · الأرصدة مقروءة · `deployable $X` | ✖ أيٌّ منها ⇒ **لا شراء إطلاقاً** في LIVE (والسبب مسمّى بالتحديد لا «سوق هادئ») |
 | `capital` | `$X deployable (wallet)` | المحفظة غير مقروءة ⇒ **التحجيم محجوب** |
 | `ledger_baseline` | `wallet-anchored` | الأساس ما زال 10,000 الوهمية ⇒ `./enzoctl rebase --confirm` |
 | `code_revision` | `commit <hash>` (من `TRANSFER_REVISION.txt` في نسخة بلا git) | ⚠ `cannot identify the running code` ⇒ انسخ `TRANSFER_REVISION.txt` من المصدر |
 | `base_token_funding` | جزء من الرصيد قابل للإنفاق كـ SOL | كل المال USDC ⇒ كل شراء يُرفض |
+| `telegram_token` | ⚠ `missing` إن لم تضعه بعد | التنبيهات لا تصل — **لا يمنع التداول** |
 | `secrets_not_in_git` | (تحذير) | التوكن متتبَّع في git |
+| `database` | `data/enzo.db · N open position(s)` | ✖ قاعدة تالفة أو مفقودة |
+| `audit_log` | `X MB` | (معلومة) حجم سجلّ التدقيق الذي تقرأه اللوحة |
 | `process` | running after start | لم يبدأ |
 
 **مبدأ السلامة:** البوت لا يخمّن أبداً. إن تعذّرت قراءة المحفظة فهو يحجب
@@ -145,9 +154,18 @@ export GMGN_API_KEY="<مفتاحك من gmgn.ai>"      # في البيئة ال�
    بوابة، وكل قرار يعرض سببه ورموزه وأدلّته (المنصّة/الطور/الرسوم/عدد
    القنّاصين/تركّز أعلى محفظة). لا يجب أن ترى `IGNORE (conf=0)` بلا سبب.
 6. اللوحة ← **Activity** — يجب أن ترى دورات اكتشاف (لا `0 candidates` باستمرار).
-7. `/health` — يجب ألا يبقى `degraded` بعد أول دورة.
-8. `./enzoctl logs` — لا `Traceback` ولا `BLOCKED`.
-9. **تأكيد المرشّحات على عملة حقيقية:** خذ عنوان عملة من Activity (مرفوضة أو
+7. **محور الزخم يقرأ فعلاً (ثلاث نظرات):**
+   - `./enzoctl doctor` ← صفّ `momentum_windows` ✔ وفيه `1m` و`5m`.
+   - `./enzoctl logs` ← يجب أن ترى في كل تحليل
+     `1m=±X.XX% 5m=±Y.YY% buy_pressure=…` و`context (not scored): 1h=… 24h=…`.
+     **وإن رأيت `1h=+0.00% 24h=+0.00%` فتلك بصمة العطب القديم** ⇒ نسختك قديمة.
+   - اللوحة ← **Activity** ← أي حدث تحليل يعرض تحت نتائج المحاور الستة سطراً:
+     `⏱ 1m … · ⏱ 5m … · scored: 1m + 5m · context (not scored) 1h … · 24h … · buy pressure …`،
+     وما لا يمكن قياسه يظهر `n/a` لا `0.00%`. وبطاقات المحاور الستة تعرض أوزانها
+     **مقروءةً من `weighted_confidence` في إعدادك** (غيّره فتتغيّر البطاقات).
+8. `/health` — يجب ألا يبقى `degraded` بعد أول دورة.
+9. `./enzoctl logs` — لا `Traceback` ولا `BLOCKED`.
+10. **تأكيد المرشّحات على عملة حقيقية:** خذ عنوان عملة من Activity (مرفوضة أو
    مقبولة) وشغّل `./enzoctl probe <MINT>`. يجب أن ترى: `launchpad: pump` و
    `platform: pump.fun`، الطور (قبل/بعد الترحيل) مع دليله، القيمة السوقية وعدد
    عمليات البيع مقابل حدّهما، نافذة أول 8 محافظ بأحجامها ووسومها، الرسوم
@@ -165,7 +183,7 @@ export GMGN_API_KEY="<مفتاحك من gmgn.ai>"      # في البيئة ال�
 ## 5) الاختبارات (اختياري لكن مُوصى به بعد النقل)
 
 ```bash
-for t in tests/test_*.py; do python3 "$t"; done    # 19 حزمة · 640 تحقّقاً (~80 ثانية)
+for t in tests/test_*.py; do python3 "$t"; done    # 20 حزمة · 882 تحقّقاً (~4 دقائق)
 ```
 
 كلها تعمل في صناديق `ENZO_HOME` معزولة: **لا تلمس** قاعدة بياناتك ولا أموالك —
@@ -175,14 +193,15 @@ for t in tests/test_*.py; do python3 "$t"; done    # 19 حزمة · 640 تحقّ
 وهمي قد يعتمده المحرك 300 ثانية عند فشل قراءة المحفظة).
 اختبار اللوحة يشغّل خادماً حقيقياً على منفذ حر وينقر كل زر داخل DOM.
 
-في نسخة النقل (بلا `.git`) يُظهر `test_executor` **44** بدل 48 (المجموع 636 بدل
-640): التحقّقات الأربعة الباقية تقارن السلوك بالكود القديم المسترجَع من تاريخ
-git، وتُتخطّى تلقائياً عند غياب التاريخ. **صفر فشل** هو المطلوب في الحالتين.
+في نسخة النقل (بلا `.git`) يُظهر `test_executor` **44** بدل 48 (المجموع **882**
+بدل **886**): التحقّقات الأربعة الباقية تقارن السلوك بالكود القديم المسترجَع من
+تاريخ git، وتُتخطّى تلقائياً عند غياب التاريخ. **صفر فشل** هو المطلوب في الحالتين.
 
-الحزم الثلاث الجديدة تخصّ مرشّحات 2026-09: `test_token_universe_gates` (48 — كل
-رموز الرفض والطورين والقيم الحدّية)، `test_gmgn_cli_compat` (79 — توافق
-gmgn-cli v1.6.1 + المسار الكامل **بلا أي استبدال**)، و`test_enzoctl_probe`
-(51 — أداتا التشخيص `doctor` و`probe`).
+الحزم التي تخصّ مرشّحات 2026-09 ومصدر البيانات: `test_token_universe_gates`
+(48 — كل رموز الرفض والطورين والقيم الحدّية)، `test_gmgn_cli_compat` (**161** —
+توافق gmgn-cli v1.6.1 + المسار الكامل **بلا أي استبدال**، ومنها §15 نوافذ الزخم
+1m/5m و§16 أن النافذة المجهولة في هيكل السوق ليست نافذة مسطّحة)،
+و`test_enzoctl_probe` (**67** — أداتا التشخيص `doctor` و`probe`).
 
 > اللوحة نفسها تحذّرك قبل أول تشغيل: إن رأيت لافتة «رأس المال المعروض
 > ($10,000) هو الرقم الافتراضي لا رصيدك الحقيقي» فمعناها أن الدفتر جديد ولم

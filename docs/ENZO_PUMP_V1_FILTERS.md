@@ -117,14 +117,16 @@ data_sources:
 ## 3) How to verify it yourself (no programming needed)
 
 ```bash
-./enzoctl doctor              # 32 checks; the new ones are listed below
+./enzoctl doctor              # 34 checks; the new ones are listed below
 ./enzoctl probe <MINT>        # every number the gates read, next to its threshold
 ./enzoctl probe <MINT> --json # the same, machine-readable (stdout is pure JSON)
 ```
 
 `doctor` now also reports: `gmgn_api_key`, `gmgn_cli_dialect` (which address flag
 the installed build accepts), `gmgn_discovery_categories`, `gmgn_rate_config`,
-`universe_gates` (your thresholds echoed back) and `holder_concentration_cap`.
+`gmgn_request_budget`, `momentum_windows` (the 1m/5m windows really scored, and
+the fact that 1h/24h are context only), `universe_gates` (your thresholds echoed
+back) and `holder_concentration_cap`.
 An unverifiable check is printed as ⚠ — never as ✔.
 
 `probe` prints, for one coin: the provider and CLI dialect, identity

@@ -66,7 +66,7 @@
 |---|---|---|
 | `price_change_1m` | التهجئات أعلاه / مشتقّ من `price_1m` | **محتسب في محور momentum** (وزن `weight_1m`=8) |
 | `price_change_5m` | كذلك | **محتسب في المحور** (وزن `weight_5m`=3) |
-| `price_change_1h` | كذلك | سياق في الأعلام + محور `market_structure` — **لا يُحتسب في الزخم** |
+| `price_change_1h` | كذلك | سياق في الأعلام + حدّ `imbalance` في محور `market_structure` — **لا يُحتسب في الزخم**، وحين لا يمكن قياسه **يُستبعد من متوسط المحور** ويُعلن `1h_momentum=UNKNOWN` (لا `+0.00%` مخترعة) |
 | `price_change_6h` / `price_change_24h` | كذلك | سياق فقط |
 | `buy_pressure_pct` | `buys`/`sells` (24h) أو أحجام الشراء/البيع | بوابة `min_buy_pressure` (30%) + 40% من نقاط المحور |
 | `buy_pressure_1m` / `buy_pressure_5m` | `price.buys_1m`/`sells_1m` و`_5m` | **معلوماتية في الأعلام** — لا تبوّب أي بوابة |
@@ -311,8 +311,8 @@
 | **security** (0-100) | token_security + holders + wallet_tags_stat + stat + deep holders |
 | **wallet_behavior** | wallet_tags_stat + deep holders tags + top_trader_identity (Phase-C) |
 | **dev_behavior** | creator_* + dev_events + dev_history + wallet_stats |
-| **momentum** | price_change_5m/1h + buys/sells + smart_degen_count + hot_level |
-| **market_structure** | mcap + liq + vol + kline 5m (rolling growth) |
+| **momentum** | **price_change_1m/5m (المحتسبان)** + 1h/24h (سياق في الأعلام فقط) + buy_pressure (40% من المحور) + buys/sells ratio + smart_degen_count + hot_level |
+| **market_structure** | mcap + liq + unique_wallet_5m (نموّ متدحرج) + kline 5m (نسبة الشموع الخضراء) + price_change_1h كحدّ imbalance — **يُستبعد إن كان مجهولاً** |
 | **liquidity** | liq + liq_to_vol_ratio + curve estimate |
 
 ### 10b. الحالة (security_scan):

@@ -99,6 +99,28 @@ def _kline_volume_trend(mint: str, candles: int = 6) -> dict:
     }
 
 
+def _pct_or_none(v):
+    """A percent as a float, or None when it cannot be measured.
+
+    Never 0.0: zero is the statement "the price did not move", and turning a
+    missing window into that statement is what kept this axis (and momentum)
+    blind for the bot's whole life.
+    """
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _flag_1h(pc1h) -> str:
+    if pc1h is None:
+        return ("1h_momentum=UNKNOWN (window absent from the payload -> excluded "
+                "from the score, NOT counted as a flat hour)")
+    return f"1h_momentum={pc1h:+.2f}%"
+
+
 def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
     cfg = config or load_config()
     ms = cfg.get("market_structure", {}) or {}
@@ -112,9 +134,13 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
     liq = float(sig.get("liquidity_usd", sec.get("liquidity", 0)) or 0)
     vol = sig.get("volume_24h_usd")
     buyers = sec.get("unique_wallet_5m")
-    pc1h = float(sig.get("price_change_1h") or 0)
-    pc5m = sig.get("price_change_5m")
-    pc5m = float(pc5m) if pc5m is not None else None
+    # A price window is None when GMGN published no level for it. `or 0` used to
+    # turn that into "the price did not move", which is a claim, not a
+    # measurement: with the provider unable to read any window this axis scored a
+    # constant imbalance of 50 (and printed `1h_momentum=+0.00%`) for every coin
+    # ever scanned. Unknown is now excluded from the average and announced.
+    pc1h = _pct_or_none(sig.get("price_change_1h"))
+    pc5m = _pct_or_none(sig.get("price_change_5m"))
 
     now = time.time()
     with _STORE_LOCK:
@@ -128,13 +154,16 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
 
     if len(series) < 2:
         # Insufficient samples: cap the score at 40 so a lone first sample
-        # (especially after a violent 1h pump) can never score near 100.
-        first_score = min(40, clamp(35 + pc1h * 1.5))
+        # (especially after a violent 1h pump) can never score near 100. An
+        # unmeasurable 1h window leaves the cap alone at 35 - the conservative
+        # end - instead of pretending the hour was flat.
+        first_score = min(40, clamp(35 + pc1h * 1.5)) if pc1h is not None else 35
         return {
             "score": int(first_score),
             "available": False,
-            "flags": ["insufficient_samples -> conservative"],
-            "detail": {"samples": len(series), "imbalance_score": first_score}
+            "flags": ["insufficient_samples -> conservative", _flag_1h(pc1h)],
+            "detail": {"samples": len(series), "imbalance_score": first_score,
+                       "price_change_1h": pc1h}
         }
 
     a, b = series[0], series[-1]
@@ -149,7 +178,7 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
         m2 = _growth(series[len(series) // 2]["vol"], series[-1]["vol"])
         if m1 is not None and m2 is not None:
             vol_accel = m2 - m1
-    imbalance = clamp(50 + pc1h * 2)
+    imbalance = clamp(50 + pc1h * 2) if pc1h is not None else None
 
     kt = _kline_volume_trend(mint)
     green_ratio = kt.get("green_ratio") if kt else None
@@ -163,7 +192,8 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
         parts.append(clamp(50 + liq_g))
     if buyer_inc is not None:
         parts.append(clamp(50 + buyer_inc))
-    parts.append(imbalance)
+    if imbalance is not None:
+        parts.append(imbalance)
     if green_ratio is not None:
         parts.append(clamp(40 + green_ratio * 60))
 
@@ -173,7 +203,7 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
         f"mc_growth={round(mc_g, 1) if mc_g is not None else 'n/a'}%/window",
         f"liq_growth={round(liq_g, 1) if liq_g is not None else 'n/a'}%",
         f"buyers_increase={round(buyer_inc, 1) if buyer_inc is not None else 'n/a'}%",
-        f"1h_momentum={pc1h:+.2f}%",
+        _flag_1h(pc1h),
     ]
     if vol_accel is not None:
         flags.append(f"vol_accel={round(vol_accel, 1)}%/window")
@@ -196,6 +226,7 @@ def analyze(mint: str, merged: dict = None, config: dict = None) -> dict:
             "buyer_increase_pct": buyer_inc,
             "volume_acceleration": vol_accel,
             "imbalance_score": imbalance,
+            "price_change_1h": pc1h,
             "green_candle_ratio": green_ratio,
             "kline_vol_trend_pct": vol_trend,
             "last_candle_up": last_up,
