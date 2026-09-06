@@ -270,5 +270,5 @@ issues **zero** calls. It also pins the classification above (a `WAIT` coin is h
 only by the 45s floor, an `IGNORE` coin by the full 900s, a `DATA_ERROR` by neither)
 and the effective-cap rule (`volume_caps` returns the tightest of each pair).
 
-Full suite: **891 checks, 0 failures** across 20 suites (`bash` the list in the
+Full suite: **896 checks, 0 failures** across 20 suites (`bash` the list in the
 README, or run any file alone — no config, network or real wallet needed).

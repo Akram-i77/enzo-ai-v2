@@ -209,6 +209,29 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     ok(rate.indexOf('req/s') >= 0, 'the pace shown is the configured one', rate.slice(0, 60));
   }
 
+  section('4d. the momentum windows are DRAWN, not merely carried in JSON');
+  {
+    // A momentum score cannot be judged from the score alone: 28 can mean
+    // "falling right now" or "no window measurable". The seeded rejection carries
+    // 1m=-7.41% / 5m=-20.00% with 1h=+68% / 24h=+292% as context, so the pane has
+    // to show which windows were scored and which were not - and an unmeasurable
+    // window must read n/a, never a fabricated 0.00%.
+    const allBtn4d = buttons.find((b) => (b.getAttribute('onclick') || '').indexOf("filterActivity('ALL')") >= 0);
+    if (allBtn4d) {
+      allBtn4d.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true }));
+      await sleep(350);
+    }
+    const t4d = feed ? (feed.textContent || '') : '';
+    ok(t4d.indexOf('1m -7.41%') >= 0, 'the scored 1m window is on screen with its sign',
+      t4d.indexOf('1m -7.41%') >= 0 ? '' : t4d.slice(0, 160));
+    ok(t4d.indexOf('5m -20.00%') >= 0, 'and the scored 5m window', '');
+    ok(t4d.indexOf('scored: 1m + 5m') >= 0, 'and the pane names WHICH windows were scored', '');
+    ok(t4d.indexOf('context (not scored) 1h +68.00%') >= 0,
+      'with 1h labelled context - the windows the owner removed from the score', '');
+    ok(t4d.indexOf('24h +292.00%') >= 0 && t4d.indexOf('buy pressure 69.0%') >= 0,
+      'and the 24h context plus the buy pressure that supplies 40% of the axis', '');
+  }
+
   section('5. rendering from live data');
   // The filter test above left the feed on its last category; put it back on ALL
   // before judging what renders, otherwise we would be measuring our own click.
